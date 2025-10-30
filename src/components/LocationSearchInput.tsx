@@ -65,7 +65,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    onChange(newValue);
+    // DO NOT call onChange here - only call it when user selects from dropdown
 
     if (searchTimeout) {
       clearTimeout(searchTimeout);
@@ -80,8 +80,8 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
 
   const handleSelectLocation = (location: Location) => {
     const code = locationType === 'SALES_CITIES' ? location.salesCityCode || location.code : location.code;
-    setInputValue(code);
-    onChange(code);
+    setInputValue(''); // Clear input after selection to allow adding more
+    onChange(code); // Only call onChange when user clicks a location
     setIsOpen(false);
     setLocations([]);
   };
