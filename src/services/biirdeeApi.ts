@@ -313,6 +313,8 @@ class BiirdeeService {
                 const transformedSolution = this.transformItaMatrixSolution(event);
                 onProgress(transformedSolution);
               }
+            } else if (event.type === 'summary') {
+              console.log(`📋 Search complete: ${event.totalSolutions} total, ${event.enrichedCount} enriched (${event.enrichmentRate})`);
             }
           } catch (parseError) {
             console.warn('⚠️  Failed to parse line:', line, parseError);
@@ -346,11 +348,12 @@ class BiirdeeService {
       return carrier || { code, name: code, shortName: code };
     };
 
-    // Helper to extract carrier code from flight number (e.g., "AS235" -> "AS")
+    // Helper to extract carrier code from flight number
+    // IATA airline codes are always exactly 2 characters
+    // Examples: "AS356" -> "AS", "S4280" -> "S4", "9W123" -> "9W"
     const extractCarrierCode = (flightNumber: string): string => {
       if (!flightNumber) return '';
-      // Match 2-3 letter airline code at the start
-      const match = flightNumber.match(/^([A-Z]{2,3})/);
+      const match = flightNumber.match(/^([A-Z0-9]{2})/);
       return match ? match[1] : '';
     };
 
