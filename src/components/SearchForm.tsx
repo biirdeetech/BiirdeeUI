@@ -95,6 +95,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         setLegs(newLegs);
       }
       setPassengers(parseInt(searchParams.get('passengers') || '1'));
+
+      // Initialize pagination and aero options from URL
+      setPageSize(parseInt(searchParams.get('pageSize') || '25'));
+      setPageNum(parseInt(searchParams.get('pageNum') || '1'));
+      setAeroEnabled(searchParams.get('aero') === 'true');
+      setAirlines(searchParams.get('airlines') || '');
+      setStrictAirlineMatch(searchParams.get('strict_airline_match') === 'true');
+      setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '120'));
+      setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
+      setFetchSummary(searchParams.get('summary') === 'true');
     }
   }, [compact, searchParams]);
 

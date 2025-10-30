@@ -109,7 +109,17 @@ const SearchPage: React.FC = () => {
         cabin: slices[0]?.cabin || 'COACH',
         passengers,
         maxStops: 2,
-        slices
+        slices,
+        // Pagination options
+        pageSize: parseInt(searchParams.get('pageSize') || '25'),
+        pageNum: parseInt(searchParams.get('pageNum') || '1'),
+        // Aero options
+        aero: searchParams.get('aero') === 'true',
+        airlines: searchParams.get('airlines') || undefined,
+        strict_airline_match: searchParams.get('strict_airline_match') === 'true',
+        time_tolerance: parseInt(searchParams.get('time_tolerance') || '120'),
+        strict_leg_match: searchParams.get('strict_leg_match') === 'true',
+        summary: searchParams.get('summary') === 'true'
       };
     } else {
       // Handle one-way and round-trip parameters - create slices for consistency
@@ -158,7 +168,17 @@ const SearchPage: React.FC = () => {
         cabin: firstLegCabin,
         passengers,
         maxStops: 2,
-        slices
+        slices,
+        // Pagination options
+        pageSize: parseInt(searchParams.get('pageSize') || '25'),
+        pageNum: parseInt(searchParams.get('pageNum') || '1'),
+        // Aero options
+        aero: searchParams.get('aero') === 'true',
+        airlines: searchParams.get('airlines') || undefined,
+        strict_airline_match: searchParams.get('strict_airline_match') === 'true',
+        time_tolerance: parseInt(searchParams.get('time_tolerance') || '120'),
+        strict_leg_match: searchParams.get('strict_leg_match') === 'true',
+        summary: searchParams.get('summary') === 'true'
       };
     }
   };
