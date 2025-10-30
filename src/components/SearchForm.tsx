@@ -164,11 +164,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   const addOrigin = (legId: string, origin: string) => {
     if (origin.trim()) {
-      setLegs(legs.map(leg => 
-        leg.id === legId 
-          ? { ...leg, origins: [...leg.origins, origin.trim().toUpperCase()] }
-          : leg
-      ));
+      const normalizedOrigin = origin.trim().toUpperCase();
+      setLegs(legs.map(leg => {
+        if (leg.id === legId) {
+          // Check if origin already exists
+          if (leg.origins.includes(normalizedOrigin)) {
+            return leg; // Don't add duplicate
+          }
+          return { ...leg, origins: [...leg.origins, normalizedOrigin] };
+        }
+        return leg;
+      }));
     }
   };
 
@@ -182,11 +188,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   const addDestination = (legId: string, destination: string) => {
     if (destination.trim()) {
-      setLegs(legs.map(leg => 
-        leg.id === legId 
-          ? { ...leg, destinations: [...leg.destinations, destination.trim().toUpperCase()] }
-          : leg
-      ));
+      const normalizedDestination = destination.trim().toUpperCase();
+      setLegs(legs.map(leg => {
+        if (leg.id === legId) {
+          // Check if destination already exists
+          if (leg.destinations.includes(normalizedDestination)) {
+            return leg; // Don't add duplicate
+          }
+          return { ...leg, destinations: [...leg.destinations, normalizedDestination] };
+        }
+        return leg;
+      }));
     }
   };
 
