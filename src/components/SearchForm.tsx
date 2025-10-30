@@ -39,7 +39,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [passengers, setPassengers] = useState(1);
-  
+
   const [legs, setLegs] = useState<FlightLeg[]>([
     {
       id: '1',
@@ -54,6 +54,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
+
+  // Pagination and Aero options
+  const [pageSize, setPageSize] = useState(25);
+  const [pageNum, setPageNum] = useState(1);
+  const [aeroEnabled, setAeroEnabled] = useState(false);
+  const [airlines, setAirlines] = useState('');
+  const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
+  const [timeTolerance, setTimeTolerance] = useState(120);
+  const [strictLegMatch, setStrictLegMatch] = useState(false);
+  const [fetchSummary, setFetchSummary] = useState(false);
 
   // Initialize form from URL params when in compact mode
   useEffect(() => {
@@ -241,6 +251,28 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     
     searchParams.append('legCount', validatedLegs.length.toString());
     searchParams.append('passengers', passengers.toString());
+
+    // Add pagination options
+    searchParams.append('pageSize', pageSize.toString());
+    searchParams.append('pageNum', pageNum.toString());
+
+    // Add aero options
+    searchParams.append('aero', aeroEnabled.toString());
+    if (airlines) {
+      searchParams.append('airlines', airlines);
+    }
+    if (strictAirlineMatch) {
+      searchParams.append('strict_airline_match', 'true');
+    }
+    if (timeTolerance !== 120) {
+      searchParams.append('time_tolerance', timeTolerance.toString());
+    }
+    if (strictLegMatch) {
+      searchParams.append('strict_leg_match', 'true');
+    }
+    if (fetchSummary) {
+      searchParams.append('summary', 'true');
+    }
     
     // Trigger new search callback if provided (for search page)
     if (onNewSearch) {
@@ -590,6 +622,123 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
             {getTripType() === 'multiCity' && `Multi-City (${legs.length} legs)`}
           </span>
         </div>
+
+        {/* Advanced Options Accordion */}
+        <details className="bg-gray-800/50 border border-gray-700 rounded-lg">
+          <summary className="cursor-pointer px-4 py-3 font-medium text-gray-300 hover:text-white transition-colors flex items-center justify-between">
+            <span>Advanced Options (Pagination & Aero)</span>
+            <span className="text-xs text-gray-500">Click to expand</span>
+          </summary>
+          <div className="px-4 py-4 space-y-4 border-t border-gray-700">
+            {/* Pagination Section */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                Pagination Options
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Page Size</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={pageSize}
+                    onChange={(e) => setPageSize(parseInt(e.target.value) || 25)}
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Page Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={pageNum}
+                    onChange={(e) => setPageNum(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Aero Options Section */}
+            <div className="space-y-3 pt-3 border-t border-gray-700">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-300">Aero Search Options</h4>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={aeroEnabled}
+                    onChange={(e) => setAeroEnabled(e.target.checked)}
+                    className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                  />
+                  <span className="text-xs text-gray-400">Enable Aero</span>
+                </label>
+              </div>
+
+              {aeroEnabled && (
+                <div className="space-y-3 bg-gray-900/50 p-3 rounded border border-gray-700">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Airlines (comma-separated, e.g., AA,UA,DL)
+                    </label>
+                    <input
+                      type="text"
+                      value={airlines}
+                      onChange={(e) => setAirlines(e.target.value)}
+                      placeholder="Leave empty for all airlines"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={strictAirlineMatch}
+                        onChange={(e) => setStrictAirlineMatch(e.target.checked)}
+                        className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                      />
+                      <span className="text-xs text-gray-400">Strict Airline Match</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={strictLegMatch}
+                        onChange={(e) => setStrictLegMatch(e.target.checked)}
+                        className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                      />
+                      <span className="text-xs text-gray-400">Strict Leg Match</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Code Share Time Tolerance (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={timeTolerance}
+                      onChange={(e) => setTimeTolerance(parseInt(e.target.value) || 120)}
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={fetchSummary}
+                      onChange={(e) => setFetchSummary(e.target.checked)}
+                      className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                    />
+                    <span className="text-xs text-gray-400">Fetch ITA Summary</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+        </details>
 
         {/* Search Button */}
         <button
