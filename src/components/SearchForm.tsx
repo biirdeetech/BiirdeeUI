@@ -3,6 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info } from 'lucide-react';
 import { getDefaultBookingClasses, bookingClassesToExt, extToBookingClasses } from '../utils/bookingClasses';
 import LocationSearchInput from './LocationSearchInput';
+import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
+import CurrencySearchInput from './CurrencySearchInput';
+import { Currency } from '../utils/currencies';
 
 // Helper function to get date 1 week from now
 const getDefaultDepartDate = () => {
@@ -65,6 +68,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [timeTolerance, setTimeTolerance] = useState(120);
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
+  const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
+  const [currency, setCurrency] = useState<Currency | null>(null);
 
   // Initialize form from URL params when in compact mode
   useEffect(() => {
@@ -745,6 +750,35 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     />
                     <span className="text-xs text-gray-400">Fetch ITA Summary</span>
                   </label>
+
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Sales City (Optional)
+                    </label>
+                    <LocationSearchInputWithCallback
+                      value={salesCity}
+                      onChange={(location) => setSalesCity(location)}
+                      locationType="SALES_CITIES"
+                      placeholder="Search sales city..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Point of sale for pricing
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Currency (Optional)
+                    </label>
+                    <CurrencySearchInput
+                      value={currency}
+                      onChange={(curr) => setCurrency(curr)}
+                      placeholder="Search currency..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Display prices in selected currency
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
