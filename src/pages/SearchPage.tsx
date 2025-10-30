@@ -204,6 +204,8 @@ const SearchPage: React.FC = () => {
     console.log('🚀 SearchPage: Starting flight search');
     setLoading(true);
     setError(null);
+    setResults(null); // Clear previous results
+    setHasSearched(false);
 
     try {
       // Progressive callback for streaming results
@@ -215,18 +217,25 @@ const SearchPage: React.FC = () => {
           const exists = existingSolutions.some(s => s.id === solution.id);
           if (exists) return prevResults;
 
-          return {
+          const newResults = {
             solutionList: {
               solutions: [...existingSolutions, solution]
             }
           };
+          console.log(`📊 SearchPage: Now showing ${newResults.solutionList.solutions.length} results`);
+          return newResults;
         });
+        setHasSearched(true); // Show results as soon as first one arrives
       };
 
       const searchResults = await FlightApi.searchFlights(extractedParams, extractedParams.aero ? onProgress : undefined);
-      console.log('✅ SearchPage: Search results received:', searchResults);
-      setResults(searchResults);
-      setHasSearched(true);
+      console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
+
+      // Only update results if not using streaming (aero disabled)
+      if (!extractedParams.aero) {
+        setResults(searchResults);
+        setHasSearched(true);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ SearchPage: Search failed:', errorMessage);

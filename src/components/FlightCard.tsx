@@ -235,46 +235,55 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               </div>
             )}
 
-            {/* Price Display */}
-            <div className="text-xl font-medium text-neutral-100">
-              {formatPrice(displayTotal)}
-            </div>
-            <div className="text-sm text-gray-300">
-              ${formatPricePerMile(pricePerMile)}/mile
-            </div>
-
-            {/* Mileage Info */}
-            {totalMileage > 0 && (
-              <div className="mt-1 text-sm text-accent-400 font-medium">
-                {totalMileage.toLocaleString()} miles
-                {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
+            {/* Price Display with Mileage on Same Line */}
+            <div className="space-y-1">
+              <div className="flex items-baseline gap-2">
+                <div className="text-xl font-medium text-neutral-100">
+                  {formatPrice(displayTotal)}
+                </div>
+                <div className="text-xs text-gray-400">
+                  ${formatPricePerMile(pricePerMile)}/mi
+                </div>
               </div>
-            )}
 
-            {/* Mileage Deals Dropdown */}
-            {mileageDeals && mileageDeals.length > 0 && (
-              <div className="mt-2">
-                <MileageDealsDropdown
-                  deals={mileageDeals}
-                  onSelectDeal={handleSelectMileageDeal}
-                />
-              </div>
-            )}
+              {/* Mileage Info or Single Deal Button */}
+              {totalMileage > 0 && (
+                <div>
+                  {mileageDeals && mileageDeals.length === 1 ? (
+                    <button
+                      onClick={() => handleSelectMileageDeal(mileageDeals[0])}
+                      className="text-sm text-accent-400 hover:text-accent-300 font-medium hover:underline transition-colors"
+                    >
+                      {totalMileage.toLocaleString()} miles
+                      {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
+                    </button>
+                  ) : (
+                    <div className="text-sm text-accent-400 font-medium">
+                      {totalMileage.toLocaleString()} miles
+                      {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <button
-              onClick={openHacksPage}
-              className="mt-2 bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-            >
-              <Target className="h-3 w-3" />
-              Flight Hacks
-            </button>
-            <button
-              onClick={() => setShowAddToProposal(true)}
-              className="mt-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-            >
-              <Plus className="h-3 w-3" />
-              Add to Proposal
-            </button>
+            {/* Action Buttons on Single Line */}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={openHacksPage}
+                className="bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+              >
+                <Target className="h-3 w-3" />
+                Hacks
+              </button>
+              <button
+                onClick={() => setShowAddToProposal(true)}
+                className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                Add
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -431,6 +440,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
           </div>
         ))}
       </div>
+
+      {/* Multiple Mileage Deals Dropdown (bottom left after flight details) */}
+      {mileageDeals && mileageDeals.length > 1 && (
+        <div className="px-3 sm:px-4 lg:px-6 pb-4">
+          <MileageDealsDropdown
+            deals={mileageDeals}
+            onSelectDeal={handleSelectMileageDeal}
+          />
+        </div>
+      )}
 
       {/* Add to Proposal Modal */}
       {showAddToProposal && (
