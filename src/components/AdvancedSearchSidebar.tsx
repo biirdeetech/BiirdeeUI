@@ -18,12 +18,24 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
     skiplag: {
       destinations: [] as string[],
       pinnedCity: ''
+    },
+    pagination: {
+      pageSize: 25,
+      pageNum: 1
+    },
+    aero: {
+      enabled: false,
+      airlines: '',
+      strict_airline_match: false,
+      time_tolerance: 120,
+      strict_leg_match: false,
+      summary: false
     }
   });
 
   const [newDestination, setNewDestination] = useState('');
   const [newOrigin, setNewOrigin] = useState('');
-  const [activeSection, setActiveSection] = useState<'frt' | 'skiplag'>('frt');
+  const [activeSection, setActiveSection] = useState<'frt' | 'skiplag' | 'aero'>('frt');
 
   useEffect(() => {
     // Don't trigger on initial mount - only when user makes actual changes
@@ -94,26 +106,36 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       </div>
 
       {/* Section Tabs */}
-      <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
+      <div className="grid grid-cols-3 gap-2 mb-6">
         <button
           onClick={() => setActiveSection('frt')}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-3 rounded-md text-xs font-medium transition-colors ${
             activeSection === 'frt'
               ? 'bg-success-600 text-white'
-              : 'text-gray-400 hover:text-gray-200'
+              : 'bg-gray-800 text-gray-400 hover:text-gray-200'
           }`}
         >
-          Fake Round Trip
+          FRT
         </button>
         <button
           onClick={() => setActiveSection('skiplag')}
-          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+          className={`py-2 px-3 rounded-md text-xs font-medium transition-colors ${
             activeSection === 'skiplag'
               ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:text-gray-200'
+              : 'bg-gray-800 text-gray-400 hover:text-gray-200'
           }`}
         >
           Skiplag
+        </button>
+        <button
+          onClick={() => setActiveSection('aero')}
+          className={`py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+            activeSection === 'aero'
+              ? 'bg-accent-600 text-white'
+              : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Aero
         </button>
       </div>
 
@@ -275,6 +297,185 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
             <p className="text-xs text-gray-500 mt-1">
               The city where you actually want to stop (layover city)
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Aero & Pagination Section */}
+      {activeSection === 'aero' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-medium text-accent-400 mb-3">Aero Options</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Configure advanced search with Aero providers for more results and streaming support.
+            </p>
+          </div>
+
+          {/* Enable Aero */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={advancedSettings.aero.enabled}
+                onChange={(e) => {
+                  setAdvancedSettings(prev => ({
+                    ...prev,
+                    aero: { ...prev.aero, enabled: e.target.checked }
+                  }));
+                  onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, enabled: e.target.checked } });
+                }}
+                className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Enable Aero Search (Streaming)</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">
+              Enables streaming results from multiple providers
+            </p>
+          </div>
+
+          {/* Airlines */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Airlines (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={advancedSettings.aero.airlines}
+              onChange={(e) => {
+                setAdvancedSettings(prev => ({
+                  ...prev,
+                  aero: { ...prev.aero, airlines: e.target.value }
+                }));
+              }}
+              onBlur={() => onSettingsChange(advancedSettings)}
+              placeholder="e.g., AA,UA,DL"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-100 placeholder-gray-500 focus:border-accent-500 text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Filter by specific airline codes
+            </p>
+          </div>
+
+          {/* Strict Airline Match */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={advancedSettings.aero.strict_airline_match}
+                onChange={(e) => {
+                  setAdvancedSettings(prev => ({
+                    ...prev,
+                    aero: { ...prev.aero, strict_airline_match: e.target.checked }
+                  }));
+                  onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, strict_airline_match: e.target.checked } });
+                }}
+                className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Strict Airline Matching</span>
+            </label>
+          </div>
+
+          {/* Time Tolerance */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Code Share Time Tolerance (minutes)
+            </label>
+            <input
+              type="number"
+              value={advancedSettings.aero.time_tolerance}
+              onChange={(e) => {
+                setAdvancedSettings(prev => ({
+                  ...prev,
+                  aero: { ...prev.aero, time_tolerance: parseInt(e.target.value) || 120 }
+                }));
+              }}
+              onBlur={() => onSettingsChange(advancedSettings)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-100 focus:border-accent-500 text-sm"
+            />
+          </div>
+
+          {/* Strict Leg Match */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={advancedSettings.aero.strict_leg_match}
+                onChange={(e) => {
+                  setAdvancedSettings(prev => ({
+                    ...prev,
+                    aero: { ...prev.aero, strict_leg_match: e.target.checked }
+                  }));
+                  onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, strict_leg_match: e.target.checked } });
+                }}
+                className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Strict Route Matching</span>
+            </label>
+          </div>
+
+          {/* Summary */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={advancedSettings.aero.summary}
+                onChange={(e) => {
+                  setAdvancedSettings(prev => ({
+                    ...prev,
+                    aero: { ...prev.aero, summary: e.target.checked }
+                  }));
+                  onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, summary: e.target.checked } });
+                }}
+                className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Fetch ITA Summary</span>
+            </label>
+          </div>
+
+          {/* Pagination */}
+          <div className="pt-4 border-t border-gray-800">
+            <h4 className="text-sm font-medium text-gray-300 mb-3">Pagination</h4>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Page Size
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={advancedSettings.pagination.pageSize}
+                  onChange={(e) => {
+                    setAdvancedSettings(prev => ({
+                      ...prev,
+                      pagination: { ...prev.pagination, pageSize: parseInt(e.target.value) || 25 }
+                    }));
+                  }}
+                  onBlur={() => onSettingsChange(advancedSettings)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-100 focus:border-accent-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Page Number
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={advancedSettings.pagination.pageNum}
+                  onChange={(e) => {
+                    setAdvancedSettings(prev => ({
+                      ...prev,
+                      pagination: { ...prev.pagination, pageNum: parseInt(e.target.value) || 1 }
+                    }));
+                  }}
+                  onBlur={() => onSettingsChange(advancedSettings)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-100 focus:border-accent-500 text-sm"
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -11,6 +11,16 @@ export interface FlightSearchParams {
   flexibility?: number;
   // Multi-city specific fields
   slices?: FlightSliceParams[];
+  // Pagination options
+  pageSize?: number;
+  pageNum?: number;
+  // Aero options
+  aero?: boolean;
+  airlines?: string;
+  strict_airline_match?: boolean;
+  time_tolerance?: number;
+  strict_leg_match?: boolean;
+  summary?: boolean;
 }
 
 export interface FlightSliceParams {

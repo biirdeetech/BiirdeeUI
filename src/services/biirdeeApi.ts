@@ -85,7 +85,7 @@ class BiirdeeService {
     return '0';
   }
 
-  private buildBiirdeeRequest(params: FlightSearchParams): BiirdeeRequest {
+  private buildBiirdeeRequest(params: FlightSearchParams): any {
     console.log('🔧 BiirdeeService: Building request for:', params);
 
     const slices: BiirdeeSlice[] = [];
@@ -182,7 +182,7 @@ class BiirdeeService {
     const tripType = params.tripType === 'roundTrip' ? 'multi-city' :
                      params.tripType === 'multiCity' ? 'multi-city' : 'one-way';
 
-    const request: BiirdeeRequest = {
+    const request: any = {
       type: tripType,
       slices: slices,
       options: {
@@ -191,7 +191,15 @@ class BiirdeeService {
         extraStops: this.mapMaxStops(params.maxStops),
         allowAirportChanges: 'true',
         showOnlyAvailable: 'true',
-        pageSize: 500
+        pageSize: params.pageSize || 25,
+        pageNum: params.pageNum || 1,
+        // Aero options
+        aero: params.aero || false,
+        ...(params.airlines && { airlines: params.airlines }),
+        ...(params.strict_airline_match !== undefined && { strict_airline_match: params.strict_airline_match }),
+        ...(params.time_tolerance !== undefined && { time_tolerance: params.time_tolerance }),
+        ...(params.strict_leg_match !== undefined && { strict_leg_match: params.strict_leg_match }),
+        ...(params.summary !== undefined && { summary: params.summary })
       },
       pax: {
         adults: String(params.passengers || 1)
@@ -207,6 +215,11 @@ class BiirdeeService {
     try {
       const requestBody = this.buildBiirdeeRequest(params);
       console.log('📡 BiirdeeService: Request body:', JSON.stringify(requestBody, null, 2));
+
+      // Check if aero is enabled for streaming
+      if (params.aero) {
+        return await this.searchFlightsWithStreaming(requestBody);
+      }
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -233,6 +246,152 @@ class BiirdeeService {
       console.error('❌ BiirdeeService: API request failed:', error);
       throw error;
     }
+  }
+
+  private async searchFlightsWithStreaming(requestBody: any): Promise<SearchResponse> {
+    console.log('🌊 BiirdeeService: Starting streaming search');
+
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ BiirdeeService: Streaming API request failed:', response.status);
+      console.error('❌ BiirdeeService: Error details:', errorText);
+      throw new Error(`API request failed: ${response.status}. ${errorText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null, streaming not supported');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let allFlights: any[] = [];
+    let searchParams: any = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          console.log('✅ BiirdeeService: Streaming completed');
+          break;
+        }
+
+        // Decode the chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete lines (NDJSON)
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          try {
+            const event = JSON.parse(line);
+            console.log('📦 BiirdeeService: Received event:', event.type);
+
+            if (event.type === 'search_started') {
+              searchParams = event.search_params;
+              console.log('🚀 Search started:', searchParams);
+            } else if (event.type === 'provider_result') {
+              console.log(`✈️  Provider ${event.provider} returned ${event.data?.data?.length || 0} flights`);
+              if (event.data?.data) {
+                allFlights.push(...event.data.data);
+              }
+            } else if (event.type === 'search_completed') {
+              console.log('✅ Search completed');
+            }
+          } catch (parseError) {
+            console.warn('⚠️  Failed to parse line:', line, parseError);
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    // Transform the aggregated flights into our format
+    console.log(`🔄 BiirdeeService: Transforming ${allFlights.length} total flights from streaming`);
+
+    return {
+      solutionList: {
+        solutions: allFlights.map(flight => this.transformAeroFlight(flight))
+      }
+    };
+  }
+
+  private transformAeroFlight(aeroFlight: any): any {
+    // Transform Aero API flight format to our internal format
+    const itineraries = aeroFlight.itineraries || [];
+    const slices = itineraries.map((itinerary: any) => {
+      const segments = itinerary.segments || [];
+      const firstSegment = segments[0] || {};
+      const lastSegment = segments[segments.length - 1] || {};
+
+      return {
+        origin: {
+          code: firstSegment.departure?.iataCode || '',
+          name: firstSegment.departure?.iataCode || ''
+        },
+        destination: {
+          code: lastSegment.arrival?.iataCode || '',
+          name: lastSegment.arrival?.iataCode || ''
+        },
+        departure: firstSegment.departure?.at || '',
+        arrival: lastSegment.arrival?.at || '',
+        duration: this.parseDuration(itinerary.duration),
+        flights: segments.map((seg: any) => `${seg.carrierCode || ''}${seg.number || ''}`),
+        cabins: segments.map((seg: any) => seg.cabin || 'ECONOMY'),
+        stops: segments.slice(0, -1).map((seg: any) => ({
+          code: seg.arrival?.iataCode || '',
+          name: seg.arrival?.iataCode || ''
+        })),
+        segments: segments.map((seg: any) => ({
+          carrier: {
+            code: seg.carrierCode || '',
+            name: seg.carrierCode || '',
+            shortName: seg.carrierCode || ''
+          },
+          marketingCarrier: seg.carrierCode || '',
+          pricings: seg.fareDetailsBySegment ? [{
+            fareBasis: seg.fareDetailsBySegment[0]?.fareBasis || '',
+            bookingClass: seg.fareDetailsBySegment[0]?.class || ''
+          }] : []
+        }))
+      };
+    });
+
+    return {
+      id: aeroFlight.id || '',
+      totalAmount: parseFloat(aeroFlight.price?.total || '0'),
+      displayTotal: parseFloat(aeroFlight.price?.grandTotal || aeroFlight.price?.total || '0'),
+      slices: slices,
+      ext: {
+        pricePerMile: 0
+      }
+    };
+  }
+
+  private parseDuration(duration: string): number {
+    // Parse ISO 8601 duration format (e.g., "PT1H33M")
+    if (!duration) return 0;
+
+    const matches = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!matches) return 0;
+
+    const hours = parseInt(matches[1] || '0');
+    const minutes = parseInt(matches[2] || '0');
+
+    return hours * 60 + minutes;
   }
 
   private transformBiirdeeResponse(biirdeeResponse: any): SearchResponse {
