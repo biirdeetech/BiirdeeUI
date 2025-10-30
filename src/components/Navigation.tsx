@@ -5,10 +5,10 @@ import { useAuth } from '../hooks/useAuth';
 import AuthButton from './AuthButton';
 
 const Navigation: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isDevMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const isAdmin = profile?.role === 'admin';
 
   // Navigation items for authenticated users
@@ -24,7 +24,7 @@ const Navigation: React.FC = () => {
       <div className="w-full px-4 sm:px-6">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <button 
+          <button
             onClick={() => navigate(user ? '/' : '/sign-in')}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
@@ -32,7 +32,14 @@ const Navigation: React.FC = () => {
               <Plane className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Biirdee Pro</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-white">Biirdee Pro</h1>
+                {isDevMode && (
+                  <span className="bg-yellow-500 text-black px-2 py-0.5 rounded text-xs font-bold">
+                    DEV
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-400 hidden sm:block">Flight Search & Proposals</p>
             </div>
           </button>

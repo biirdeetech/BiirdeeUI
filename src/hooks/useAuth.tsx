@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
+const DEV_MODE_BYPASS = import.meta.env.VITE_DISABLE_AUTH === 'true';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -11,6 +13,7 @@ interface AuthContextType {
   profile: Profile | null;
   refreshProfile: () => Promise<void>;
   clearAllAuthData: () => Promise<void>;
+  isDevMode: boolean;
 }
 
 interface Profile {
@@ -31,11 +34,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  // Create mock dev user
+  const createDevUser = (): { user: User; profile: Profile } => {
+    const mockUser = {
+      id: 'dev-user-00000000-0000-0000-0000-000000000000',
+      email: 'dev@biirdee.com',
+      user_metadata: {
+        full_name: 'Dev User',
+        name: 'Dev User',
+        avatar_url: null
+      }
+    } as User;
+
+    const mockProfile: Profile = {
+      id: mockUser.id,
+      email: mockUser.email!,
+      full_name: 'Dev User',
+      avatar_url: null,
+      role: 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    return { user: mockUser, profile: mockProfile };
+  };
+
   // Simple profile creation from user data
   const createProfileFromUser = (user: User): Profile => {
     // Check if user should be admin based on email
     const isAdminEmail = user.email && ['tech@biirdee.com', 'var@biirdee.com', 'eric@biirdee.com'].includes(user.email);
-    
+
     return {
       id: user.id,
       email: user.email || '',
@@ -69,20 +97,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const initializeAuth = async () => {
       try {
+        // If dev mode is enabled, use mock user
+        if (DEV_MODE_BYPASS) {
+          console.log('🔓 DEV MODE: Auth bypass enabled');
+          const { user: mockUser, profile: mockProfile } = createDevUser();
+          if (mounted) {
+            setUser(mockUser);
+            setProfile(mockProfile);
+            setLoading(false);
+          }
+          return;
+        }
+
         // Add a small delay to ensure Supabase is fully initialized
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
-        
+
         if (session?.user) {
           // Check email domain
           if (!session.user.email?.endsWith('@biirdee.com')) {
             await clearAllAuthData();
             return;
           }
-          
+
           setSession(session);
           setUser(session.user);
           setProfile(createProfileFromUser(session.user));
@@ -170,7 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     profile,
     refreshProfile,
-    clearAllAuthData
+    clearAllAuthData,
+    isDevMode: DEV_MODE_BYPASS
   };
 
   return (

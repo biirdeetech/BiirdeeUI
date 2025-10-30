@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import Navigation from '../components/Navigation';
 
 const SignInPage: React.FC = () => {
-  const { user, signInWithGoogle, loading, clearAllAuthData } = useAuth();
+  const { user, signInWithGoogle, loading, clearAllAuthData, isDevMode } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already signed in (but allow access to sign-in page for everyone)
@@ -91,6 +91,13 @@ const SignInPage: React.FC = () => {
     <div className="min-h-screen bg-gray-950">
       {/* Navigation */}
       <Navigation />
+
+      {/* Dev Mode Banner */}
+      {isDevMode && (
+        <div className="bg-yellow-600 text-black px-4 py-2 text-center font-medium text-sm">
+          🔓 DEV MODE: Authentication is bypassed
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex items-center justify-center px-4 sm:px-6 py-24">
