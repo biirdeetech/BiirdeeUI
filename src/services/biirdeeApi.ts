@@ -209,7 +209,7 @@ class BiirdeeService {
     return request;
   }
 
-  async searchFlights(params: FlightSearchParams): Promise<SearchResponse> {
+  async searchFlights(params: FlightSearchParams, onProgress?: (solution: any) => void): Promise<SearchResponse> {
     console.log('🛫 BiirdeeService: Starting flight search with params:', params);
 
     try {
@@ -218,7 +218,7 @@ class BiirdeeService {
 
       // Check if aero is enabled for streaming
       if (params.aero) {
-        return await this.searchFlightsWithStreaming(requestBody);
+        return await this.searchFlightsWithStreaming(requestBody, onProgress);
       }
 
       const response = await fetch(this.baseUrl, {
@@ -248,7 +248,7 @@ class BiirdeeService {
     }
   }
 
-  private async searchFlightsWithStreaming(requestBody: any): Promise<SearchResponse> {
+  private async searchFlightsWithStreaming(requestBody: any, onProgress?: (solution: any) => void): Promise<SearchResponse> {
     console.log('🌊 BiirdeeService: Starting streaming search');
 
     const response = await fetch(this.baseUrl, {
@@ -274,7 +274,7 @@ class BiirdeeService {
     const decoder = new TextDecoder();
     let buffer = '';
     let allFlights: any[] = [];
-    let searchParams: any = null;
+    let totalSolutions = 0;
 
     try {
       while (true) {
@@ -302,10 +302,17 @@ class BiirdeeService {
             if (event.type === 'start') {
               console.log('🚀 Search started with provider:', event.provider);
             } else if (event.type === 'metadata') {
-              console.log(`📊 Expecting ${event.totalSolutions || 0} solutions`);
+              totalSolutions = event.totalSolutions || 0;
+              console.log(`📊 Expecting ${totalSolutions} solutions`);
             } else if (event.type === 'solution') {
               console.log(`✈️  Solution ${event.solutionIndex + 1}: ${event.ext?.price}`);
               allFlights.push(event);
+
+              // Call onProgress callback if provided for progressive rendering
+              if (onProgress) {
+                const transformedSolution = this.transformItaMatrixSolution(event);
+                onProgress(transformedSolution);
+              }
             }
           } catch (parseError) {
             console.warn('⚠️  Failed to parse line:', line, parseError);
@@ -331,13 +338,38 @@ class BiirdeeService {
     // Solution structure: { type, solutionIndex, ext: {price, pricePerMile}, itinerary, pricings, displayTotal, id }
 
     const itinerary = solution.itinerary || {};
+    const allCarriers = itinerary.carriers || [];
+
+    // Helper to find carrier by code
+    const findCarrier = (code: string) => {
+      const carrier = allCarriers.find((c: any) => c.code === code);
+      return carrier || { code, name: code, shortName: code };
+    };
+
+    // Helper to extract carrier code from flight number (e.g., "AS235" -> "AS")
+    const extractCarrierCode = (flightNumber: string): string => {
+      if (!flightNumber) return '';
+      // Match 2-3 letter airline code at the start
+      const match = flightNumber.match(/^([A-Z]{2,3})/);
+      return match ? match[1] : '';
+    };
+
     const slices = (itinerary.slices || []).map((slice: any) => {
-      // Map segments if they exist in the slice
-      const segments = (slice.segments || []).map((seg: any) => ({
-        carrier: slice.carriers?.[0] || { code: '', name: '', shortName: '' },
-        marketingCarrier: slice.carriers?.[0]?.code || '',
-        pricings: seg.pricings || []
-      }));
+      const flights = slice.flights || [];
+
+      // Map segments and match with flight numbers
+      const segments = (slice.segments || []).map((seg: any, index: number) => {
+        const flightNumber = flights[index] || '';
+        const carrierCode = extractCarrierCode(flightNumber);
+        const carrier = findCarrier(carrierCode);
+
+        return {
+          carrier: carrier,
+          marketingCarrier: carrierCode,
+          flightNumber: flightNumber,
+          pricings: seg.pricings || []
+        };
+      });
 
       return {
         origin: slice.origin || { code: '', name: '' },
@@ -345,7 +377,7 @@ class BiirdeeService {
         departure: slice.departure || '',
         arrival: slice.arrival || '',
         duration: slice.duration || 0,
-        flights: slice.flights || [],
+        flights: flights,
         cabins: slice.cabins || [],
         stops: slice.stops || [],
         segments: segments
@@ -367,8 +399,25 @@ class BiirdeeService {
       matchType = 'partial';
     }
 
-    // Extract mileage deals if available (for future use when API returns multiple deals)
-    const mileageDeals = solution.mileageDeals || [];
+    // Build mileage deals array from solution data
+    const mileageDeals: any[] = [];
+
+    // If mileage information is available, create mileage deal(s)
+    if (solution.totalMileage > 0) {
+      // Get primary carrier for mileage program
+      const dominantCarrier = itinerary.ext?.dominantCarrier || itinerary.carriers?.[0];
+
+      if (dominantCarrier) {
+        mileageDeals.push({
+          airline: dominantCarrier.shortName || dominantCarrier.name || dominantCarrier.code,
+          airlineCode: dominantCarrier.code,
+          mileage: solution.totalMileage,
+          mileagePrice: solution.totalMileagePrice || 0,
+          matchType: solution.fullyEnriched ? 'full' : 'partial',
+          cabins: slices[0]?.cabins || []
+        });
+      }
+    }
 
     return {
       id: solution.id || `solution-${solution.solutionIndex}`,

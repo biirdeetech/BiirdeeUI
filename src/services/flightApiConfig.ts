@@ -3,7 +3,7 @@ import BiirdeeService from './biirdeeApi';
 import { FlightSearchParams, SearchResponse } from '../types/flight';
 
 interface FlightApiService {
-  searchFlights(params: FlightSearchParams): Promise<SearchResponse>;
+  searchFlights(params: FlightSearchParams, onProgress?: (solution: any) => void): Promise<SearchResponse>;
 }
 
 type ApiProvider = 'biirdee' | 'itamatrix';

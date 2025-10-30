@@ -206,7 +206,24 @@ const SearchPage: React.FC = () => {
     setError(null);
 
     try {
-      const searchResults = await FlightApi.searchFlights(extractedParams);
+      // Progressive callback for streaming results
+      const onProgress = (solution: any) => {
+        console.log('📥 SearchPage: Received progressive solution:', solution.id);
+        setResults((prevResults) => {
+          const existingSolutions = prevResults?.solutionList?.solutions || [];
+          // Check if solution already exists (avoid duplicates)
+          const exists = existingSolutions.some(s => s.id === solution.id);
+          if (exists) return prevResults;
+
+          return {
+            solutionList: {
+              solutions: [...existingSolutions, solution]
+            }
+          };
+        });
+      };
+
+      const searchResults = await FlightApi.searchFlights(extractedParams, extractedParams.aero ? onProgress : undefined);
       console.log('✅ SearchPage: Search results received:', searchResults);
       setResults(searchResults);
       setHasSearched(true);
