@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info } from 'lucide-react';
 import { getDefaultBookingClasses, bookingClassesToExt, extToBookingClasses } from '../utils/bookingClasses';
+import LocationSearchInput from './LocationSearchInput';
 
 // Helper function to get date 1 week from now
 const getDefaultDepartDate = () => {
@@ -380,19 +381,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 {/* Input row with switch button */}
                 <div className="md:col-span-2">
                   <div className="flex gap-3 items-center">
-                    <input
-                      type="text"
-                      placeholder="Origin (e.g., SFO)"
-                     className={`${compact ? 'w-24 px-2 text-sm' : 'flex-1 px-3'} bg-gray-800 border border-gray-700 rounded py-2 text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono`}
-                      maxLength={3}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addOrigin(leg.id, e.currentTarget.value);
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
+                    <div className="flex-1">
+                      <LocationSearchInput
+                        value=""
+                        onChange={(code) => {
+                          if (code.trim()) {
+                            addOrigin(leg.id, code.toUpperCase());
+                          }
+                        }}
+                        placeholder="Origin (e.g., SFO)"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => swapOriginsDestinations(leg.id)}
@@ -401,19 +400,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     >
                       <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover:text-accent-400 transition-colors" />
                     </button>
-                    <input
-                      type="text"
-                      placeholder="Destination (e.g., CDG)"
-                     className={`${compact ? 'w-24 px-2 text-sm' : 'flex-1 px-3'} bg-gray-800 border border-gray-700 rounded py-2 text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono`}
-                      maxLength={3}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addDestination(leg.id, e.currentTarget.value);
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
+                    <div className="flex-1">
+                      <LocationSearchInput
+                        value=""
+                        onChange={(code) => {
+                          if (code.trim()) {
+                            addDestination(leg.id, code.toUpperCase());
+                          }
+                        }}
+                        placeholder="Destination (e.g., CDG)"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -421,19 +418,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               <div className={`grid grid-cols-1 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'} gap-4 mt-4`}>
                 {/* Via Airport */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Via (Optional)</label>
-                  <input
-                    type="text"
-                    value={leg.via}
-                    onChange={(e) => updateLeg(leg.id, 'via', e.target.value.toUpperCase())}
+                  <LocationSearchInput
+                    value={leg.via || ''}
+                    onChange={(code) => updateLeg(leg.id, 'via', code.toUpperCase())}
                     placeholder="e.g., LHR"
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono"
-                    maxLength={3}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                      }
-                    }}
+                    label="Via (Optional)"
                   />
                 </div>
 

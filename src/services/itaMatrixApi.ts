@@ -7,10 +7,30 @@ interface SessionInfo {
   solutionSet: string;
 }
 
+export interface Location {
+  displayName: string;
+  type: string;
+  code: string;
+  cityCode: string;
+  cityName: string;
+  salesCityCode?: string;
+  salesCityName?: string;
+  latLng?: {
+    latitude: number;
+    longitude: number;
+  };
+  timezone?: string;
+}
+
+export interface LocationSearchResult {
+  locations: Location[];
+}
+
 class ITAMatrixService {
   private static instance: ITAMatrixService;
   private baseUrl = 'https://content-alkalimatrix-pa.googleapis.com/v1/search';
   private summaryUrl = 'https://content-alkalimatrix-pa.googleapis.com/v1/summarize';
+  private locationBaseUrl = 'https://content-alkalimatrix-pa.googleapis.com';
   private apiKey = 'AIzaSyBH1mte6BdKzvf0c2mYprkyvfHCRWmfX7g';
   private sessionInfo: SessionInfo | null = null;
 
@@ -305,6 +325,51 @@ class ITAMatrixService {
       return data;
     } catch (error) {
       console.error('❌ ITAMatrixService: Booking details request failed:', error);
+      throw error;
+    }
+  }
+
+  async searchLocations(params: {
+    locationType?: 'CITIES_AND_AIRPORTS' | 'SALES_CITIES';
+    partialName?: string;
+    locationCode?: string;
+    pageSize?: number;
+  }): Promise<LocationSearchResult> {
+    const {
+      locationType = 'CITIES_AND_AIRPORTS',
+      partialName,
+      locationCode,
+      pageSize = 10
+    } = params;
+
+    let url: string;
+    if (locationCode) {
+      url = `${this.locationBaseUrl}/v1/locationTypes/airportOrMultiAirportCity/locationCodes/${locationCode}?key=${this.apiKey}`;
+    } else if (partialName) {
+      const encodedName = encodeURIComponent(partialName);
+      url = `${this.locationBaseUrl}/v1/locationTypes/${locationType}/partialNames/${encodedName}/locations?pageSize=${pageSize}&key=${this.apiKey}`;
+    } else {
+      throw new Error('Either partialName or locationCode must be provided');
+    }
+
+    try {
+      console.log('🔍 ITAMatrixService: Searching locations:', { locationType, partialName, locationCode });
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Location search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ ITAMatrixService: Found', data.locations?.length || 0, 'locations');
+      return data;
+    } catch (error) {
+      console.error('❌ ITAMatrixService: Location search failed:', error);
       throw error;
     }
   }

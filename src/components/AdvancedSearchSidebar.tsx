@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, MapPin, Plane } from 'lucide-react';
+import LocationSearchInput from './LocationSearchInput';
+import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
+import CurrencySearchInput from './CurrencySearchInput';
+import { Currency } from '../utils/currencies';
+import { Location } from '../services/itaMatrixApi';
 
 interface AdvancedSearchSidebarProps {
   searchParams: any;
@@ -29,7 +34,9 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       strict_airline_match: false,
       time_tolerance: 120,
       strict_leg_match: false,
-      summary: false
+      summary: false,
+      salesCity: null as { code: string; name: string } | null,
+      currency: null as Currency | null
     }
   });
 
@@ -430,6 +437,45 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
               />
               <span className="text-sm font-medium text-gray-300">Fetch ITA Summary</span>
             </label>
+          </div>
+
+          {/* Sales City */}
+          <div>
+            <LocationSearchInputWithCallback
+              value={advancedSettings.aero.salesCity}
+              onChange={(location) => {
+                setAdvancedSettings(prev => ({
+                  ...prev,
+                  aero: { ...prev.aero, salesCity: location }
+                }));
+                onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, salesCity: location } });
+              }}
+              locationType="SALES_CITIES"
+              label="Sales City"
+              placeholder="Search sales city..."
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Point of sale for pricing (affects currency and taxes)
+            </p>
+          </div>
+
+          {/* Currency */}
+          <div>
+            <CurrencySearchInput
+              value={advancedSettings.aero.currency}
+              onChange={(currency) => {
+                setAdvancedSettings(prev => ({
+                  ...prev,
+                  aero: { ...prev.aero, currency }
+                }));
+                onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, currency } });
+              }}
+              label="Currency"
+              placeholder="Search currency..."
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Display prices in selected currency
+            </p>
           </div>
 
           {/* Pagination */}
