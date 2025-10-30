@@ -299,16 +299,13 @@ class BiirdeeService {
             const event = JSON.parse(line);
             console.log('📦 BiirdeeService: Received event:', event.type);
 
-            if (event.type === 'search_started') {
-              searchParams = event.search_params;
-              console.log('🚀 Search started:', searchParams);
-            } else if (event.type === 'provider_result') {
-              console.log(`✈️  Provider ${event.provider} returned ${event.data?.data?.length || 0} flights`);
-              if (event.data?.data) {
-                allFlights.push(...event.data.data);
-              }
-            } else if (event.type === 'search_completed') {
-              console.log('✅ Search completed');
+            if (event.type === 'start') {
+              console.log('🚀 Search started with provider:', event.provider);
+            } else if (event.type === 'metadata') {
+              console.log(`📊 Expecting ${event.totalSolutions || 0} solutions`);
+            } else if (event.type === 'solution') {
+              console.log(`✈️  Solution ${event.solutionIndex + 1}: ${event.ext?.price}`);
+              allFlights.push(event);
             }
           } catch (parseError) {
             console.warn('⚠️  Failed to parse line:', line, parseError);
@@ -324,74 +321,53 @@ class BiirdeeService {
 
     return {
       solutionList: {
-        solutions: allFlights.map(flight => this.transformAeroFlight(flight))
+        solutions: allFlights.map(solution => this.transformItaMatrixSolution(solution))
       }
     };
   }
 
-  private transformAeroFlight(aeroFlight: any): any {
-    // Transform Aero API flight format to our internal format
-    const itineraries = aeroFlight.itineraries || [];
-    const slices = itineraries.map((itinerary: any) => {
-      const segments = itinerary.segments || [];
-      const firstSegment = segments[0] || {};
-      const lastSegment = segments[segments.length - 1] || {};
+  private transformItaMatrixSolution(solution: any): any {
+    // ITA Matrix streaming format is already close to our internal format
+    // Solution structure: { type, solutionIndex, ext: {price, pricePerMile}, itinerary, pricings, displayTotal, id }
+
+    const itinerary = solution.itinerary || {};
+    const slices = (itinerary.slices || []).map((slice: any) => {
+      // Map segments if they exist in the slice
+      const segments = (slice.segments || []).map((seg: any) => ({
+        carrier: slice.carriers?.[0] || { code: '', name: '', shortName: '' },
+        marketingCarrier: slice.carriers?.[0]?.code || '',
+        pricings: seg.pricings || []
+      }));
 
       return {
-        origin: {
-          code: firstSegment.departure?.iataCode || '',
-          name: firstSegment.departure?.iataCode || ''
-        },
-        destination: {
-          code: lastSegment.arrival?.iataCode || '',
-          name: lastSegment.arrival?.iataCode || ''
-        },
-        departure: firstSegment.departure?.at || '',
-        arrival: lastSegment.arrival?.at || '',
-        duration: this.parseDuration(itinerary.duration),
-        flights: segments.map((seg: any) => `${seg.carrierCode || ''}${seg.number || ''}`),
-        cabins: segments.map((seg: any) => seg.cabin || 'ECONOMY'),
-        stops: segments.slice(0, -1).map((seg: any) => ({
-          code: seg.arrival?.iataCode || '',
-          name: seg.arrival?.iataCode || ''
-        })),
-        segments: segments.map((seg: any) => ({
-          carrier: {
-            code: seg.carrierCode || '',
-            name: seg.carrierCode || '',
-            shortName: seg.carrierCode || ''
-          },
-          marketingCarrier: seg.carrierCode || '',
-          pricings: seg.fareDetailsBySegment ? [{
-            fareBasis: seg.fareDetailsBySegment[0]?.fareBasis || '',
-            bookingClass: seg.fareDetailsBySegment[0]?.class || ''
-          }] : []
-        }))
+        origin: slice.origin || { code: '', name: '' },
+        destination: slice.destination || { code: '', name: '' },
+        departure: slice.departure || '',
+        arrival: slice.arrival || '',
+        duration: slice.duration || 0,
+        flights: slice.flights || [],
+        cabins: slice.cabins || [],
+        stops: slice.stops || [],
+        segments: segments
       };
     });
 
+    // Parse price from ext or displayTotal
+    const priceString = solution.ext?.totalPrice || solution.displayTotal || '0';
+    const price = parseFloat(priceString.replace(/[^0-9.]/g, ''));
+
+    const pricePerMileString = solution.ext?.pricePerMile || '0';
+    const pricePerMile = parseFloat(pricePerMileString.replace(/[^0-9.]/g, ''));
+
     return {
-      id: aeroFlight.id || '',
-      totalAmount: parseFloat(aeroFlight.price?.total || '0'),
-      displayTotal: parseFloat(aeroFlight.price?.grandTotal || aeroFlight.price?.total || '0'),
+      id: solution.id || `solution-${solution.solutionIndex}`,
+      totalAmount: price,
+      displayTotal: price,
       slices: slices,
       ext: {
-        pricePerMile: 0
+        pricePerMile: pricePerMile
       }
     };
-  }
-
-  private parseDuration(duration: string): number {
-    // Parse ISO 8601 duration format (e.g., "PT1H33M")
-    if (!duration) return 0;
-
-    const matches = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-    if (!matches) return 0;
-
-    const hours = parseInt(matches[1] || '0');
-    const minutes = parseInt(matches[2] || '0');
-
-    return hours * 60 + minutes;
   }
 
   private transformBiirdeeResponse(biirdeeResponse: any): SearchResponse {
