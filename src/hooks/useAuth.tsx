@@ -138,12 +138,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes (but not in dev mode)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
+      // Skip auth state changes in dev mode
+      if (DEV_MODE_BYPASS) {
+        console.log('Auth state change ignored (dev mode)');
+        return;
+      }
+
       console.log('Auth state change:', event, !!session);
-      
+
       if (event === 'SIGNED_OUT' || !session) {
         setSession(null);
         setUser(null);
@@ -151,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      
+
       if (event === 'SIGNED_IN' && session?.user?.email) {
         // Check email domain
         if (!session.user.email.endsWith('@biirdee.com')) {
@@ -160,16 +166,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-      
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         setProfile(createProfileFromUser(session.user));
       } else {
         setProfile(null);
       }
-      
+
       setLoading(false);
     });
 
