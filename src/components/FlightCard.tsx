@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Plane, Clock, ChevronDown, Target, Plus } from 'lucide-react';
-import { FlightSolution, GroupedFlight } from '../types/flight';
+import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
+import MileageDealsDropdown from './MileageDealsDropdown';
+import MileageDealModal from './MileageDealModal';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -15,6 +17,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [selectedReturnIndex, setSelectedReturnIndex] = useState(0);
   const [showReturnDropdown, setShowReturnDropdown] = useState(false);
   const [showAddToProposal, setShowAddToProposal] = useState(false);
+  const [selectedMileageDeal, setSelectedMileageDeal] = useState<MileageDeal | null>(null);
+  const [showMileageDealModal, setShowMileageDealModal] = useState(false);
+
+  const handleSelectMileageDeal = (deal: MileageDeal) => {
+    setSelectedMileageDeal(deal);
+    setShowMileageDealModal(true);
+  };
 
   // Get flight data based on type
   const getFlightData = () => {
@@ -41,12 +50,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         displayTotal: regularFlight.displayTotal,
         pricePerMile: regularFlight.ext.pricePerMile,
         hasMultipleReturns: false,
-        flightId: regularFlight.id
+        flightId: regularFlight.id,
+        totalMileage: regularFlight.totalMileage || 0,
+        totalMileagePrice: regularFlight.totalMileagePrice || 0,
+        matchType: regularFlight.matchType || 'none',
+        mileageDeals: regularFlight.mileageDeals || [],
+        fullyEnriched: regularFlight.fullyEnriched || false
       };
     }
   };
 
-  const { slices, carrier, isNonstop, totalAmount, displayTotal, pricePerMile, hasMultipleReturns, flightId } = getFlightData();
+  const { slices, carrier, isNonstop, totalAmount, displayTotal, pricePerMile, hasMultipleReturns, flightId, totalMileage, totalMileagePrice, matchType, mileageDeals, fullyEnriched } = getFlightData();
   const isPremium = PREMIUM_CARRIERS.includes(carrier.code);
 
   console.log('🎴 FlightCard: Rendering flight with', { 
@@ -205,12 +219,48 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
             )}
           </div>
           <div className="text-right">
+            {/* Match Type Badge */}
+            {matchType && matchType !== 'none' && (
+              <div className="mb-2">
+                {matchType === 'exact' && (
+                  <span className="inline-flex items-center px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
+                    Full Match
+                  </span>
+                )}
+                {matchType === 'partial' && (
+                  <span className="inline-flex items-center px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
+                    Partial Match
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Price Display */}
             <div className="text-xl font-medium text-neutral-100">
               {formatPrice(displayTotal)}
             </div>
             <div className="text-sm text-gray-300">
               ${formatPricePerMile(pricePerMile)}/mile
             </div>
+
+            {/* Mileage Info */}
+            {totalMileage > 0 && (
+              <div className="mt-1 text-sm text-accent-400 font-medium">
+                {totalMileage.toLocaleString()} miles
+                {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
+              </div>
+            )}
+
+            {/* Mileage Deals Dropdown */}
+            {mileageDeals && mileageDeals.length > 0 && (
+              <div className="mt-2">
+                <MileageDealsDropdown
+                  deals={mileageDeals}
+                  onSelectDeal={handleSelectMileageDeal}
+                />
+              </div>
+            )}
+
             <button
               onClick={openHacksPage}
               className="mt-2 bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
@@ -389,6 +439,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
           onClose={() => setShowAddToProposal(false)}
         />
       )}
+
+      {/* Mileage Deal Modal */}
+      <MileageDealModal
+        deal={selectedMileageDeal}
+        isOpen={showMileageDealModal}
+        onClose={() => {
+          setShowMileageDealModal(false);
+          setSelectedMileageDeal(null);
+        }}
+      />
     </div>
   );
 };

@@ -359,6 +359,17 @@ class BiirdeeService {
     const pricePerMileString = solution.ext?.pricePerMile || '0';
     const pricePerMile = parseFloat(pricePerMileString.replace(/[^0-9.]/g, ''));
 
+    // Determine match type based on enrichment and mileage data
+    let matchType: 'exact' | 'partial' | 'none' = 'none';
+    if (solution.fullyEnriched) {
+      matchType = 'exact';
+    } else if (solution.totalMileage > 0) {
+      matchType = 'partial';
+    }
+
+    // Extract mileage deals if available (for future use when API returns multiple deals)
+    const mileageDeals = solution.mileageDeals || [];
+
     return {
       id: solution.id || `solution-${solution.solutionIndex}`,
       totalAmount: price,
@@ -366,7 +377,12 @@ class BiirdeeService {
       slices: slices,
       ext: {
         pricePerMile: pricePerMile
-      }
+      },
+      totalMileage: solution.totalMileage || 0,
+      totalMileagePrice: solution.totalMileagePrice || 0,
+      fullyEnriched: solution.fullyEnriched || false,
+      matchType: matchType,
+      mileageDeals: mileageDeals
     };
   }
 

@@ -47,6 +47,15 @@ export interface SearchResponse {
   solutionSet?: string;
 }
 
+export interface MileageDeal {
+  airline: string;
+  airlineCode: string;
+  mileage: number;
+  mileagePrice: number;
+  matchType: 'full' | 'partial';
+  cabins: string[];
+}
+
 export interface FlightSolution {
   id: string;
   totalAmount: number;
@@ -55,6 +64,11 @@ export interface FlightSolution {
   ext: {
     pricePerMile: number;
   };
+  totalMileage?: number;
+  totalMileagePrice?: number;
+  fullyEnriched?: boolean;
+  matchType?: 'exact' | 'partial' | 'none';
+  mileageDeals?: MileageDeal[];
 }
 
 export interface GroupedFlight {
