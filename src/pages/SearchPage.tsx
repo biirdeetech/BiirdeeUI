@@ -211,6 +211,11 @@ const SearchPage: React.FC = () => {
       // Progressive callback for streaming results
       const onProgress = (solution: any) => {
         console.log('📥 SearchPage: Received progressive solution:', solution.id);
+
+        // Stop showing loading spinner on first result
+        setLoading(false);
+        setHasSearched(true);
+
         setResults((prevResults) => {
           const existingSolutions = prevResults?.solutionList?.solutions || [];
           // Check if solution already exists (avoid duplicates)
@@ -225,7 +230,6 @@ const SearchPage: React.FC = () => {
           console.log(`📊 SearchPage: Now showing ${newResults.solutionList.solutions.length} results`);
           return newResults;
         });
-        setHasSearched(true); // Show results as soon as first one arrives
       };
 
       const searchResults = await FlightApi.searchFlights(extractedParams, extractedParams.aero ? onProgress : undefined);
