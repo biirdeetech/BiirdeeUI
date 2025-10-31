@@ -46,6 +46,10 @@ export interface SearchResponse {
   session?: string;
   solutionSet?: string;
   solutionCount?: number;
+  pagination?: {
+    current: number;
+    count: number;
+  };
 }
 
 export interface MileageDeal {

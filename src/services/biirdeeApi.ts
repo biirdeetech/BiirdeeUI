@@ -275,6 +275,7 @@ class BiirdeeService {
     let buffer = '';
     let allFlights: any[] = [];
     let totalSolutions = 0;
+    let itaMetadata: any = null;
 
     try {
       while (true) {
@@ -301,8 +302,18 @@ class BiirdeeService {
 
             if (event.type === 'start') {
               console.log('🚀 Search started with provider:', event.provider);
+              // Capture ITA metadata from start event
+              if (event.ita) {
+                itaMetadata = event.ita;
+                totalSolutions = event.ita.solutionCount || 0;
+                console.log(`📊 ITA metadata: ${totalSolutions} solutions, page ${event.ita.pagination?.current} of ${event.ita.pagination?.count}`);
+              }
             } else if (event.type === 'metadata') {
-              totalSolutions = event.totalSolutions || 0;
+              totalSolutions = event.totalSolutions || itaMetadata?.solutionCount || 0;
+              // Update ITA metadata if present
+              if (event.ita) {
+                itaMetadata = event.ita;
+              }
               console.log(`📊 Expecting ${totalSolutions} solutions`);
             } else if (event.type === 'solution') {
               console.log(`✈️  Solution ${event.solutionIndex + 1}: ${event.ext?.price}`);
@@ -332,7 +343,10 @@ class BiirdeeService {
       solutionList: {
         solutions: allFlights.map(solution => this.transformItaMatrixSolution(solution))
       },
-      solutionCount: totalSolutions
+      solutionCount: itaMetadata?.solutionCount || totalSolutions,
+      session: itaMetadata?.session,
+      solutionSet: itaMetadata?.solutionSet,
+      pagination: itaMetadata?.pagination
     };
   }
 
