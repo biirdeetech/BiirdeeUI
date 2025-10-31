@@ -449,8 +449,8 @@ const SearchPage: React.FC = () => {
               error={error}
               searchParams={extractedParams}
               advancedSettings={null}
-              onPageChange={extractedParams.aero ? undefined : handlePageChange}
-              onPageSizeChange={extractedParams.aero ? undefined : handlePageSizeChange}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
               currentPage={extractedParams.pageNum || 1}
               pageSize={extractedParams.pageSize || 25}
             />
