@@ -208,13 +208,24 @@ const SearchPage: React.FC = () => {
     setHasSearched(false);
 
     try {
+      // Metadata callback - receives solutionCount immediately when metadata event arrives
+      const onMetadata = (metadata: { solutionCount: number; pagination?: any; session?: string; solutionSet?: string }) => {
+        console.log('📊 SearchPage: Received metadata:', metadata);
+        setResults((prevResults) => ({
+          ...prevResults,
+          solutionCount: metadata.solutionCount,
+          pagination: metadata.pagination,
+          session: metadata.session,
+          solutionSet: metadata.solutionSet,
+          solutionList: prevResults?.solutionList || { solutions: [] }
+        }));
+        setLoading(false);
+        setHasSearched(true);
+      };
+
       // Progressive callback for streaming results
       const onProgress = (solution: any) => {
         console.log('📥 SearchPage: Received progressive solution:', solution.id);
-
-        // Stop showing loading spinner on first result
-        setLoading(false);
-        setHasSearched(true);
 
         setResults((prevResults) => {
           const existingSolutions = prevResults?.solutionList?.solutions || [];
@@ -234,7 +245,11 @@ const SearchPage: React.FC = () => {
         });
       };
 
-      const searchResults = await FlightApi.searchFlights(extractedParams, extractedParams.aero ? onProgress : undefined);
+      const searchResults = await FlightApi.searchFlights(
+        extractedParams,
+        extractedParams.aero ? onProgress : undefined,
+        extractedParams.aero ? onMetadata : undefined
+      );
       console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
       console.log('✅ SearchPage: Metadata - solutionCount:', searchResults.solutionCount, 'pagination:', searchResults.pagination);
 

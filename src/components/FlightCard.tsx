@@ -221,36 +221,37 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
             )}
           </div>
           <div className="flex flex-col items-end gap-2">
-            {/* Price Display - Right Aligned */}
-            <div className="flex flex-col items-end space-y-1">
-              <div className="flex items-baseline gap-2">
-                <div className="text-xs text-gray-400">
-                  ${formatPricePerMile(pricePerMile)}/mi
-                </div>
-                <div className="text-xl font-medium text-neutral-100">
-                  {formatPrice(displayTotal)}
-                </div>
-              </div>
-
-              {/* Mileage Info - Highlighted Box */}
+            {/* Price Display - Right Aligned with Mileage on Left */}
+            <div className="flex items-baseline gap-3">
+              {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
                 <div>
                   {mileageDeals && mileageDeals.length === 1 ? (
                     <button
                       onClick={() => handleSelectMileageDeal(mileageDeals[0])}
-                      className="px-2 py-1 bg-accent-500/30 text-accent-300 text-sm font-medium rounded hover:bg-accent-500/40 transition-colors"
+                      className="px-2 py-1 bg-accent-500/30 text-accent-300 text-xs font-medium rounded hover:bg-accent-500/40 transition-colors whitespace-nowrap"
                     >
                       {totalMileage.toLocaleString()} miles
                       {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
                     </button>
                   ) : (
-                    <div className="px-2 py-1 bg-accent-500/30 text-accent-300 text-sm font-medium rounded">
+                    <div className="px-2 py-1 bg-accent-500/30 text-accent-300 text-xs font-medium rounded whitespace-nowrap">
                       {totalMileage.toLocaleString()} miles
                       {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Price Per Mile */}
+              <div className="text-xs text-gray-400">
+                ${formatPricePerMile(pricePerMile)}/mi
+              </div>
+
+              {/* Total Price */}
+              <div className="text-xl font-medium text-neutral-100">
+                {formatPrice(displayTotal)}
+              </div>
             </div>
 
             {/* Action Buttons - Match badges on left, buttons on right */}

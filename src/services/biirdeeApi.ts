@@ -209,7 +209,7 @@ class BiirdeeService {
     return request;
   }
 
-  async searchFlights(params: FlightSearchParams, onProgress?: (solution: any) => void): Promise<SearchResponse> {
+  async searchFlights(params: FlightSearchParams, onProgress?: (solution: any) => void, onMetadata?: (metadata: { solutionCount: number; pagination?: any; session?: string; solutionSet?: string }) => void): Promise<SearchResponse> {
     console.log('🛫 BiirdeeService: Starting flight search with params:', params);
 
     try {
@@ -218,7 +218,7 @@ class BiirdeeService {
 
       // Check if aero is enabled for streaming
       if (params.aero) {
-        return await this.searchFlightsWithStreaming(requestBody, onProgress);
+        return await this.searchFlightsWithStreaming(requestBody, onProgress, onMetadata);
       }
 
       const response = await fetch(this.baseUrl, {
@@ -248,7 +248,7 @@ class BiirdeeService {
     }
   }
 
-  private async searchFlightsWithStreaming(requestBody: any, onProgress?: (solution: any) => void): Promise<SearchResponse> {
+  private async searchFlightsWithStreaming(requestBody: any, onProgress?: (solution: any) => void, onMetadata?: (metadata: { solutionCount: number; pagination?: any; session?: string; solutionSet?: string }) => void): Promise<SearchResponse> {
     console.log('🌊 BiirdeeService: Starting streaming search');
 
     const response = await fetch(this.baseUrl, {
@@ -309,12 +309,22 @@ class BiirdeeService {
                 console.log(`📊 ITA metadata: ${totalSolutions} solutions, page ${event.ita.pagination?.current} of ${event.ita.pagination?.count}`);
               }
             } else if (event.type === 'metadata') {
-              totalSolutions = event.totalSolutions || itaMetadata?.solutionCount || 0;
-              // Update ITA metadata if present
+              // Update ITA metadata if present - prioritize ita.solutionCount over totalSolutions
               if (event.ita) {
                 itaMetadata = event.ita;
+                totalSolutions = event.ita.solutionCount || totalSolutions;
+
+                // Call metadata callback immediately when metadata arrives
+                if (onMetadata) {
+                  onMetadata({
+                    solutionCount: event.ita.solutionCount || 0,
+                    pagination: event.ita.pagination,
+                    session: event.ita.session,
+                    solutionSet: event.ita.solutionSet
+                  });
+                }
               }
-              console.log(`📊 Expecting ${totalSolutions} solutions`);
+              console.log(`📊 Expecting ${totalSolutions} solutions (totalSolutions field: ${event.totalSolutions})`);
             } else if (event.type === 'solution') {
               console.log(`✈️  Solution ${event.solutionIndex + 1}: ${event.ext?.price}`);
               allFlights.push(event);

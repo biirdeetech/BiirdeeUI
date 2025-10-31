@@ -190,10 +190,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">
           {results.solutionCount ? (
-            results.solutionCount > processedFlights.length
+            // Show "Y flights" when metadata available, with "Showing X of Y" only during progressive loading
+            processedFlights.length < results.solutionCount && processedFlights.length > 0
               ? `Showing ${processedFlights.length} of ${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''}`
               : `${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''} found`
           ) : (
+            // Fallback: show current count while waiting for metadata
             `${processedFlights.length} flight${processedFlights.length !== 1 ? 's' : ''} found`
           )}
         </h2>
