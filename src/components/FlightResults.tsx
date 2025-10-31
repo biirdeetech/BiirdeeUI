@@ -137,6 +137,10 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   console.log('🎯 FlightResults: Rendering with results:', results);
   console.log('🎯 FlightResults: Loading state:', loading);
   console.log('🎯 FlightResults: Error state:', error);
+  console.log('🎯 FlightResults: solutionCount:', results?.solutionCount);
+  console.log('🎯 FlightResults: onPageChange:', onPageChange);
+  console.log('🎯 FlightResults: currentPage:', currentPage);
+  console.log('🎯 FlightResults: pageSize:', pageSize);
 
   // Show loading state
   if (loading) {
@@ -185,7 +189,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">
-          {processedFlights.length} flight{processedFlights.length !== 1 ? 's' : ''} found
+          {results.solutionCount ? `${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''} found` : `${processedFlights.length} flight${processedFlights.length !== 1 ? 's' : ''} found`}
         </h2>
         {results.solutionList.minPrice && (
           <div className="text-sm text-gray-400">
@@ -208,7 +212,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       </div>
 
       {/* Pagination */}
-      {results.solutionCount && results.solutionCount > 0 && onPageChange && (
+      {results.solutionCount && results.solutionCount > pageSize && onPageChange && (
         <Pagination
           currentPage={currentPage}
           pageSize={pageSize}
