@@ -188,7 +188,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     setShowReturnDropdown(false);
   };
   return (
-    <div className="bg-gray-900 border-2 border-gray-800 rounded-lg hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+    <div className={`bg-gray-900 border-2 rounded-lg hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl ${
+      matchType && matchType !== 'none' ? 'border-gray-600' : 'border-gray-800'
+    }`}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800">
         <div className="flex items-center justify-between">
@@ -218,47 +220,31 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               </div>
             )}
           </div>
-          <div className="text-right">
-            {/* Match Type Badge */}
-            {matchType && matchType !== 'none' && (
-              <div className="mb-2">
-                {matchType === 'exact' && (
-                  <span className="inline-flex items-center px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
-                    Full Match
-                  </span>
-                )}
-                {matchType === 'partial' && (
-                  <span className="inline-flex items-center px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
-                    Partial Match
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Price Display with Mileage on Same Line */}
-            <div className="space-y-1">
+          <div className="flex flex-col items-end gap-2">
+            {/* Price Display - Right Aligned */}
+            <div className="flex flex-col items-end space-y-1">
               <div className="flex items-baseline gap-2">
-                <div className="text-xl font-medium text-neutral-100">
-                  {formatPrice(displayTotal)}
-                </div>
                 <div className="text-xs text-gray-400">
                   ${formatPricePerMile(pricePerMile)}/mi
                 </div>
+                <div className="text-xl font-medium text-neutral-100">
+                  {formatPrice(displayTotal)}
+                </div>
               </div>
 
-              {/* Mileage Info or Single Deal Button */}
+              {/* Mileage Info - Highlighted Box */}
               {totalMileage > 0 && (
                 <div>
                   {mileageDeals && mileageDeals.length === 1 ? (
                     <button
                       onClick={() => handleSelectMileageDeal(mileageDeals[0])}
-                      className="text-sm text-accent-400 hover:text-accent-300 font-medium hover:underline transition-colors"
+                      className="px-2 py-1 bg-accent-500/30 text-accent-300 text-sm font-medium rounded hover:bg-accent-500/40 transition-colors"
                     >
                       {totalMileage.toLocaleString()} miles
                       {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
                     </button>
                   ) : (
-                    <div className="text-sm text-accent-400 font-medium">
+                    <div className="px-2 py-1 bg-accent-500/30 text-accent-300 text-sm font-medium rounded">
                       {totalMileage.toLocaleString()} miles
                       {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
                     </div>
@@ -267,8 +253,24 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               )}
             </div>
 
-            {/* Action Buttons on Single Line */}
-            <div className="flex gap-2 mt-3">
+            {/* Action Buttons - Match badges on left, buttons on right */}
+            <div className="flex items-center gap-2">
+              {/* Match Type Badge - Left Side */}
+              {matchType && matchType !== 'none' && (
+                <div>
+                  {matchType === 'exact' && (
+                    <span className="inline-flex items-center px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
+                      Aero Full Match
+                    </span>
+                  )}
+                  {matchType === 'partial' && (
+                    <span className="inline-flex items-center px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
+                      Aero Partial Match
+                    </span>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={openHacksPage}
                 className="bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
@@ -281,7 +283,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" />
-                Add
+                Add to proposal
               </button>
             </div>
           </div>

@@ -189,7 +189,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">
-          {results.solutionCount ? `${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''} found` : `${processedFlights.length} flight${processedFlights.length !== 1 ? 's' : ''} found`}
+          {results.solutionCount ? (
+            results.solutionCount > processedFlights.length
+              ? `Showing ${processedFlights.length} of ${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''}`
+              : `${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''} found`
+          ) : (
+            `${processedFlights.length} flight${processedFlights.length !== 1 ? 's' : ''} found`
+          )}
         </h2>
         {results.solutionList.minPrice && (
           <div className="text-sm text-gray-400">
