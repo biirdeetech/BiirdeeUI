@@ -523,7 +523,8 @@ class BiirdeeService {
         solutions: transformedSolutions
       },
       session: biirdeeResponse.data.session,
-      solutionSet: biirdeeResponse.data.solutionSet
+      solutionSet: biirdeeResponse.data.solutionSet,
+      solutionCount: biirdeeResponse.data.solutionList.solutionCount
     };
   }
 }

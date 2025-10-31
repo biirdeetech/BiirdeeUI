@@ -1,0 +1,4 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  1008  100   496  100   512   5374   5547 --:--:-- --:--:-- --:--:-- 10956
+{"errors":[{"type":"field","msg":"Return date modifier must be: 0 (exact), 1 (+/-1 day), 10 (+1 day), 11 (+/-1 day), 2 (+/-2 days), 22 (+/-2 days)","path":"slices[0].dates.returnDateModifier","location":"body"},{"type":"field","value":"0","msg":"Allow airport changes must be \"true\" or \"false\"","path":"options.allowAirportChanges","location":"body"},{"type":"field","value":"0","msg":"Show only available must be \"true\" or \"false\"","path":"options.showOnlyAvailable","location":"body"}]}
