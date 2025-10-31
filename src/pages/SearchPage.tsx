@@ -222,24 +222,42 @@ const SearchPage: React.FC = () => {
           const exists = existingSolutions.some(s => s.id === solution.id);
           if (exists) return prevResults;
 
+          // Preserve metadata (solutionCount, pagination, etc.) from previous results
           const newResults = {
+            ...prevResults,
             solutionList: {
               solutions: [...existingSolutions, solution]
             }
           };
-          console.log(`📊 SearchPage: Now showing ${newResults.solutionList.solutions.length} results`);
+          console.log(`📊 SearchPage: Now showing ${newResults.solutionList.solutions.length} of ${prevResults?.solutionCount || '?'} results`);
           return newResults;
         });
       };
 
       const searchResults = await FlightApi.searchFlights(extractedParams, extractedParams.aero ? onProgress : undefined);
       console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
+      console.log('✅ SearchPage: Metadata - solutionCount:', searchResults.solutionCount, 'pagination:', searchResults.pagination);
 
-      // Only update results if not using streaming (aero disabled)
-      if (!extractedParams.aero) {
-        setResults(searchResults);
-        setHasSearched(true);
-      }
+      // Update metadata for both streaming and non-streaming modes
+      setResults((prevResults) => {
+        if (extractedParams.aero) {
+          // For streaming: merge existing solutions with metadata from final response
+          console.log('🔄 SearchPage: Merging streaming results with metadata');
+          console.log('   - Previous solutions:', prevResults?.solutionList?.solutions?.length);
+          console.log('   - Final metadata solutionCount:', searchResults.solutionCount);
+          console.log('   - Final metadata pagination:', searchResults.pagination);
+          return {
+            ...searchResults,
+            solutionList: {
+              solutions: prevResults?.solutionList?.solutions || searchResults.solutionList?.solutions || []
+            }
+          };
+        } else {
+          // For non-streaming: replace with new results
+          return searchResults;
+        }
+      });
+      setHasSearched(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ SearchPage: Search failed:', errorMessage);
