@@ -331,7 +331,8 @@ class BiirdeeService {
     return {
       solutionList: {
         solutions: allFlights.map(solution => this.transformItaMatrixSolution(solution))
-      }
+      },
+      solutionCount: totalSolutions
     };
   }
 
