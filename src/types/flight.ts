@@ -45,6 +45,7 @@ export interface SearchResponse {
   };
   session?: string;
   solutionSet?: string;
+  solutionCount?: number;
 }
 
 export interface MileageDeal {

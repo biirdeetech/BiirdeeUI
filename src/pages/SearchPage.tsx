@@ -392,6 +392,21 @@ const SearchPage: React.FC = () => {
     navigate(`/?${searchParams.toString()}`);
   };
 
+  const handlePageChange = (newPage: number) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+    currentParams.set('pageNum', newPage.toString());
+    navigate(`/search?${currentParams.toString()}`);
+    setHasSearched(false);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    const currentParams = new URLSearchParams(searchParams.toString());
+    currentParams.set('pageSize', newSize.toString());
+    currentParams.set('pageNum', '1');
+    navigate(`/search?${currentParams.toString()}`);
+    setHasSearched(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-950">
       {/* Navigation - Sticky to top */}
@@ -428,12 +443,16 @@ const SearchPage: React.FC = () => {
           
           {/* Flight Results */}
           <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
-            <FlightResults 
+            <FlightResults
               results={filteredResults}
               loading={loading}
               error={error}
               searchParams={extractedParams}
               advancedSettings={null}
+              onPageChange={extractedParams.aero ? undefined : handlePageChange}
+              onPageSizeChange={extractedParams.aero ? undefined : handlePageSizeChange}
+              currentPage={extractedParams.pageNum || 1}
+              pageSize={extractedParams.pageSize || 25}
             />
           </div>
         </div>

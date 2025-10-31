@@ -2,6 +2,7 @@ import React from 'react';
 import { Loader, AlertCircle, Plane } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
+import Pagination from './Pagination';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 
 interface FlightResultsProps {
@@ -10,6 +11,10 @@ interface FlightResultsProps {
   error: string | null;
   searchParams: any;
   advancedSettings: any;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  currentPage?: number;
+  pageSize?: number;
 }
 
 const groupFlightsByOutbound = (flights: FlightSolution[]): (FlightSolution | GroupedFlight)[] => {
@@ -123,7 +128,11 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   loading,
   error,
   searchParams,
-  advancedSettings
+  advancedSettings,
+  onPageChange,
+  onPageSizeChange,
+  currentPage = 1,
+  pageSize = 25
 }) => {
   console.log('🎯 FlightResults: Rendering with results:', results);
   console.log('🎯 FlightResults: Loading state:', loading);
@@ -197,6 +206,17 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           </React.Fragment>
         ))}
       </div>
+
+      {/* Pagination */}
+      {results.solutionCount && results.solutionCount > 0 && onPageChange && (
+        <Pagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalCount={results.solutionCount}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      )}
     </div>
   );
 };
