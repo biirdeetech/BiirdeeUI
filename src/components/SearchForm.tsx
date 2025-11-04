@@ -760,6 +760,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
               {/* Compact Mode Additional Options */}
               {compact && (
+                <>
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   {/* Nonstop */}
                   <div>
@@ -820,6 +821,68 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </select>
                   </div>
                 </div>
+
+                {/* Date Type and Modifier */}
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Date Type</label>
+                    <select
+                      value={leg.departureDateType}
+                      onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                    >
+                      <option value="depart">Depart</option>
+                      <option value="arrive">Arrive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Date Modifier</label>
+                    <select
+                      value={leg.departureDateModifier}
+                      onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                    >
+                      <option value="0">Exact date</option>
+                      <option value="1">± 1 day</option>
+                      <option value="10">+ 1 day</option>
+                      <option value="11">- 1 day</option>
+                      <option value="2">± 2 days</option>
+                      <option value="22">- 2 days</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Preferred Time Slots */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Preferred Departure Times</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 0, label: '< 8 AM' },
+                      { value: 1, label: '8-11 AM' },
+                      { value: 2, label: '11 AM-2 PM' },
+                      { value: 3, label: '2-5 PM' },
+                      { value: 4, label: '5-9 PM' },
+                      { value: 5, label: '> 9 PM' }
+                    ].map(slot => (
+                      <label key={slot.value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={leg.departureDatePreferredTimes.includes(slot.value)}
+                          onChange={(e) => {
+                            const times = leg.departureDatePreferredTimes;
+                            const newTimes = e.target.checked
+                              ? [...times, slot.value]
+                              : times.filter(t => t !== slot.value);
+                            updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
+                          }}
+                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                        />
+                        <span className="text-sm text-gray-300">{slot.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                </>
               )}
 
               {/* Per-Leg ITA Matrix & Aero Options */}
