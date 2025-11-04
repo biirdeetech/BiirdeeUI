@@ -736,16 +736,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={leg.aero}
-                      onChange={(e) => updateLeg(leg.id, 'aero', e.target.checked)}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                    />
-                    <span className="text-xs text-gray-300">Enable Aero</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
                       checked={leg.fetchSummary}
                       onChange={(e) => updateLeg(leg.id, 'fetchSummary', e.target.checked)}
                       className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
@@ -879,16 +869,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     />
                   </div>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={fetchSummary}
-                      onChange={(e) => setFetchSummary(e.target.checked)}
-                      className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
-                    />
-                    <span className="text-xs text-gray-400">Fetch ITA Summary</span>
-                  </label>
 
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">
