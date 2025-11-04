@@ -345,11 +345,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
       // Date controls
-      console.log(`🔍 SearchForm: leg${index} date controls:`, {
-        departureDateType: leg.departureDateType,
-        departureDateModifier: leg.departureDateModifier,
-        departureDatePreferredTimes: leg.departureDatePreferredTimes
-      });
       searchParams.append(`leg${index}_departureDateType`, leg.departureDateType);
       searchParams.append(`leg${index}_departureDateModifier`, leg.departureDateModifier);
       if (leg.departureDatePreferredTimes.length > 0) {
@@ -601,7 +596,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                                 const newTimes = e.target.checked
                                   ? [...times, slot.value]
                                   : times.filter(t => t !== slot.value);
-                                console.log(`🔍 SearchForm: Updating time slot ${slot.value} for leg ${leg.id}, new times:`, newTimes);
                                 updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
                               }}
                               className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
@@ -879,7 +873,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                             const newTimes = e.target.checked
                               ? [...times, slot.value]
                               : times.filter(t => t !== slot.value);
-                            console.log(`🔍 SearchForm: Updating time slot ${slot.value} for leg ${leg.id}, new times:`, newTimes);
                             updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
                           }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"

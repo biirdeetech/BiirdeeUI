@@ -93,13 +93,7 @@ const SearchPage: React.FC = () => {
           // Date controls
           departureDateType: (searchParams.get(`leg${i}_departureDateType`) as 'depart' | 'arrive') || 'depart',
           departureDateModifier: (searchParams.get(`leg${i}_departureDateModifier`) as '0' | '1' | '10' | '11' | '2' | '22') || '0',
-          departureDatePreferredTimes: (() => {
-            const timesParam = searchParams.get(`leg${i}_departureDatePreferredTimes`);
-            console.log(`🔍 SearchPage: leg${i}_departureDatePreferredTimes from URL:`, timesParam);
-            const times = timesParam?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [];
-            console.log(`🔍 SearchPage: parsed times for leg${i}:`, times);
-            return times;
-          })(),
+          departureDatePreferredTimes: searchParams.get(`leg${i}_departureDatePreferredTimes`)?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [],
           // Per-leg ITA Matrix options
           maxStops: parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
           extraStops: parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),

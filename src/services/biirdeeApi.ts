@@ -99,14 +99,6 @@ class BiirdeeService {
     if (params.slices && params.slices.length > 0) {
       // Keep all slices separate (including round-trip as multi-city)
       params.slices.forEach((slice, index) => {
-        console.log(`🔍 BiirdeeService: Processing slice ${index}:`, {
-          departureDateType: slice.departureDateType,
-          departureDateModifier: slice.departureDateModifier,
-          departureDatePreferredTimes: slice.departureDatePreferredTimes,
-          returnDateType: slice.returnDateType,
-          returnDateModifier: slice.returnDateModifier,
-          returnDatePreferredTimes: slice.returnDatePreferredTimes
-        });
         const biirdeeSlice: BiirdeeSlice = {
           origin: slice.origins,
           dest: slice.destinations,
