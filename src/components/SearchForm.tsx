@@ -345,6 +345,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
       // Date controls
+      console.log(`🔍 SearchForm: leg${index} date controls:`, {
+        departureDateType: leg.departureDateType,
+        departureDateModifier: leg.departureDateModifier,
+        departureDatePreferredTimes: leg.departureDatePreferredTimes
+      });
       searchParams.append(`leg${index}_departureDateType`, leg.departureDateType);
       searchParams.append(`leg${index}_departureDateModifier`, leg.departureDateModifier);
       if (leg.departureDatePreferredTimes.length > 0) {
