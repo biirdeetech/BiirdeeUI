@@ -85,6 +85,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Pagination and Aero options
   const [pageSize, setPageSize] = useState(25);
@@ -100,16 +101,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   // Initialize form from URL params when in compact mode
   useEffect(() => {
-    if (compact && searchParams.get('origin')) {
+    if (compact && searchParams.get('origin') && !hasInitialized) {
       const legCount = parseInt(searchParams.get('legCount') || '1');
       const newLegs: FlightLeg[] = [];
-      
+
       for (let i = 0; i < legCount; i++) {
         const origins = searchParams.get(`leg${i}_origins`)?.split(',').filter(o => o.trim()) || [];
         const destinations = searchParams.get(`leg${i}_destinations`)?.split(',').filter(d => d.trim()) || [];
         const departDate = searchParams.get(`leg${i}_departDate`) || searchParams.get(i === 0 ? 'departDate' : 'returnDate') || '';
         const cabin = searchParams.get(`leg${i}_cabin`) || searchParams.get('cabin') || 'BUSINESS';
-        
+
         const ext = searchParams.get(`leg${i}_ext`) || '';
         newLegs.push({
           id: Math.random().toString(36).substr(2, 9),
@@ -133,7 +134,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           fetchSummary: searchParams.get(`leg${i}_fetchSummary`) === 'true'
         });
       }
-      
+
       if (newLegs.length > 0) {
         setLegs(newLegs);
       }
@@ -148,8 +149,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '120'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
+      setHasInitialized(true);
     }
-  }, [compact, searchParams]);
+  }, [compact, searchParams, hasInitialized]);
 
   const addLeg = () => {
     const newLeg: FlightLeg = {
