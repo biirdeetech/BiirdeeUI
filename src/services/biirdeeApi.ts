@@ -193,10 +193,10 @@ class BiirdeeService {
       slices: slices,
       options: {
         cabin: this.mapCabinClass(params.cabin),
-        stops: this.mapMaxStops(params.maxStops),
-        extraStops: this.mapMaxStops(params.maxStops),
-        allowAirportChanges: 'true',
-        showOnlyAvailable: 'true',
+        stops: this.mapMaxStops(params.maxStops ?? -1),
+        extraStops: this.mapMaxStops(params.extraStops ?? -1),
+        allowAirportChanges: String(params.allowAirportChanges ?? true),
+        showOnlyAvailable: String(params.showOnlyAvailable ?? true),
         pageSize: params.pageSize || 25,
         pageNum: params.pageNum || 1,
         // Aero options

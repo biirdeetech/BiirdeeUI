@@ -110,11 +110,15 @@ const SearchPage: React.FC = () => {
         departDate: slices[0]?.departDate || '',
         cabin: slices[0]?.cabin || 'COACH',
         passengers,
-        maxStops: 2,
+        maxStops: parseInt(searchParams.get('maxStops') || '-1'),
+        extraStops: parseInt(searchParams.get('extraStops') || '-1'),
         slices,
         // Pagination options
         pageSize: parseInt(searchParams.get('pageSize') || '25'),
         pageNum: parseInt(searchParams.get('pageNum') || '1'),
+        // ITA Matrix options
+        allowAirportChanges: searchParams.get('allowAirportChanges') !== 'false',
+        showOnlyAvailable: searchParams.get('showOnlyAvailable') !== 'false',
         // Aero options
         aero: searchParams.get('aero') === 'true',
         airlines: searchParams.get('airlines') || undefined,
@@ -169,11 +173,15 @@ const SearchPage: React.FC = () => {
         returnDate: searchParams.get('returnDate') || null,
         cabin: firstLegCabin,
         passengers,
-        maxStops: 2,
+        maxStops: parseInt(searchParams.get('maxStops') || '-1'),
+        extraStops: parseInt(searchParams.get('extraStops') || '-1'),
         slices,
         // Pagination options
         pageSize: parseInt(searchParams.get('pageSize') || '25'),
         pageNum: parseInt(searchParams.get('pageNum') || '1'),
+        // ITA Matrix options
+        allowAirportChanges: searchParams.get('allowAirportChanges') !== 'false',
+        showOnlyAvailable: searchParams.get('showOnlyAvailable') !== 'false',
         // Aero options
         aero: searchParams.get('aero') === 'true',
         airlines: searchParams.get('airlines') || undefined,

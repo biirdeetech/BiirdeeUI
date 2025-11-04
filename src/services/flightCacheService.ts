@@ -45,6 +45,7 @@ class FlightCacheService {
 
       // Routing & stops
       maxStops: params.maxStops ?? -1,
+      extraStops: params.extraStops ?? -1,
       flexibility: params.flexibility ?? 0,
 
       // Multi-city slices (includes via, nonstop, ext, routing for each leg)
@@ -52,6 +53,10 @@ class FlightCacheService {
 
       // Pagination
       pageSize: params.pageSize || 25,
+
+      // ITA Matrix options
+      allowAirportChanges: params.allowAirportChanges ?? true,
+      showOnlyAvailable: params.showOnlyAvailable ?? true,
 
       // Aero enrichment options
       aero: params.aero || false,

@@ -8,12 +8,16 @@ export interface FlightSearchParams {
   cabin: 'COACH' | 'PREMIUM_COACH' | 'BUSINESS' | 'FIRST';
   passengers: number;
   maxStops?: number;
+  extraStops?: number;
   flexibility?: number;
   // Multi-city specific fields
   slices?: FlightSliceParams[];
   // Pagination options
   pageSize?: number;
   pageNum?: number;
+  // ITA Matrix options
+  allowAirportChanges?: boolean;
+  showOnlyAvailable?: boolean;
   // Aero options
   aero?: boolean;
   airlines?: string;
