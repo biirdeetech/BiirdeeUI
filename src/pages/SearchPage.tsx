@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FlightSearchParams, FlightSliceParams, SearchResponse } from '../types/flight';
 import { ArrowLeft } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
+import { flightCache } from '../services/flightCacheService';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
@@ -36,6 +37,7 @@ const SearchPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const isSearching = useRef(false);
+  const lastSearchKey = useRef<string | null>(null);
   const [filters, setFilters] = useState<FlightFilterState>({
     nonstopOnly: false,
     businessOnly: false,
@@ -204,8 +206,37 @@ const SearchPage: React.FC = () => {
     console.log('🚀 SearchPage: Starting flight search');
     setLoading(true);
     setError(null);
-    setResults(null); // Clear previous results
     setHasSearched(false);
+
+    // Generate cache key (without pageNum) to detect param changes
+    const searchCacheKey = flightCache.generateCacheKey({ ...extractedParams, pageNum: 1 });
+
+    // If search params changed (route, date, cabin, etc.), clear the old cache
+    if (lastSearchKey.current && lastSearchKey.current !== searchCacheKey) {
+      console.log('🗑️  SearchPage: Search params changed, clearing old cache');
+      // Clear all cache since we can't clear by old key
+      const cachedPages = flightCache.getAllCachedPages(extractedParams);
+      if (cachedPages.length > 0) {
+        flightCache.clear(extractedParams);
+      }
+    }
+    lastSearchKey.current = searchCacheKey;
+
+    // Check cache first
+    const currentPage = extractedParams.pageNum || 1;
+    const cachedResult = flightCache.get(extractedParams, currentPage);
+
+    if (cachedResult) {
+      console.log(`✅ SearchPage: Using cached results for page ${currentPage}`);
+      setResults(cachedResult);
+      setHasSearched(true);
+      setLoading(false);
+      isSearching.current = false;
+      return;
+    }
+
+    console.log(`📡 SearchPage: Cache miss, fetching page ${currentPage} from API`);
+    setResults(null); // Clear previous results only when fetching new data
 
     try {
       // Metadata callback - receives solutionCount immediately when metadata event arrives
@@ -254,25 +285,19 @@ const SearchPage: React.FC = () => {
       console.log('✅ SearchPage: Metadata - solutionCount:', searchResults.solutionCount, 'pagination:', searchResults.pagination);
 
       // Update metadata for both streaming and non-streaming modes
-      setResults((prevResults) => {
-        if (extractedParams.aero) {
-          // For streaming: merge existing solutions with metadata from final response
-          console.log('🔄 SearchPage: Merging streaming results with metadata');
-          console.log('   - Previous solutions:', prevResults?.solutionList?.solutions?.length);
-          console.log('   - Final metadata solutionCount:', searchResults.solutionCount);
-          console.log('   - Final metadata pagination:', searchResults.pagination);
-          return {
-            ...searchResults,
-            solutionList: {
-              solutions: prevResults?.solutionList?.solutions || searchResults.solutionList?.solutions || []
-            }
-          };
-        } else {
-          // For non-streaming: replace with new results
-          return searchResults;
+      const finalResults = extractedParams.aero ? {
+        ...searchResults,
+        solutionList: {
+          solutions: results?.solutionList?.solutions || searchResults.solutionList?.solutions || []
         }
-      });
+      } : searchResults;
+
+      setResults(finalResults);
       setHasSearched(true);
+
+      // Cache the results for this page
+      flightCache.set(extractedParams, currentPage, finalResults);
+      console.log(`💾 SearchPage: Cached results for page ${currentPage}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ SearchPage: Search failed:', errorMessage);
