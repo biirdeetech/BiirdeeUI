@@ -63,8 +63,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       departDate: getDefaultDepartDate(),
       flexibility: 0,
       cabin: 'BUSINESS',
-      bookingClasses: getDefaultBookingClasses('BUSINESS'),
-      businessPlus: false,
+      bookingClasses: (() => {
+        const businessClasses = getDefaultBookingClasses('BUSINESS');
+        const firstClasses = getDefaultBookingClasses('FIRST');
+        return [...new Set([...businessClasses, ...firstClasses])];
+      })(),
+      businessPlus: true,
       maxStops: -1,
       extraStops: -1,
       allowAirportChanges: true,
