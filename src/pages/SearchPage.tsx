@@ -38,6 +38,7 @@ const SearchPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
+  const lastLoadedPage = useRef<number | null>(null);
   const [filters, setFilters] = useState<FlightFilterState>({
     nonstopOnly: false,
     businessOnly: false,
@@ -260,6 +261,7 @@ const SearchPage: React.FC = () => {
       setHasSearched(true);
       setLoading(false);
       isSearching.current = false;
+      lastLoadedPage.current = currentPage;
       return;
     }
 
@@ -322,6 +324,7 @@ const SearchPage: React.FC = () => {
 
       setResults(finalResults);
       setHasSearched(true);
+      lastLoadedPage.current = currentPage;
 
       // Cache the results for this page
       flightCache.set(extractedParams, currentPage, finalResults);
@@ -444,14 +447,21 @@ const SearchPage: React.FC = () => {
       }
     };
   };
-  // Single useEffect to trigger initial search
+  // Single useEffect to trigger search when params change
   useEffect(() => {
-    // Only search if we have required params and haven't searched yet
-    if (extractedParams.origin && extractedParams.destination && extractedParams.departDate && !hasSearched) {
-      console.log('🔄 SearchPage: Initial search triggered');
-      searchFlights();
+    const currentPage = extractedParams.pageNum || 1;
+
+    // Search if we have required params and haven't loaded this page yet
+    if (extractedParams.origin && extractedParams.destination && extractedParams.departDate) {
+      // Check if we need to search for this page
+      if (lastLoadedPage.current !== currentPage) {
+        console.log('🔄 SearchPage: Search triggered for page', currentPage);
+        searchFlights();
+      } else {
+        console.log('⏭️  SearchPage: Page', currentPage, 'already loaded, skipping search');
+      }
     }
-  }, [extractedParams.origin, extractedParams.destination, extractedParams.departDate, extractedParams.pageNum, hasSearched]);
+  }, [extractedParams.origin, extractedParams.destination, extractedParams.departDate, extractedParams.pageNum, extractedParams.pageSize]);
 
   // Apply filters whenever results or filters change
   useEffect(() => {
@@ -467,6 +477,7 @@ const SearchPage: React.FC = () => {
     setResults(null);
     setFilteredResults(null);
     setError(null);
+    lastLoadedPage.current = null;
   };
 
   const handleFiltersChange = (newFilters: FlightFilterState) => {
@@ -482,7 +493,6 @@ const SearchPage: React.FC = () => {
     const currentParams = new URLSearchParams(searchParams.toString());
     currentParams.set('pageNum', newPage.toString());
     navigate(`/search?${currentParams.toString()}`);
-    setHasSearched(false);
   };
 
   const handlePageSizeChange = (newSize: number) => {
@@ -490,7 +500,6 @@ const SearchPage: React.FC = () => {
     currentParams.set('pageSize', newSize.toString());
     currentParams.set('pageNum', '1');
     navigate(`/search?${currentParams.toString()}`);
-    setHasSearched(false);
   };
 
   return (
