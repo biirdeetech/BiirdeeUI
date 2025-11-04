@@ -113,7 +113,14 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           departDate,
           flexibility: parseInt(searchParams.get(`leg${i}_flexibility`) || '0'),
           cabin,
-          bookingClasses: ext ? extToBookingClasses(ext) : getDefaultBookingClasses(cabin)
+          bookingClasses: ext ? extToBookingClasses(ext) : getDefaultBookingClasses(cabin),
+          businessPlus: cabin === 'BUSINESS' || cabin === 'FIRST',
+          maxStops: parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
+          extraStops: parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),
+          allowAirportChanges: searchParams.get(`leg${i}_allowAirportChanges`) !== 'false',
+          showOnlyAvailable: searchParams.get(`leg${i}_showOnlyAvailable`) !== 'false',
+          aero: searchParams.get(`leg${i}_aero`) === 'true',
+          fetchSummary: searchParams.get(`leg${i}_fetchSummary`) === 'true'
         });
       }
       
