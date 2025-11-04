@@ -32,6 +32,7 @@ interface FlightLeg {
   flexibility: number; // 0, 1, or 2 days
   cabin: string;
   bookingClasses: string[];
+  businessPlus: boolean; // Track if Business+ is enabled
   // Per-leg ITA Matrix options
   maxStops: number;
   extraStops: number;
@@ -63,6 +64,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       flexibility: 0,
       cabin: 'BUSINESS',
       bookingClasses: getDefaultBookingClasses('BUSINESS'),
+      businessPlus: false,
       maxStops: -1,
       extraStops: -1,
       allowAirportChanges: true,
@@ -139,6 +141,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       flexibility: 0,
       cabin: legs[0].cabin,
       bookingClasses: getDefaultBookingClasses(legs[0].cabin),
+      businessPlus: legs[0].businessPlus,
       maxStops: legs[0].maxStops,
       extraStops: legs[0].extraStops,
       allowAirportChanges: legs[0].allowAirportChanges,
@@ -161,7 +164,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const updated = { ...leg, [field]: value };
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
-          updated.bookingClasses = getDefaultBookingClasses(value);
+          // Check if Business+ is enabled for this leg
+          if (leg.businessPlus && (value === 'BUSINESS' || value === 'FIRST')) {
+            // Keep Business+ combined classes
+            const businessClasses = getDefaultBookingClasses('BUSINESS');
+            const firstClasses = getDefaultBookingClasses('FIRST');
+            updated.bookingClasses = [...new Set([...businessClasses, ...firstClasses])];
+          } else {
+            updated.bookingClasses = getDefaultBookingClasses(value);
+            // Reset businessPlus if not business/first
+            if (value !== 'BUSINESS' && value !== 'FIRST') {
+              updated.businessPlus = false;
+            }
+          }
         }
         return updated;
       }
@@ -647,18 +662,21 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={leg.cabin === 'BUSINESS' || leg.cabin === 'FIRST'}
+                          checked={leg.businessPlus}
                           onChange={(e) => {
-                            if (e.target.checked) {
+                            const isChecked = e.target.checked;
+                            updateLeg(leg.id, 'businessPlus', isChecked);
+                            if (isChecked) {
+                              // Set cabin to Business and combine Business + First classes
                               updateLeg(leg.id, 'cabin', 'BUSINESS');
-                              // Add First class booking codes (F, A, P) to the existing Business codes
                               const businessClasses = getDefaultBookingClasses('BUSINESS');
                               const firstClasses = getDefaultBookingClasses('FIRST');
                               const combined = [...new Set([...businessClasses, ...firstClasses])];
                               updateLeg(leg.id, 'bookingClasses', combined);
                             } else {
-                              updateLeg(leg.id, 'cabin', 'COACH');
-                              updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
+                              // Keep current cabin but reset to its default classes
+                              const currentCabin = leg.cabin;
+                              updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses(currentCabin));
                             }
                           }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
