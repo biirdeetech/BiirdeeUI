@@ -164,8 +164,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const updated = { ...leg, [field]: value };
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
-          // Check if Business+ is enabled for this leg
-          if (leg.businessPlus && (value === 'BUSINESS' || value === 'FIRST')) {
+          // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
+          const isBusinessPlus = field === 'businessPlus' ? value : leg.businessPlus;
+          if (isBusinessPlus && (value === 'BUSINESS' || value === 'FIRST')) {
             // Keep Business+ combined classes
             const businessClasses = getDefaultBookingClasses('BUSINESS');
             const firstClasses = getDefaultBookingClasses('FIRST');
@@ -179,6 +180,15 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           }
         }
         return updated;
+      }
+      return leg;
+    }));
+  };
+
+  const updateLegMultiple = (id: string, updates: Partial<FlightLeg>) => {
+    setLegs(legs.map(leg => {
+      if (leg.id === id) {
+        return { ...leg, ...updates };
       }
       return leg;
     }));
@@ -665,18 +675,23 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                           checked={leg.businessPlus}
                           onChange={(e) => {
                             const isChecked = e.target.checked;
-                            updateLeg(leg.id, 'businessPlus', isChecked);
                             if (isChecked) {
                               // Set cabin to Business and combine Business + First classes
-                              updateLeg(leg.id, 'cabin', 'BUSINESS');
                               const businessClasses = getDefaultBookingClasses('BUSINESS');
                               const firstClasses = getDefaultBookingClasses('FIRST');
                               const combined = [...new Set([...businessClasses, ...firstClasses])];
-                              updateLeg(leg.id, 'bookingClasses', combined);
+                              updateLegMultiple(leg.id, {
+                                businessPlus: true,
+                                cabin: 'BUSINESS',
+                                bookingClasses: combined
+                              });
                             } else {
                               // Keep current cabin but reset to its default classes
                               const currentCabin = leg.cabin;
-                              updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses(currentCabin));
+                              updateLegMultiple(leg.id, {
+                                businessPlus: false,
+                                bookingClasses: getDefaultBookingClasses(currentCabin)
+                              });
                             }
                           }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
