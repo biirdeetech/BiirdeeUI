@@ -465,15 +465,32 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     {/* Nonstop */}
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={leg.nonstop}
-                          onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
-                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                        />
-                        <span className="text-sm text-gray-300">Nonstop only</span>
-                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={leg.nonstop}
+                            onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
+                            className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                          />
+                          <span className="text-sm text-gray-300">Nonstop only</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={leg.cabin === 'BUSINESS' || leg.cabin === 'FIRST'}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                updateLeg(leg.id, 'cabin', 'BUSINESS');
+                              } else {
+                                updateLeg(leg.id, 'cabin', 'COACH');
+                              }
+                            }}
+                            className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                          />
+                          <span className="text-sm text-gray-300">Business+ only</span>
+                        </label>
+                      </div>
                     </div>
 
                     {/* Flexibility */}
@@ -589,15 +606,32 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   {/* Nonstop */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={leg.nonstop}
-                        onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
-                        className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                      />
-                      <span className="text-sm text-gray-300">Nonstop only</span>
-                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={leg.nonstop}
+                          onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
+                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                        />
+                        <span className="text-sm text-gray-300">Nonstop only</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={leg.cabin === 'BUSINESS' || leg.cabin === 'FIRST'}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              updateLeg(leg.id, 'cabin', 'BUSINESS');
+                            } else {
+                              updateLeg(leg.id, 'cabin', 'COACH');
+                            }
+                          }}
+                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                        />
+                        <span className="text-sm text-gray-300">Business+ only</span>
+                      </label>
+                    </div>
                   </div>
 
                   {/* Flexibility */}

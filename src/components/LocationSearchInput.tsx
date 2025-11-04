@@ -65,7 +65,12 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    // DO NOT call onChange here - only call it when user selects from dropdown
+
+    // Allow clearing the field (empty string)
+    if (newValue === '' && value !== '') {
+      onChange('');
+    }
+    // DO NOT call onChange for typed values - only when user selects from dropdown
 
     if (searchTimeout) {
       clearTimeout(searchTimeout);
