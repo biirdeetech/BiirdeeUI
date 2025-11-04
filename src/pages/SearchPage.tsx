@@ -39,14 +39,27 @@ const SearchPage: React.FC = () => {
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
-  const [filters, setFilters] = useState<FlightFilterState>({
-    nonstopOnly: false,
-    businessOnly: false,
-    searchQuery: '',
-    timeOfDay: ['morning', 'afternoon', 'night'],
-    sortBy: 'price',
-    sortOrder: 'asc'
-  });
+  // Initialize filters from URL parameters
+  const initializeFilters = (): FlightFilterState => {
+    // Check if any leg has business/first class cabin
+    const hasBusinessCabin = extractedParams.slices?.some(slice =>
+      slice.cabin === 'BUSINESS' || slice.cabin === 'FIRST'
+    ) || extractedParams.cabin === 'BUSINESS' || extractedParams.cabin === 'FIRST';
+
+    // Check if any leg has nonstop flag
+    const hasNonstop = extractedParams.slices?.some(slice => slice.nonstop) || false;
+
+    return {
+      nonstopOnly: hasNonstop,
+      businessOnly: hasBusinessCabin,
+      searchQuery: '',
+      timeOfDay: ['morning', 'afternoon', 'night'],
+      sortBy: 'price',
+      sortOrder: 'asc'
+    };
+  };
+
+  const [filters, setFilters] = useState<FlightFilterState>(initializeFilters());
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
