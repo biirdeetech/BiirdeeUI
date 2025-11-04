@@ -14,12 +14,14 @@ interface FlightFiltersProps {
   filters: FlightFilterState;
   onFiltersChange: (filters: FlightFilterState) => void;
   resultCount: number;
+  disableBusinessFilter?: boolean;
 }
 
 const FlightFilters: React.FC<FlightFiltersProps> = ({
   filters,
   onFiltersChange,
-  resultCount
+  resultCount,
+  disableBusinessFilter = false
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -116,14 +118,18 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
               <span className="text-sm text-gray-300">Nonstop Only</span>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className={`flex items-center gap-2 ${disableBusinessFilter ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={filters.businessOnly}
                 onChange={(e) => updateFilter('businessOnly', e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                disabled={disableBusinessFilter}
+                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <span className="text-sm text-gray-300">Business+ Only</span>
+              <span className="text-sm text-gray-300">
+                Business+ Only
+                {disableBusinessFilter && <span className="text-xs text-gray-500 ml-1">(search is already Business/First)</span>}
+              </span>
             </label>
 
             {/* Time of Day Buttons */}

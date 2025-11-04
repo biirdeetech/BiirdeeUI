@@ -212,23 +212,23 @@ const SearchPage: React.FC = () => {
 
   // Initialize filters from URL parameters
   const initializeFilters = (): FlightFilterState => {
-    // Check if any leg has business/first class cabin
-    const hasBusinessCabin = extractedParams.slices?.some(slice =>
-      slice.cabin === 'BUSINESS' || slice.cabin === 'FIRST'
-    ) || extractedParams.cabin === 'BUSINESS' || extractedParams.cabin === 'FIRST';
-
     // Check if any leg has nonstop flag
     const hasNonstop = extractedParams.slices?.some(slice => slice.nonstop) || false;
 
     return {
       nonstopOnly: hasNonstop,
-      businessOnly: hasBusinessCabin,
+      businessOnly: false, // Always start with filter off
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],
       sortBy: 'price',
       sortOrder: 'asc'
     };
   };
+
+  // Check if search is for business/first class only
+  const isBusinessSearch = extractedParams.slices?.every(slice =>
+    slice.cabin === 'BUSINESS' || slice.cabin === 'FIRST'
+  ) || extractedParams.cabin === 'BUSINESS' || extractedParams.cabin === 'FIRST';
 
   const [filters, setFilters] = useState<FlightFilterState>(initializeFilters());
 
@@ -549,6 +549,7 @@ const SearchPage: React.FC = () => {
               filters={filters}
               onFiltersChange={handleFiltersChange}
               resultCount={filteredResults?.solutionList?.solutions?.length || 0}
+              disableBusinessFilter={isBusinessSearch}
             />
           )}
           
