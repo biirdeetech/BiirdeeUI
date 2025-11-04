@@ -369,11 +369,13 @@ const SearchPage: React.FC = () => {
     // Apply business+ filter
     if (filterState.businessOnly) {
       filteredSolutions = filteredSolutions.filter(flight =>
-        flight.slices.some(slice =>
-          slice.cabins.some(cabin => 
-            cabin.toLowerCase().includes('business') || 
-            cabin.toLowerCase().includes('first')
-          )
+        flight.slices.every(slice =>
+          slice.cabins.length > 0 && slice.cabins.every(cabin => {
+            const cabinLower = cabin.toLowerCase();
+            return cabinLower.includes('business') ||
+                   cabinLower.includes('first') ||
+                   cabinLower.includes('premium');
+          })
         )
       );
     }
