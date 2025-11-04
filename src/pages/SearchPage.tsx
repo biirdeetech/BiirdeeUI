@@ -96,7 +96,15 @@ const SearchPage: React.FC = () => {
           flexibility: parseInt(searchParams.get(`leg${i}_flexibility`) || '0'),
           via: searchParams.get(`leg${i}_via`) || '',
           nonstop: searchParams.get(`leg${i}_nonstop`) === 'true',
-          ext: searchParams.get(`leg${i}_ext`) || ''
+          ext: searchParams.get(`leg${i}_ext`) || '',
+          // Per-leg ITA Matrix options
+          maxStops: parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
+          extraStops: parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),
+          allowAirportChanges: searchParams.get(`leg${i}_allowAirportChanges`) !== 'false',
+          showOnlyAvailable: searchParams.get(`leg${i}_showOnlyAvailable`) !== 'false',
+          // Per-leg Aero options
+          aero: searchParams.get(`leg${i}_aero`) === 'true',
+          fetchSummary: searchParams.get(`leg${i}_fetchSummary`) === 'true'
         };
         if (slice.origins.length > 0 && slice.destinations.length > 0 && slice.departDate) {
           slices.push(slice);
@@ -144,7 +152,13 @@ const SearchPage: React.FC = () => {
         flexibility: parseInt(searchParams.get('leg0_flexibility') || '0'),
         via: searchParams.get('leg0_via') || '',
         nonstop: searchParams.get('leg0_nonstop') === 'true',
-        ext: searchParams.get('leg0_ext') || ''
+        ext: searchParams.get('leg0_ext') || '',
+        maxStops: parseInt(searchParams.get('leg0_maxStops') || '-1'),
+        extraStops: parseInt(searchParams.get('leg0_extraStops') || '-1'),
+        allowAirportChanges: searchParams.get('leg0_allowAirportChanges') !== 'false',
+        showOnlyAvailable: searchParams.get('leg0_showOnlyAvailable') !== 'false',
+        aero: searchParams.get('leg0_aero') === 'true',
+        fetchSummary: searchParams.get('leg0_fetchSummary') === 'true'
       });
       
       // Second leg (return) for round trip
@@ -161,7 +175,13 @@ const SearchPage: React.FC = () => {
           flexibility: parseInt(searchParams.get('leg1_flexibility') || '0'),
           via: searchParams.get('leg1_via') || '',
           nonstop: searchParams.get('leg1_nonstop') === 'true',
-          ext: searchParams.get('leg1_ext') || ''
+          ext: searchParams.get('leg1_ext') || '',
+          maxStops: parseInt(searchParams.get('leg1_maxStops') || '-1'),
+          extraStops: parseInt(searchParams.get('leg1_extraStops') || '-1'),
+          allowAirportChanges: searchParams.get('leg1_allowAirportChanges') !== 'false',
+          showOnlyAvailable: searchParams.get('leg1_showOnlyAvailable') !== 'false',
+          aero: searchParams.get('leg1_aero') === 'true',
+          fetchSummary: searchParams.get('leg1_fetchSummary') === 'true'
         });
       }
       

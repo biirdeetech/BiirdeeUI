@@ -188,24 +188,33 @@ class BiirdeeService {
     const tripType = params.tripType === 'roundTrip' ? 'multi-city' :
                      params.tripType === 'multiCity' ? 'multi-city' : 'one-way';
 
+    // Use first slice's options as global defaults, or fall back to params
+    const firstSlice = params.slices?.[0];
+    const globalMaxStops = firstSlice?.maxStops ?? params.maxStops ?? -1;
+    const globalExtraStops = firstSlice?.extraStops ?? params.extraStops ?? -1;
+    const globalAllowAirportChanges = firstSlice?.allowAirportChanges ?? params.allowAirportChanges ?? true;
+    const globalShowOnlyAvailable = firstSlice?.showOnlyAvailable ?? params.showOnlyAvailable ?? true;
+    const globalAero = firstSlice?.aero ?? params.aero ?? false;
+    const globalSummary = firstSlice?.fetchSummary ?? params.summary ?? false;
+
     const request: any = {
       type: tripType,
       slices: slices,
       options: {
         cabin: this.mapCabinClass(params.cabin),
-        stops: this.mapMaxStops(params.maxStops ?? -1),
-        extraStops: this.mapMaxStops(params.extraStops ?? -1),
-        allowAirportChanges: String(params.allowAirportChanges ?? true),
-        showOnlyAvailable: String(params.showOnlyAvailable ?? true),
+        stops: this.mapMaxStops(globalMaxStops),
+        extraStops: this.mapMaxStops(globalExtraStops),
+        allowAirportChanges: String(globalAllowAirportChanges),
+        showOnlyAvailable: String(globalShowOnlyAvailable),
         pageSize: params.pageSize || 25,
         pageNum: params.pageNum || 1,
         // Aero options
-        aero: params.aero || false,
+        aero: globalAero,
         ...(params.airlines && { airlines: params.airlines }),
         ...(params.strict_airline_match !== undefined && { strict_airline_match: params.strict_airline_match }),
         ...(params.time_tolerance !== undefined && { time_tolerance: params.time_tolerance }),
         ...(params.strict_leg_match !== undefined && { strict_leg_match: params.strict_leg_match }),
-        ...(params.summary !== undefined && { summary: params.summary })
+        summary: globalSummary
       },
       pax: {
         adults: String(params.passengers || 1)

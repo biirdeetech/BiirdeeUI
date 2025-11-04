@@ -40,6 +40,14 @@ export interface FlightSliceParams {
   extRet?: string;
   returnFlexibility?: number;
   nonstop?: boolean;
+  // Per-slice ITA Matrix options
+  maxStops?: number;
+  extraStops?: number;
+  allowAirportChanges?: boolean;
+  showOnlyAvailable?: boolean;
+  // Per-slice Aero options
+  aero?: boolean;
+  fetchSummary?: boolean;
 }
 
 // API response types

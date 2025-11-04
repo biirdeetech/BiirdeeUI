@@ -32,6 +32,14 @@ interface FlightLeg {
   flexibility: number; // 0, 1, or 2 days
   cabin: string;
   bookingClasses: string[];
+  // Per-leg ITA Matrix options
+  maxStops: number;
+  extraStops: number;
+  allowAirportChanges: boolean;
+  showOnlyAvailable: boolean;
+  // Per-leg Aero options
+  aero: boolean;
+  fetchSummary: boolean;
 }
 
 interface SearchFormProps {
@@ -54,16 +62,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       departDate: getDefaultDepartDate(),
       flexibility: 0,
       cabin: 'BUSINESS',
-      bookingClasses: getDefaultBookingClasses('BUSINESS')
+      bookingClasses: getDefaultBookingClasses('BUSINESS'),
+      maxStops: -1,
+      extraStops: -1,
+      allowAirportChanges: true,
+      showOnlyAvailable: true,
+      aero: false,
+      fetchSummary: false
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
-
-  // ITA Matrix options
-  const [maxStops, setMaxStops] = useState(-1);
-  const [extraStops, setExtraStops] = useState(-1);
-  const [allowAirportChanges, setAllowAirportChanges] = useState(true);
-  const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
 
   // Pagination and Aero options
   const [pageSize, setPageSize] = useState(25);
@@ -130,7 +138,13 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       departDate: legs.length === 1 ? getDefaultReturnDate() : '',
       flexibility: 0,
       cabin: legs[0].cabin,
-      bookingClasses: getDefaultBookingClasses(legs[0].cabin)
+      bookingClasses: getDefaultBookingClasses(legs[0].cabin),
+      maxStops: legs[0].maxStops,
+      extraStops: legs[0].extraStops,
+      allowAirportChanges: legs[0].allowAirportChanges,
+      showOnlyAvailable: legs[0].showOnlyAvailable,
+      aero: legs[0].aero,
+      fetchSummary: legs[0].fetchSummary
     };
     setLegs([...legs, newLeg]);
   };
@@ -281,16 +295,18 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_flexibility`, leg.flexibility.toString());
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
+      // Per-leg ITA Matrix options
+      searchParams.append(`leg${index}_maxStops`, leg.maxStops.toString());
+      searchParams.append(`leg${index}_extraStops`, leg.extraStops.toString());
+      searchParams.append(`leg${index}_allowAirportChanges`, leg.allowAirportChanges.toString());
+      searchParams.append(`leg${index}_showOnlyAvailable`, leg.showOnlyAvailable.toString());
+      // Per-leg Aero options
+      searchParams.append(`leg${index}_aero`, leg.aero.toString());
+      searchParams.append(`leg${index}_fetchSummary`, leg.fetchSummary.toString());
     });
     
     searchParams.append('legCount', validatedLegs.length.toString());
     searchParams.append('passengers', passengers.toString());
-
-    // Add ITA Matrix options
-    searchParams.append('maxStops', maxStops.toString());
-    searchParams.append('extraStops', extraStops.toString());
-    searchParams.append('allowAirportChanges', allowAirportChanges.toString());
-    searchParams.append('showOnlyAvailable', showOnlyAvailable.toString());
 
     // Add pagination options
     searchParams.append('pageSize', pageSize.toString());
@@ -661,6 +677,83 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </div>
                 </div>
               )}
+
+              {/* Per-Leg ITA Matrix & Aero Options */}
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <h4 className="text-sm font-medium text-gray-200 mb-3">Search Options for this Leg</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Max Stops</label>
+                    <select
+                      value={leg.maxStops}
+                      onChange={(e) => updateLeg(leg.id, 'maxStops', parseInt(e.target.value))}
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    >
+                      <option value="-1">No limit</option>
+                      <option value="0">Nonstop only</option>
+                      <option value="1">Up to 1 stop</option>
+                      <option value="2">Up to 2 stops</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Extra Stops</label>
+                    <select
+                      value={leg.extraStops}
+                      onChange={(e) => updateLeg(leg.id, 'extraStops', parseInt(e.target.value))}
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    >
+                      <option value="-1">No limit</option>
+                      <option value="0">Nonstop only</option>
+                      <option value="1">Up to 1 stop</option>
+                      <option value="2">Up to 2 stops</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.allowAirportChanges}
+                      onChange={(e) => updateLeg(leg.id, 'allowAirportChanges', e.target.checked)}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-xs text-gray-300">Allow Airport Changes</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.showOnlyAvailable}
+                      onChange={(e) => updateLeg(leg.id, 'showOnlyAvailable', e.target.checked)}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-xs text-gray-300">Show Only Available</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.aero}
+                      onChange={(e) => updateLeg(leg.id, 'aero', e.target.checked)}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-xs text-gray-300">Enable Aero</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.fetchSummary}
+                      onChange={(e) => updateLeg(leg.id, 'fetchSummary', e.target.checked)}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-xs text-gray-300">Fetch ITA Summary</span>
+                  </label>
+                </div>
+              </div>
             </div>
           ))}
           
@@ -683,85 +776,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
             {getTripType() === 'roundTrip' && 'Round Trip'}
             {getTripType() === 'multiCity' && `Multi-City (${legs.length} legs)`}
           </span>
-        </div>
-
-        {/* ITA Matrix Search Options */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-4">
-          <h3 className="text-sm font-medium text-gray-200">Search Options</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Max Stops</label>
-              <select
-                value={maxStops}
-                onChange={(e) => setMaxStops(parseInt(e.target.value))}
-                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 focus:outline-none"
-              >
-                <option value="-1">No limit</option>
-                <option value="0">Nonstop only</option>
-                <option value="1">Up to 1 stop</option>
-                <option value="2">Up to 2 stops</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-300 mb-2">Extra Stops</label>
-              <select
-                value={extraStops}
-                onChange={(e) => setExtraStops(parseInt(e.target.value))}
-                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 focus:outline-none"
-              >
-                <option value="-1">No limit</option>
-                <option value="0">Nonstop only</option>
-                <option value="1">Up to 1 stop</option>
-                <option value="2">Up to 2 stops</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowAirportChanges}
-                onChange={(e) => setAllowAirportChanges(e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-              />
-              <span className="text-sm text-gray-300">Allow Airport Changes</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showOnlyAvailable}
-                onChange={(e) => setShowOnlyAvailable(e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-              />
-              <span className="text-sm text-gray-300">Show Only Available</span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={aeroEnabled}
-                onChange={(e) => setAeroEnabled(e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-              />
-              <span className="text-sm text-gray-300">Enable Aero Enrichment</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={fetchSummary}
-                onChange={(e) => setFetchSummary(e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-              />
-              <span className="text-sm text-gray-300">Fetch ITA Summary</span>
-            </label>
-          </div>
         </div>
 
         {/* Advanced Options Accordion */}
