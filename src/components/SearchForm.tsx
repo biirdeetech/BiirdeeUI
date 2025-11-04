@@ -185,9 +185,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
+    console.log('🔍 updateLeg called:', { id, field, value });
     setLegs(legs.map(leg => {
       if (leg.id === id) {
         const updated = { ...leg, [field]: value };
+        console.log('🔍 updateLeg: Updated leg:', { id: leg.id, field, newValue: updated[field] });
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
           // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
@@ -302,7 +304,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    console.log('🔍 handleSubmit: Current legs state:', legs.map(leg => ({
+      id: leg.id,
+      departureDatePreferredTimes: leg.departureDatePreferredTimes
+    })));
+
     // Filter out empty airport codes and validate
     const validatedLegs = legs.map(leg => ({
       ...leg,
