@@ -769,10 +769,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         </div>
 
         {/* Advanced Options Accordion */}
-        <details className="bg-gray-800/50 border border-gray-700 rounded-lg">
+        <details open className="bg-gray-800/50 border border-gray-700 rounded-lg">
           <summary className="cursor-pointer px-4 py-3 font-medium text-gray-300 hover:text-white transition-colors flex items-center justify-between">
             <span>Advanced Options (Pagination & Aero)</span>
-            <span className="text-xs text-gray-500">Click to expand</span>
+            <span className="text-xs text-gray-500">Click to collapse</span>
           </summary>
           <div className="px-4 py-4 space-y-4 border-t border-gray-700">
             {/* Pagination Section */}
