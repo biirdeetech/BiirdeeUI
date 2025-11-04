@@ -61,13 +61,19 @@ class BiirdeeService {
   }
 
   private mapCabinClass(cabin?: string): string {
+    if (!cabin) return 'COACH';
+
+    // Handle both formats: 'PREMIUM_COACH' and 'PREMIUM-COACH'
+    const normalizedCabin = cabin.toUpperCase().replace('_', '-');
+
     const cabinMap: Record<string, string> = {
-      'economy': 'COACH',
-      'premium economy': 'PREMIUM-COACH',
-      'business': 'BUSINESS',
-      'first': 'FIRST'
+      'COACH': 'COACH',
+      'PREMIUM-COACH': 'PREMIUM-COACH',
+      'BUSINESS': 'BUSINESS',
+      'FIRST': 'FIRST'
     };
-    return cabinMap[cabin?.toLowerCase() || 'economy'] || 'COACH';
+
+    return cabinMap[normalizedCabin] || 'COACH';
   }
 
   private mapMaxStops(maxStops?: number): string {
@@ -186,7 +192,7 @@ class BiirdeeService {
       type: tripType,
       slices: slices,
       options: {
-        cabin: 'COACH',
+        cabin: this.mapCabinClass(params.cabin),
         stops: this.mapMaxStops(params.maxStops),
         extraStops: this.mapMaxStops(params.maxStops),
         allowAirportChanges: 'true',
