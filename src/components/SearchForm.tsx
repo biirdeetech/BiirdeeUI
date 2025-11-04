@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info } from 'lucide-react';
 import { getDefaultBookingClasses, bookingClassesToExt, extToBookingClasses } from '../utils/bookingClasses';
@@ -85,7 +85,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Pagination and Aero options
   const [pageSize, setPageSize] = useState(25);
@@ -100,8 +99,20 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [currency, setCurrency] = useState<Currency | null>(null);
 
   // Initialize form from URL params when in compact mode
+  // Use a ref to track the last URL we initialized from to avoid infinite loops
+  const lastInitializedUrl = useRef<string>('');
+
   useEffect(() => {
-    if (compact && searchParams.get('origin') && !hasInitialized) {
+    if (compact && searchParams.get('origin')) {
+      const currentUrl = searchParams.toString();
+
+      // Only re-initialize if the URL has actually changed
+      if (currentUrl === lastInitializedUrl.current) {
+        return;
+      }
+
+      lastInitializedUrl.current = currentUrl;
+
       const legCount = parseInt(searchParams.get('legCount') || '1');
       const newLegs: FlightLeg[] = [];
 
@@ -149,9 +160,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '120'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
-      setHasInitialized(true);
     }
-  }, [compact, searchParams, hasInitialized]);
+  }, [compact, searchParams]);
 
   const addLeg = () => {
     const newLeg: FlightLeg = {
@@ -185,11 +195,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
-    console.log('🔍 updateLeg called:', { id, field, value });
     setLegs(legs.map(leg => {
       if (leg.id === id) {
         const updated = { ...leg, [field]: value };
-        console.log('🔍 updateLeg: Updated leg:', { id: leg.id, field, newValue: updated[field] });
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
           // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
@@ -304,11 +312,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log('🔍 handleSubmit: Current legs state:', legs.map(leg => ({
-      id: leg.id,
-      departureDatePreferredTimes: leg.departureDatePreferredTimes
-    })));
 
     // Filter out empty airport codes and validate
     const validatedLegs = legs.map(leg => ({
