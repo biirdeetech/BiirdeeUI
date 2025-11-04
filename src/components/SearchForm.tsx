@@ -531,12 +531,26 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={leg.cabin === 'BUSINESS' || leg.cabin === 'FIRST'}
+                            checked={leg.businessPlus}
                             onChange={(e) => {
-                              if (e.target.checked) {
-                                updateLeg(leg.id, 'cabin', 'BUSINESS');
+                              const isChecked = e.target.checked;
+                              if (isChecked) {
+                                // Set cabin to Business and combine Business + First classes
+                                const businessClasses = getDefaultBookingClasses('BUSINESS');
+                                const firstClasses = getDefaultBookingClasses('FIRST');
+                                const combined = [...new Set([...businessClasses, ...firstClasses])];
+                                updateLegMultiple(leg.id, {
+                                  businessPlus: true,
+                                  cabin: 'BUSINESS',
+                                  bookingClasses: combined
+                                });
                               } else {
-                                updateLeg(leg.id, 'cabin', 'COACH');
+                                // Keep current cabin but reset to its default classes
+                                const currentCabin = leg.cabin;
+                                updateLegMultiple(leg.id, {
+                                  businessPlus: false,
+                                  bookingClasses: getDefaultBookingClasses(currentCabin)
+                                });
                               }
                             }}
                             className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
