@@ -601,6 +601,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                                 const newTimes = e.target.checked
                                   ? [...times, slot.value]
                                   : times.filter(t => t !== slot.value);
+                                console.log(`🔍 SearchForm: Updating time slot ${slot.value} for leg ${leg.id}, new times:`, newTimes);
                                 updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
                               }}
                               className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
@@ -878,6 +879,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                             const newTimes = e.target.checked
                               ? [...times, slot.value]
                               : times.filter(t => t !== slot.value);
+                            console.log(`🔍 SearchForm: Updating time slot ${slot.value} for leg ${leg.id}, new times:`, newTimes);
                             updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
                           }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
