@@ -451,7 +451,7 @@ const SearchPage: React.FC = () => {
       console.log('🔄 SearchPage: Initial search triggered');
       searchFlights();
     }
-  }, [extractedParams.origin, extractedParams.destination, extractedParams.departDate, hasSearched]);
+  }, [extractedParams.origin, extractedParams.destination, extractedParams.departDate, extractedParams.pageNum, hasSearched]);
 
   // Apply filters whenever results or filters change
   useEffect(() => {
