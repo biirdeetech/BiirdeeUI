@@ -651,8 +651,14 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                           onChange={(e) => {
                             if (e.target.checked) {
                               updateLeg(leg.id, 'cabin', 'BUSINESS');
+                              // Add First class booking codes (F, A, P) to the existing Business codes
+                              const businessClasses = getDefaultBookingClasses('BUSINESS');
+                              const firstClasses = getDefaultBookingClasses('FIRST');
+                              const combined = [...new Set([...businessClasses, ...firstClasses])];
+                              updateLeg(leg.id, 'bookingClasses', combined);
                             } else {
                               updateLeg(leg.id, 'cabin', 'COACH');
+                              updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
                             }
                           }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
