@@ -33,6 +33,10 @@ interface FlightLeg {
   cabin: string;
   bookingClasses: string[];
   businessPlus: boolean; // Track if Business+ is enabled
+  // Date controls
+  departureDateType: 'depart' | 'arrive';
+  departureDateModifier: '0' | '1' | '10' | '11' | '2' | '22';
+  departureDatePreferredTimes: number[];
   // Per-leg ITA Matrix options
   maxStops: number;
   extraStops: number;
@@ -69,6 +73,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         return [...new Set([...businessClasses, ...firstClasses])];
       })(),
       businessPlus: true,
+      departureDateType: 'depart',
+      departureDateModifier: '0',
+      departureDatePreferredTimes: [],
       maxStops: -1,
       extraStops: -1,
       allowAirportChanges: true,
@@ -115,6 +122,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           cabin,
           bookingClasses: ext ? extToBookingClasses(ext) : getDefaultBookingClasses(cabin),
           businessPlus: cabin === 'BUSINESS' || cabin === 'FIRST',
+          departureDateType: (searchParams.get(`leg${i}_departureDateType`) as 'depart' | 'arrive') || 'depart',
+          departureDateModifier: (searchParams.get(`leg${i}_departureDateModifier`) as '0' | '1' | '10' | '11' | '2' | '22') || '0',
+          departureDatePreferredTimes: searchParams.get(`leg${i}_departureDatePreferredTimes`)?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [],
           maxStops: parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
           extraStops: parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),
           allowAirportChanges: searchParams.get(`leg${i}_allowAirportChanges`) !== 'false',
@@ -153,6 +163,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       cabin: legs[0].cabin,
       bookingClasses: getDefaultBookingClasses(legs[0].cabin),
       businessPlus: legs[0].businessPlus,
+      departureDateType: legs[0].departureDateType,
+      departureDateModifier: legs[0].departureDateModifier,
+      departureDatePreferredTimes: legs[0].departureDatePreferredTimes,
       maxStops: legs[0].maxStops,
       extraStops: legs[0].extraStops,
       allowAirportChanges: legs[0].allowAirportChanges,
@@ -331,6 +344,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_flexibility`, leg.flexibility.toString());
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
+      // Date controls
+      searchParams.append(`leg${index}_departureDateType`, leg.departureDateType);
+      searchParams.append(`leg${index}_departureDateModifier`, leg.departureDateModifier);
+      if (leg.departureDatePreferredTimes.length > 0) {
+        searchParams.append(`leg${index}_departureDatePreferredTimes`, leg.departureDatePreferredTimes.join(','));
+      }
       // Per-leg ITA Matrix options
       searchParams.append(`leg${index}_maxStops`, leg.maxStops.toString());
       searchParams.append(`leg${index}_extraStops`, leg.extraStops.toString());
@@ -526,6 +545,67 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 {!compact && (
                   <>
+                    {/* Date Type and Modifier */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Date Type</label>
+                        <select
+                          value={leg.departureDateType}
+                          onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
+                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                        >
+                          <option value="depart">Depart</option>
+                          <option value="arrive">Arrive</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Date Modifier</label>
+                        <select
+                          value={leg.departureDateModifier}
+                          onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
+                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                        >
+                          <option value="0">Exact date</option>
+                          <option value="1">± 1 day</option>
+                          <option value="10">+ 1 day</option>
+                          <option value="11">- 1 day</option>
+                          <option value="2">± 2 days</option>
+                          <option value="22">- 2 days</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Preferred Time Slots */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Preferred Departure Times</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: 0, label: '< 8 AM' },
+                          { value: 1, label: '8-11 AM' },
+                          { value: 2, label: '11 AM-2 PM' },
+                          { value: 3, label: '2-5 PM' },
+                          { value: 4, label: '5-9 PM' },
+                          { value: 5, label: '> 9 PM' }
+                        ].map(slot => (
+                          <label key={slot.value} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={leg.departureDatePreferredTimes.includes(slot.value)}
+                              onChange={(e) => {
+                                const times = leg.departureDatePreferredTimes;
+                                const newTimes = e.target.checked
+                                  ? [...times, slot.value]
+                                  : times.filter(t => t !== slot.value);
+                                updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
+                              }}
+                              className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                            />
+                            <span className="text-sm text-gray-300">{slot.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Nonstop */}
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>

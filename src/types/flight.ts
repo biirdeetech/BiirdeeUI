@@ -40,6 +40,13 @@ export interface FlightSliceParams {
   extRet?: string;
   returnFlexibility?: number;
   nonstop?: boolean;
+  // Date controls
+  departureDateType?: 'depart' | 'arrive';
+  departureDateModifier?: '0' | '1' | '10' | '11' | '2' | '22'; // 0=exact, 1=+/-1, 10=+1, 11=-1, 2=+/-2, 22=-2
+  departureDatePreferredTimes?: number[]; // 0=<8am, 1=8-11am, 2=11am-2pm, 3=2-5pm, 4=5-9pm, 5=>9pm
+  returnDateType?: 'depart' | 'arrive';
+  returnDateModifier?: '0' | '1' | '10' | '11' | '2' | '22';
+  returnDatePreferredTimes?: number[];
   // Per-slice ITA Matrix options
   maxStops?: number;
   extraStops?: number;
