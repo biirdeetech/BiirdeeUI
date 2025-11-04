@@ -17,7 +17,24 @@ class FlightCacheService {
   private readonly TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
   generateCacheKey(params: FlightSearchParams): string {
+    // Serialize slices with all their params (via, nonstop, ext, flexibility, routing, etc.)
+    const slicesKey = params.slices?.map(slice => ({
+      origins: slice.origins.sort().join(','),
+      destinations: slice.destinations.sort().join(','),
+      departDate: slice.departDate,
+      cabin: slice.cabin,
+      flexibility: slice.flexibility ?? 0,
+      via: slice.via || '',
+      routing: slice.routing || '',
+      ext: slice.ext || '',
+      routingRet: slice.routingRet || '',
+      extRet: slice.extRet || '',
+      returnFlexibility: slice.returnFlexibility ?? 0,
+      nonstop: slice.nonstop || false
+    })) || [];
+
     const key = {
+      // Trip basics
       tripType: params.tripType,
       origin: params.origin,
       destination: params.destination,
@@ -25,14 +42,24 @@ class FlightCacheService {
       returnDate: params.returnDate || '',
       cabin: params.cabin,
       passengers: params.passengers,
+
+      // Routing & stops
       maxStops: params.maxStops ?? -1,
-      airlines: params.airlines || '',
+      flexibility: params.flexibility ?? 0,
+
+      // Multi-city slices (includes via, nonstop, ext, routing for each leg)
+      slices: slicesKey,
+
+      // Pagination
+      pageSize: params.pageSize || 25,
+
+      // Aero enrichment options
       aero: params.aero || false,
+      airlines: params.airlines || '',
       strict_airline_match: params.strict_airline_match || false,
       time_tolerance: params.time_tolerance || 120,
       strict_leg_match: params.strict_leg_match || false,
-      summary: params.summary || false,
-      pageSize: params.pageSize || 25
+      summary: params.summary || false
     };
 
     return JSON.stringify(key);
