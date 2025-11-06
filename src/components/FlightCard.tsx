@@ -438,6 +438,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     </span>
                   </div>
                 )}
+                {slice.mileage && slice.mileage > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400 font-medium">Miles:</span>
+                    <span className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium">
+                      {slice.mileage.toLocaleString()} miles
+                      {slice.mileagePrice && slice.mileagePrice > 0 && ` + $${slice.mileagePrice.toFixed(2)}`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

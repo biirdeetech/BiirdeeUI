@@ -120,6 +120,8 @@ export interface FlightSlice {
   cabins: string[];
   stops?: Airport[];
   segments: FlightSegment[];
+  mileage?: number;
+  mileagePrice?: number;
 }
 
 export interface FlightSegment {

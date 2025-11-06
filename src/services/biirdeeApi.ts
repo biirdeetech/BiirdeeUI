@@ -423,7 +423,9 @@ class BiirdeeService {
         flights: flights,
         cabins: slice.cabins || [],
         stops: slice.stops || [],
-        segments: segments
+        segments: segments,
+        mileage: slice.mileage || undefined,
+        mileagePrice: slice.mileagePrice || undefined
       };
     });
 
@@ -549,7 +551,9 @@ class BiirdeeService {
               carrier: defaultCarrier,
               marketingCarrier: defaultCarrier.code || '',
               pricings: []
-            }]
+            }],
+            mileage: slice.mileage || undefined,
+            mileagePrice: slice.mileagePrice || undefined
           };
         }),
         ext: {
