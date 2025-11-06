@@ -71,6 +71,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     flightId
   });
 
+  const formatMileagePrice = (price: number | string): string => {
+    if (typeof price === 'string') {
+      return price;
+    }
+    return `USD ${price.toFixed(2)}`;
+  };
+
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
@@ -79,12 +86,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
       if (timeMatch) {
         const hours = parseInt(timeMatch[1]);
         const minutes = parseInt(timeMatch[2]);
-        
+
         // Convert to 12-hour format
         const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
         const ampm = hours >= 12 ? 'PM' : 'AM';
         const minutesStr = minutes.toString().padStart(2, '0');
-        
+
         return `${hour12}:${minutesStr} ${ampm}`;
       }
       return 'N/A';
@@ -442,18 +449,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 {slice.mileage && slice.mileage > 0 && (
                   <div className="flex items-center gap-1">
                     <span className="text-gray-400 font-medium">Miles:</span>
-                    <span className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium">
-                      {slice.mileage.toLocaleString()} miles
-                      {slice.mileagePrice && slice.mileagePrice > 0 && ` + $${slice.mileagePrice.toFixed(2)}`}
-                    </span>
-                    {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (
+                    {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) ? (
                       <button
                         onClick={() => setExpandedSlices(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
-                        className="ml-1 p-1 hover:bg-gray-700 rounded transition-colors"
-                        title="Show alternative mileage options"
+                        className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1"
                       >
-                        <ChevronDown className={`h-3 w-3 text-purple-300 transition-transform ${expandedSlices[sliceIndex] ? 'rotate-180' : ''}`} />
+                        {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
+                        <ChevronDown className={`h-3 w-3 transition-transform ${expandedSlices[sliceIndex] ? 'rotate-180' : ''}`} />
                       </button>
+                    ) : (
+                      <span className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium">
+                        {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
+                      </span>
                     )}
                   </div>
                 )}
@@ -463,31 +470,48 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
             {/* Expanded Mileage Alternatives */}
             {expandedSlices[sliceIndex] && slice.mileageBreakdown && (
               <div className="mt-3 space-y-2 bg-gray-900/50 p-3 rounded border border-gray-700">
-                <div className="text-xs font-medium text-purple-300 mb-2">Alternative Mileage Options:</div>
+                <div className="text-xs font-medium text-purple-300 mb-2">Alternative Mileage Booking Options:</div>
                 {slice.mileageBreakdown.map((breakdown, bdIndex) => (
                   breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0 && (
-                    <div key={bdIndex} className="space-y-1">
+                    <div key={bdIndex} className="space-y-1.5">
                       <div className="text-xs text-gray-400 font-medium">
-                        {breakdown.flightNumber} ({breakdown.origin} → {breakdown.destination})
+                        ITA Segment: {breakdown.flightNumber} ({breakdown.origin} → {breakdown.destination})
                       </div>
-                      <div className="space-y-1 pl-3 border-l-2 border-purple-500/30">
-                        {breakdown.allMatchingFlights.map((altFlight, altIndex) => (
-                          <div key={altIndex} className="flex items-center justify-between text-xs bg-gray-800/50 px-2 py-1.5 rounded">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-purple-300">{altFlight.flightNumber}</span>
-                              <span className="text-gray-400">
-                                {altFlight.carrierCode} • {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                → {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                              </span>
-                              {altFlight.exactMatch && <span className="text-green-400 text-[10px]">✓ Exact</span>}
-                              {altFlight.carrierMatch && <span className="text-blue-400 text-[10px]">Carrier Match</span>}
-                            </div>
-                            <div className="text-purple-300 font-medium">
-                              {altFlight.mileage.toLocaleString()} mi
-                              {altFlight.mileagePrice > 0 && ` + $${altFlight.mileagePrice.toFixed(2)}`}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5 pl-2">
+                        {breakdown.allMatchingFlights.map((altFlight, altIndex) => {
+                          const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
+                          return (
+                            <button
+                              key={altIndex}
+                              className="w-full flex items-center justify-between text-xs bg-gray-800/70 hover:bg-gray-700/70 px-3 py-2 rounded transition-colors group border border-gray-700 hover:border-purple-500/50"
+                            >
+                              <div className="flex items-center gap-2 flex-1">
+                                <div className="flex flex-col items-start">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-purple-300 font-medium">{altFlight.flightNumber}</span>
+                                    <span className="text-gray-500">•</span>
+                                    <span className="text-gray-300">Book via {carrierName}</span>
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5">
+                                    {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    {' → '}
+                                    {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    {altFlight.exactMatch && <span className="text-green-400 ml-2">✓ Exact Match</span>}
+                                    {altFlight.carrierMatch && !altFlight.exactMatch && <span className="text-blue-400 ml-2">Carrier Match</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <div className="text-purple-300 font-semibold whitespace-nowrap">
+                                  {altFlight.mileage.toLocaleString()} miles
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  + {formatMileagePrice(altFlight.mileagePrice)}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )

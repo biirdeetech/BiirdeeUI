@@ -127,7 +127,7 @@ export interface MileageBreakdownFlight {
     timezone: string | null;
   };
   mileage: number;
-  mileagePrice: number;
+  mileagePrice: number | string;
   matchType: string;
   exactMatch: boolean;
   carrierMatch: boolean;
@@ -141,7 +141,7 @@ export interface MileageBreakdown {
   destination: string;
   date: string;
   mileage: number;
-  mileagePrice: number;
+  mileagePrice: number | string;
   matched: boolean;
   exactMatch: boolean;
   carrierMatch: boolean;
@@ -160,7 +160,7 @@ export interface FlightSlice {
   stops?: Airport[];
   segments: FlightSegment[];
   mileage?: number;
-  mileagePrice?: number;
+  mileagePrice?: number | string;
   mileageBreakdown?: MileageBreakdown[];
   mileageEnriched?: boolean;
   matchType?: string;

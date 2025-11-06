@@ -16,6 +16,13 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
 
   console.log('🚀 MultiLegFlightCard: Rendering multi-leg flight with', slices.length, 'slices');
 
+  const formatMileagePrice = (price: number | string): string => {
+    if (typeof price === 'string') {
+      return price;
+    }
+    return `USD ${price.toFixed(2)}`;
+  };
+
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
@@ -24,7 +31,7 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
       if (timeMatch) {
         const hours = parseInt(timeMatch[1]);
         const minutes = parseInt(timeMatch[2]);
-        
+
         // Convert to 12-hour format
         const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
         const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -246,8 +253,7 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
                     <div className="flex items-center gap-1">
                       <span className="text-gray-400 font-medium">Miles:</span>
                       <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-sm font-medium">
-                        {slice.mileage.toLocaleString()} miles
-                        {slice.mileagePrice && slice.mileagePrice > 0 && ` + $${slice.mileagePrice.toFixed(2)}`}
+                        {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
                       </span>
                     </div>
                   )}
