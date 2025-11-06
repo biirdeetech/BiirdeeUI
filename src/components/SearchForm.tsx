@@ -987,57 +987,85 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           </span>
         </div>
 
-        {/* Advanced Options Accordion */}
+        {/* Global Configuration Section */}
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-4">
+          <h4 className="text-sm font-medium text-gray-300">Global Configuration</h4>
+
+          {/* Pagination Options */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Page Size</label>
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={pageSize}
+                onChange={(e) => setPageSize(parseInt(e.target.value) || 25)}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Page Number</label>
+              <input
+                type="number"
+                min="1"
+                value={pageNum}
+                onChange={(e) => setPageNum(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Sales City and Currency */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">
+                Sales City (Optional)
+              </label>
+              <LocationSearchInputWithCallback
+                value={salesCity}
+                onChange={(location) => setSalesCity(location)}
+                locationType="SALES_CITIES"
+                placeholder="Search sales city..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Point of sale for pricing
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">
+                Currency (Optional)
+              </label>
+              <CurrencySearchInput
+                value={currency}
+                onChange={(curr) => setCurrency(curr)}
+                placeholder="Search currency..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Display prices in currency
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Aero Options Accordion */}
         <details open className="bg-gray-800/50 border border-gray-700 rounded-lg">
           <summary className="cursor-pointer px-4 py-3 font-medium text-gray-300 hover:text-white transition-colors flex items-center justify-between">
-            <span>Advanced Options (Pagination & Aero)</span>
+            <span>Aero Search Options</span>
             <span className="text-xs text-gray-500">Click to collapse</span>
           </summary>
           <div className="px-4 py-4 space-y-4 border-t border-gray-700">
-            {/* Pagination Section */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                Pagination Options
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Page Size</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="500"
-                    value={pageSize}
-                    onChange={(e) => setPageSize(parseInt(e.target.value) || 25)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Page Number</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={pageNum}
-                    onChange={(e) => setPageNum(parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={aeroEnabled}
+                  onChange={(e) => setAeroEnabled(e.target.checked)}
+                  className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                />
+                <span className="text-sm text-gray-400">Enable Aero</span>
+              </label>
             </div>
-
-            {/* Aero Options Section */}
-            <div className="space-y-3 pt-3 border-t border-gray-700">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-gray-300">Aero Search Options</h4>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={aeroEnabled}
-                    onChange={(e) => setAeroEnabled(e.target.checked)}
-                    className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
-                  />
-                  <span className="text-xs text-gray-400">Enable Aero</span>
-                </label>
-              </div>
 
               {aeroEnabled && (
                 <div className="space-y-3 bg-gray-900/50 p-3 rounded border border-gray-700">
@@ -1088,38 +1116,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      Sales City (Optional)
-                    </label>
-                    <LocationSearchInputWithCallback
-                      value={salesCity}
-                      onChange={(location) => setSalesCity(location)}
-                      locationType="SALES_CITIES"
-                      placeholder="Search sales city..."
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Point of sale for pricing
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      Currency (Optional)
-                    </label>
-                    <CurrencySearchInput
-                      value={currency}
-                      onChange={(curr) => setCurrency(curr)}
-                      placeholder="Search currency..."
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Display prices in selected currency
-                    </p>
-                  </div>
                 </div>
               )}
-            </div>
           </div>
         </details>
 
