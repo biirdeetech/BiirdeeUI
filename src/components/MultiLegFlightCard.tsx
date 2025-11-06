@@ -23,6 +23,20 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
     return `USD ${price.toFixed(2)}`;
   };
 
+  const countMileagePrograms = (breakdown?: any[]): number => {
+    if (!breakdown) return 0;
+    const uniqueCarriers = new Set<string>();
+    breakdown.forEach(bd => {
+      if (bd.allMatchingFlights) {
+        bd.allMatchingFlights.forEach((flight: any) => {
+          const carrier = flight.operatingCarrier || flight.carrierCode;
+          if (carrier) uniqueCarriers.add(carrier);
+        });
+      }
+    });
+    return uniqueCarriers.size;
+  };
+
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
@@ -250,11 +264,21 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
                     </div>
                   )}
                   {slice.mileage && slice.mileage > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400 font-medium">Miles:</span>
-                      <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-sm font-medium">
-                        {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-400 font-medium">Miles:</span>
+                        <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-sm font-medium">
+                          {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
+                        </span>
+                      </div>
+                      {(() => {
+                        const programCount = countMileagePrograms(slice.mileageBreakdown);
+                        return programCount > 0 && (
+                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-0.5 rounded border border-gray-700">
+                            {programCount} {programCount === 1 ? 'program' : 'programs'} available
+                          </span>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
