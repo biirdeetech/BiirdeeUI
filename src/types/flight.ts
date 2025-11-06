@@ -110,6 +110,43 @@ export interface GroupedFlight {
   isNonstop: boolean;
 }
 
+export interface MileageBreakdownFlight {
+  flightNumber: string;
+  carrierCode: string;
+  operatingCarrier: string;
+  departure: {
+    iataCode: string;
+    at: string;
+    timezone: string | null;
+  };
+  arrival: {
+    iataCode: string;
+    at: string;
+    timezone: string | null;
+  };
+  mileage: number;
+  mileagePrice: number;
+  matchType: string;
+  exactMatch: boolean;
+  carrierMatch: boolean;
+  routeMatch: boolean;
+}
+
+export interface MileageBreakdown {
+  flightNumber: string;
+  carrier: string;
+  origin: string;
+  destination: string;
+  date: string;
+  mileage: number;
+  mileagePrice: number;
+  matched: boolean;
+  exactMatch: boolean;
+  carrierMatch: boolean;
+  routeMatch: boolean;
+  allMatchingFlights?: MileageBreakdownFlight[];
+}
+
 export interface FlightSlice {
   origin: Airport;
   destination: Airport;
@@ -122,6 +159,9 @@ export interface FlightSlice {
   segments: FlightSegment[];
   mileage?: number;
   mileagePrice?: number;
+  mileageBreakdown?: MileageBreakdown[];
+  mileageEnriched?: boolean;
+  matchType?: string;
 }
 
 export interface FlightSegment {

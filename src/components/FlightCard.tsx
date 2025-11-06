@@ -19,6 +19,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [showAddToProposal, setShowAddToProposal] = useState(false);
   const [selectedMileageDeal, setSelectedMileageDeal] = useState<MileageDeal | null>(null);
   const [showMileageDealModal, setShowMileageDealModal] = useState(false);
+  const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
 
   const handleSelectMileageDeal = (deal: MileageDeal) => {
     setSelectedMileageDeal(deal);
@@ -445,10 +446,54 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                       {slice.mileage.toLocaleString()} miles
                       {slice.mileagePrice && slice.mileagePrice > 0 && ` + $${slice.mileagePrice.toFixed(2)}`}
                     </span>
+                    {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (
+                      <button
+                        onClick={() => setExpandedSlices(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
+                        className="ml-1 p-1 hover:bg-gray-700 rounded transition-colors"
+                        title="Show alternative mileage options"
+                      >
+                        <ChevronDown className={`h-3 w-3 text-purple-300 transition-transform ${expandedSlices[sliceIndex] ? 'rotate-180' : ''}`} />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Expanded Mileage Alternatives */}
+            {expandedSlices[sliceIndex] && slice.mileageBreakdown && (
+              <div className="mt-3 space-y-2 bg-gray-900/50 p-3 rounded border border-gray-700">
+                <div className="text-xs font-medium text-purple-300 mb-2">Alternative Mileage Options:</div>
+                {slice.mileageBreakdown.map((breakdown, bdIndex) => (
+                  breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0 && (
+                    <div key={bdIndex} className="space-y-1">
+                      <div className="text-xs text-gray-400 font-medium">
+                        {breakdown.flightNumber} ({breakdown.origin} → {breakdown.destination})
+                      </div>
+                      <div className="space-y-1 pl-3 border-l-2 border-purple-500/30">
+                        {breakdown.allMatchingFlights.map((altFlight, altIndex) => (
+                          <div key={altIndex} className="flex items-center justify-between text-xs bg-gray-800/50 px-2 py-1.5 rounded">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-purple-300">{altFlight.flightNumber}</span>
+                              <span className="text-gray-400">
+                                {altFlight.carrierCode} • {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                → {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                              </span>
+                              {altFlight.exactMatch && <span className="text-green-400 text-[10px]">✓ Exact</span>}
+                              {altFlight.carrierMatch && <span className="text-blue-400 text-[10px]">Carrier Match</span>}
+                            </div>
+                            <div className="text-purple-300 font-medium">
+                              {altFlight.mileage.toLocaleString()} mi
+                              {altFlight.mileagePrice > 0 && ` + $${altFlight.mileagePrice.toFixed(2)}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

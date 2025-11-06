@@ -425,7 +425,10 @@ class BiirdeeService {
         stops: slice.stops || [],
         segments: segments,
         mileage: slice.mileage || undefined,
-        mileagePrice: slice.mileagePrice || undefined
+        mileagePrice: slice.mileagePrice || undefined,
+        mileageBreakdown: slice.mileageBreakdown || undefined,
+        mileageEnriched: slice.mileageEnriched || undefined,
+        matchType: slice.matchType || undefined
       };
     });
 
@@ -553,7 +556,10 @@ class BiirdeeService {
               pricings: []
             }],
             mileage: slice.mileage || undefined,
-            mileagePrice: slice.mileagePrice || undefined
+            mileagePrice: slice.mileagePrice || undefined,
+            mileageBreakdown: slice.mileageBreakdown || undefined,
+            mileageEnriched: slice.mileageEnriched || undefined,
+            matchType: slice.matchType || undefined
           };
         }),
         ext: {
