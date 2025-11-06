@@ -25,6 +25,8 @@ export interface FlightSearchParams {
   time_tolerance?: number;
   strict_leg_match?: boolean;
   summary?: boolean;
+  sales_city?: string;
+  currency?: string;
 }
 
 export interface FlightSliceParams {

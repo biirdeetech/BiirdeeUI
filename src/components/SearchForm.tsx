@@ -160,6 +160,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '120'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
+
+      const salesCityCode = searchParams.get('sales_city');
+      if (salesCityCode) {
+        setSalesCity({ code: salesCityCode, name: salesCityCode });
+      }
+
+      const currencyCode = searchParams.get('currency');
+      if (currencyCode) {
+        setCurrency({ code: currencyCode, name: currencyCode });
+      }
     }
   }, [compact, searchParams]);
 
@@ -367,9 +377,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_extraStops`, leg.extraStops.toString());
       searchParams.append(`leg${index}_allowAirportChanges`, leg.allowAirportChanges.toString());
       searchParams.append(`leg${index}_showOnlyAvailable`, leg.showOnlyAvailable.toString());
-      // Per-leg Aero options
-      searchParams.append(`leg${index}_aero`, leg.aero.toString());
-      searchParams.append(`leg${index}_fetchSummary`, leg.fetchSummary.toString());
+      // Per-leg Aero options - sync with global aeroEnabled
+      searchParams.append(`leg${index}_aero`, aeroEnabled.toString());
+      searchParams.append(`leg${index}_fetchSummary`, fetchSummary.toString());
     });
     
     searchParams.append('legCount', validatedLegs.length.toString());
@@ -395,6 +405,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
     if (fetchSummary) {
       searchParams.append('summary', 'true');
+    }
+    if (salesCity) {
+      searchParams.append('sales_city', salesCity.code);
+    }
+    if (currency) {
+      searchParams.append('currency', currency.code);
     }
     
     // Trigger new search callback if provided (for search page)

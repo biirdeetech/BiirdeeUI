@@ -214,7 +214,9 @@ class BiirdeeService {
         ...(params.strict_airline_match !== undefined && { strict_airline_match: params.strict_airline_match }),
         ...(params.time_tolerance !== undefined && { time_tolerance: params.time_tolerance }),
         ...(params.strict_leg_match !== undefined && { strict_leg_match: params.strict_leg_match }),
-        summary: globalSummary
+        summary: globalSummary,
+        ...(params.sales_city && { sales_city: params.sales_city }),
+        ...(params.currency && { currency: params.currency })
       },
       pax: {
         adults: String(params.passengers || 1)
