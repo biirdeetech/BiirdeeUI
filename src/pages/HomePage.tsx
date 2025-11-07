@@ -37,28 +37,28 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950 relative overflow-hidden">
-      {/* Animated Background Elements */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950 relative overflow-hidden group/page">
+      {/* Animated Background Elements - Only animate on page hover */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large floating orbs */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-gradient-to-r from-accent-600/20 to-orange-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-600/15 to-cyan-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-32 left-1/4 w-72 h-72 bg-gradient-to-r from-purple-600/15 to-pink-500/15 rounded-full blur-3xl animate-pulse delay-2000"></div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-r from-indigo-600/20 to-violet-500/20 rounded-full blur-3xl animate-pulse delay-3000"></div>
-        
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-gradient-to-r from-accent-600/20 to-orange-500/20 rounded-full blur-3xl group-hover/page:animate-pulse"></div>
+        <div className="absolute top-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-600/15 to-cyan-500/15 rounded-full blur-3xl group-hover/page:animate-pulse delay-1000"></div>
+        <div className="absolute bottom-32 left-1/4 w-72 h-72 bg-gradient-to-r from-purple-600/15 to-pink-500/15 rounded-full blur-3xl group-hover/page:animate-pulse delay-2000"></div>
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-r from-indigo-600/20 to-violet-500/20 rounded-full blur-3xl group-hover/page:animate-pulse delay-3000"></div>
+
         {/* Floating particles */}
-        <div className="absolute top-32 left-1/3 w-3 h-3 bg-gradient-to-r from-accent-400 to-orange-400 rounded-full animate-ping delay-500 shadow-lg shadow-accent-400/50"></div>
-        <div className="absolute top-48 right-1/3 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-ping delay-1000 shadow-lg shadow-blue-400/50"></div>
-        <div className="absolute bottom-32 left-1/2 w-2.5 h-2.5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-ping delay-1500 shadow-lg shadow-purple-400/50"></div>
-        <div className="absolute top-64 left-2/3 w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-ping delay-2000"></div>
-        <div className="absolute bottom-48 right-1/4 w-2 h-2 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full animate-ping delay-2500"></div>
-        
+        <div className="absolute top-32 left-1/3 w-3 h-3 bg-gradient-to-r from-accent-400 to-orange-400 rounded-full group-hover/page:animate-ping delay-500 shadow-lg shadow-accent-400/50"></div>
+        <div className="absolute top-48 right-1/3 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full group-hover/page:animate-ping delay-1000 shadow-lg shadow-blue-400/50"></div>
+        <div className="absolute bottom-32 left-1/2 w-2.5 h-2.5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full group-hover/page:animate-ping delay-1500 shadow-lg shadow-purple-400/50"></div>
+        <div className="absolute top-64 left-2/3 w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full group-hover/page:animate-ping delay-2000"></div>
+        <div className="absolute bottom-48 right-1/4 w-2 h-2 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full group-hover/page:animate-ping delay-2500"></div>
+
         {/* Animated grid pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        
+
         {/* Moving light beams */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent-400/50 to-transparent animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-blue-400/50 to-transparent animate-pulse delay-1000"></div>
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent-400/50 to-transparent group-hover/page:animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-blue-400/50 to-transparent group-hover/page:animate-pulse delay-1000"></div>
       </div>
 
       {/* Navigation */}
@@ -70,22 +70,22 @@ const HomePage: React.FC = () => {
         <div className="text-center mb-20">
           {/* Logo Animation */}
           <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="relative">
+            <div className="relative group/logo">
               {/* Pulsing glow rings */}
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-xl opacity-60 animate-pulse"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-2xl opacity-40 animate-pulse delay-500 scale-110"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-3xl opacity-20 animate-pulse delay-1000 scale-125"></div>
-              
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-xl opacity-60 group-hover/logo:animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-2xl opacity-40 group-hover/logo:animate-pulse delay-500 scale-110"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-3xl opacity-20 group-hover/logo:animate-pulse delay-1000 scale-125"></div>
+
               <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group">
                 <Plane className="h-10 w-10 text-white group-hover:animate-bounce" />
-                
-                {/* Orbiting elements */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full animate-spin" style={{animation: 'orbit 3s linear infinite'}}></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-spin" style={{animation: 'orbit 4s linear infinite reverse'}}></div>
+
+                {/* Orbiting elements - only on logo hover */}
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full" style={{animation: 'none'}}></div>
+                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full" style={{animation: 'none'}}></div>
               </div>
             </div>
             <div>
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-accent-200 to-accent-400 bg-clip-text text-transparent animate-pulse">
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-accent-200 to-accent-400 bg-clip-text text-transparent">
                 Biirdee Pro
               </h1>
               <p className="text-accent-400 font-semibold tracking-wider text-lg bg-gradient-to-r from-accent-400 to-orange-400 bg-clip-text text-transparent">
@@ -100,7 +100,7 @@ const HomePage: React.FC = () => {
                 Find Premium Flight Deals
               </span>
               <br />
-              <span className="bg-gradient-to-r from-accent-400 via-orange-500 to-red-500 bg-clip-text text-transparent animate-pulse">
+              <span className="bg-gradient-to-r from-accent-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
                 with Advanced Strategies
               </span>
           </h2>
@@ -160,10 +160,10 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Search Form */}
-        <div className="mb-24 relative">
+        <div className="mb-24 relative group/search">
           {/* Glow effect behind search form */}
-          <div className="absolute inset-0 bg-gradient-to-r from-accent-600/20 via-blue-600/20 to-purple-600/20 rounded-3xl blur-2xl animate-pulse"></div>
-          <div className="absolute inset-0 bg-gradient-to-l from-orange-600/10 via-pink-600/10 to-indigo-600/10 rounded-3xl blur-xl animate-pulse delay-1000"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-accent-600/20 via-blue-600/20 to-purple-600/20 rounded-3xl blur-2xl group-hover/search:animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-l from-orange-600/10 via-pink-600/10 to-indigo-600/10 rounded-3xl blur-xl group-hover/search:animate-pulse delay-1000"></div>
           
           <div className="relative transform hover:scale-[1.02] transition-transform duration-300">
           <SearchForm />
@@ -178,17 +178,17 @@ const HomePage: React.FC = () => {
         {/* Features */}
         <div className="space-y-16">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="flex items-center justify-center gap-3 mb-6 group/heading">
               <div className="relative">
-                <Sparkles className="h-6 w-6 text-accent-400 animate-spin" />
-                <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 animate-pulse"></div>
+                <Sparkles className="h-6 w-6 text-accent-400 group-hover/heading:animate-spin" />
+                <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 group-hover/heading:animate-pulse"></div>
               </div>
               <h3 className="text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-accent-300 bg-clip-text text-transparent">
                 Powerful Strategies
               </h3>
               <div className="relative">
-                <Sparkles className="h-6 w-6 text-purple-400 animate-spin" style={{ animationDirection: 'reverse' }} />
-                <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 animate-pulse delay-500"></div>
+                <Sparkles className="h-6 w-6 text-purple-400 group-hover/heading:animate-spin" style={{ animationDirection: 'reverse' }} />
+                <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 group-hover/heading:animate-pulse delay-500"></div>
               </div>
             </div>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
@@ -221,7 +221,7 @@ const HomePage: React.FC = () => {
               <div className="mt-6 flex items-center justify-center gap-3 text-success-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                 <TrendingUp className="h-4 w-4" />
                 <span className="font-bold">Save up to 60%</span>
-                <div className="w-2 h-2 bg-success-400 rounded-full animate-ping"></div>
+                <div className="w-2 h-2 bg-success-400 rounded-full group-hover:animate-ping"></div>
               </div>
             </div>
 
@@ -247,7 +247,7 @@ const HomePage: React.FC = () => {
               <div className="mt-6 flex items-center justify-center gap-3 text-blue-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                 <Shield className="h-4 w-4" />
                 <span className="font-bold">Smart routing</span>
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+                <div className="w-2 h-2 bg-blue-400 rounded-full group-hover:animate-ping"></div>
               </div>
             </div>
 
@@ -273,7 +273,7 @@ const HomePage: React.FC = () => {
               <div className="mt-6 flex items-center justify-center gap-3 text-purple-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                 <Sparkles className="h-4 w-4" />
                 <span className="font-bold">Luxury access</span>
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-ping"></div>
+                <div className="w-2 h-2 bg-purple-400 rounded-full group-hover:animate-ping"></div>
               </div>
             </div>
           </div>
@@ -286,17 +286,17 @@ const HomePage: React.FC = () => {
             <div className="absolute bottom-0 right-0 w-full h-1 bg-gradient-to-l from-accent-400 via-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             
             <div className="relative">
-              <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="flex items-center justify-center gap-3 mb-6 group/cta">
                 <div className="relative">
-                  <Sparkles className="h-8 w-8 text-accent-400 animate-spin" />
-                  <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 animate-pulse"></div>
+                  <Sparkles className="h-8 w-8 text-accent-400 group-hover/cta:animate-spin" />
+                  <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 group-hover/cta:animate-pulse"></div>
                 </div>
                 <h3 className="text-4xl font-bold bg-gradient-to-r from-white via-accent-300 to-purple-400 bg-clip-text text-transparent">
                   Ready to Save Thousands?
                 </h3>
                 <div className="relative">
-                  <Sparkles className="h-8 w-8 text-purple-400 animate-spin" style={{ animationDirection: 'reverse' }} />
-                  <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 animate-pulse delay-500"></div>
+                  <Sparkles className="h-8 w-8 text-purple-400 group-hover/cta:animate-spin" style={{ animationDirection: 'reverse' }} />
+                  <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 group-hover/cta:animate-pulse delay-500"></div>
                 </div>
               </div>
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
