@@ -244,15 +244,23 @@ class ITAMatrixService {
     const solutions = googleResponse.solutionList.solutions || [];
     console.log(`✅ ITAMatrixService: Transforming ${solutions.length} solutions`);
 
+    // Helper to extract numeric value from currency strings like "PKR651625" or "USD1234"
+    const extractPrice = (priceStr: string | undefined): number => {
+      if (!priceStr) return 0;
+      // Remove any currency code (3 letter prefix) and parse the number
+      const numericStr = priceStr.replace(/^[A-Z]{3}/, '');
+      return parseFloat(numericStr) || 0;
+    };
+
     // Transform each solution to match our FlightSolution interface
     const transformedSolutions = solutions.map((solution: any) => {
       const itinerary = solution.itinerary || {};
       const slices = itinerary.slices || [];
-      
+
       return {
         id: solution.id,
-        totalAmount: parseFloat(solution.ext?.price?.replace('USD', '') || '0'),
-        displayTotal: parseFloat(solution.displayTotal?.replace('USD', '') || '0'),
+        totalAmount: extractPrice(solution.ext?.price),
+        displayTotal: extractPrice(solution.displayTotal),
         slices: slices.map((slice: any) => ({
           origin: slice.origin || { code: '', name: '' },
           destination: slice.destination || { code: '', name: '' },
@@ -269,7 +277,7 @@ class ITAMatrixService {
           })) || []
         })),
         ext: {
-          pricePerMile: parseFloat(solution.ext?.pricePerMile?.replace('USD', '') || '0')
+          pricePerMile: extractPrice(solution.ext?.pricePerMile)
         }
       };
     });
