@@ -217,6 +217,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
       <div className="px-6 py-4 border-b border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {carrier.code && (
+              <img
+                src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
+                alt={carrier.code}
+                className="h-7 w-7 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
             <div className={`px-2 py-1 rounded text-xs font-medium ${
               isPremium ? 'bg-accent-600 text-white' : 'bg-gray-600 text-white'
             }`}>
@@ -520,18 +530,31 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                     {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
                                     {' → '}
                                     {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                    {altFlight.exactMatch && <span className="text-green-400 ml-2">✓ Exact Match</span>}
-                                    {altFlight.carrierMatch && !altFlight.exactMatch && <span className="text-blue-400 ml-2">Carrier Match</span>}
+                                    {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && <span className="text-green-400 ml-2">✓ Full Match</span>}
+                                    {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && <span className="text-blue-400 ml-2">Carrier Match</span>}
+                                    {altFlight.routeMatch && !altFlight.carrierMatch && <span className="text-yellow-400 ml-2">Route Only</span>}
+                                    {!altFlight.routeMatch && <span className="text-gray-400 ml-2">Time Match</span>}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex flex-col items-end">
+                              <div className="flex flex-col items-end gap-0.5">
                                 <div className="text-purple-300 font-semibold whitespace-nowrap">
                                   {altFlight.mileage.toLocaleString()} miles
                                 </div>
                                 <div className="text-[10px] text-gray-400">
                                   + {formatMileagePrice(altFlight.mileagePrice)}
                                 </div>
+                                {(() => {
+                                  const priceNum = typeof altFlight.mileagePrice === 'string'
+                                    ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+                                    : altFlight.mileagePrice;
+                                  const pricePerMi = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
+                                  return pricePerMi > 0 && (
+                                    <div className="text-[9px] text-gray-500">
+                                      ${pricePerMi.toFixed(3)}/mi
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </button>
                           );
