@@ -170,6 +170,9 @@ export interface FlightSegment {
   carrier: Carrier;
   marketingCarrier: string;
   pricings: Pricing[];
+  departure?: string;
+  arrival?: string;
+  flightNumber?: string;
 }
 
 export interface Pricing {
