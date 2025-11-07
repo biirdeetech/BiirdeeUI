@@ -281,8 +281,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               </div>
 
               {/* Total Price */}
-              <div className="text-xl font-medium text-neutral-100">
-                {formatPrice(displayTotal)}
+              <div className="flex flex-col items-end">
+                <div className="text-xl font-medium text-neutral-100">
+                  {formatPrice(displayTotal)}
+                </div>
+                {totalMileage > 0 && (
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    Mileage value: ${((totalMileage * 0.015) + (totalMileagePrice || 0)).toFixed(2)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -413,8 +420,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     {formatDuration(slice.duration)}
                   </div>
                   {slice.stops && slice.stops.length > 0 && (
-                    <div className="text-center text-xs text-gray-400 mt-1 hidden lg:block">
-                      Stop: {slice.stops.map(stop => stop.code).join(', ')}
+                    <div className="text-center text-xs text-gray-400 mt-1">
+                      {slice.stops.length === 1 ? '1 stop' : `${slice.stops.length} stops`}: {slice.stops.map(stop => stop.code).join(', ')}
+                    </div>
+                  )}
+                  {slice.flights && slice.flights.length > 1 && (
+                    <div className="text-center text-[10px] text-gray-500 mt-0.5">
+                      Flights: {slice.flights.join(' → ')}
                     </div>
                   )}
                 </div>
@@ -503,13 +515,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
 
             {/* Expanded Mileage Alternatives */}
             {expandedSlices[sliceIndex] && slice.mileageBreakdown && (
-              <div className="mt-3 space-y-2 bg-gray-900/50 p-3 rounded border border-gray-700">
-                <div className="text-xs font-medium text-purple-300 mb-2">Alternative Mileage Booking Options:</div>
+              <div className="mt-3 space-y-3 bg-gray-900/50 p-3 rounded border border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-medium text-purple-300">
+                    Alternative Mileage Programs for {slice.origin.code} → {slice.destination.code}
+                  </div>
+                  {slice.stops && slice.stops.length > 0 && (
+                    <div className="text-[10px] text-gray-500">
+                      via {slice.stops.map(s => s.code).join(', ')}
+                    </div>
+                  )}
+                </div>
                 {slice.mileageBreakdown.map((breakdown, bdIndex) => (
                   breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0 && (
                     <div key={bdIndex} className="space-y-1.5">
-                      <div className="text-xs text-gray-400 font-medium">
-                        ITA Segment: {breakdown.flightNumber} ({breakdown.origin} → {breakdown.destination})
+                      <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
+                        <span className="text-gray-500">Leg {bdIndex + 1}:</span>
+                        <span>{breakdown.flightNumber}</span>
+                        <span className="text-gray-600">•</span>
+                        <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
                       <div className="space-y-1.5 pl-2">
                         {breakdown.allMatchingFlights.map((altFlight, altIndex) => {
@@ -526,14 +550,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                     <span className="text-gray-500">•</span>
                                     <span className="text-gray-300">Book via {carrierName}</span>
                                   </div>
-                                  <div className="text-[10px] text-gray-400 mt-0.5">
-                                    {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                    {' → '}
-                                    {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                    {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && <span className="text-green-400 ml-2">✓ Full Match</span>}
-                                    {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && <span className="text-blue-400 ml-2">Carrier Match</span>}
-                                    {altFlight.routeMatch && !altFlight.carrierMatch && <span className="text-yellow-400 ml-2">Route Only</span>}
-                                    {!altFlight.routeMatch && <span className="text-gray-400 ml-2">Time Match</span>}
+                                  <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                                    <span>
+                                      {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                      {' → '}
+                                      {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </span>
+                                    {altFlight.numberOfStops > 0 && (
+                                      <span className="text-orange-400">
+                                        • {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                      </span>
+                                    )}
+                                    {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && <span className="text-green-400">✓ Full Match</span>}
+                                    {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && <span className="text-blue-400">Carrier Match</span>}
+                                    {altFlight.routeMatch && !altFlight.carrierMatch && <span className="text-yellow-400">Route Only</span>}
+                                    {!altFlight.routeMatch && <span className="text-gray-400">Time Match</span>}
                                   </div>
                                 </div>
                               </div>

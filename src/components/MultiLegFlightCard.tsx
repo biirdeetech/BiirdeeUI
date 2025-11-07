@@ -110,6 +110,16 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
       <div className="px-6 py-4 border-b border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {carrier.code && (
+              <img
+                src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
+                alt={carrier.code}
+                className="h-7 w-7 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            )}
             <div className={`px-2 py-1 rounded text-xs font-medium ${
               isPremium ? 'bg-accent-600 text-white' : 'bg-gray-600 text-white'
             }`}>
@@ -207,7 +217,12 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
                     </div>
                     {slice.stops && slice.stops.length > 0 && (
                       <div className="text-center text-xs text-gray-400 mt-1">
-                        Stop: {slice.stops.map(stop => stop.code).join(', ')}
+                        {slice.stops.length === 1 ? '1 stop' : `${slice.stops.length} stops`}: {slice.stops.map(stop => stop.code).join(', ')}
+                      </div>
+                    )}
+                    {slice.flights && slice.flights.length > 1 && (
+                      <div className="text-center text-[10px] text-gray-500 mt-0.5">
+                        Flights: {slice.flights.join(' → ')}
                       </div>
                     )}
                   </div>

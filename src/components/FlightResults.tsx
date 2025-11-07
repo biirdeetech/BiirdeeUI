@@ -182,7 +182,32 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
   // Show results
   const flights = results.solutionList.solutions;
-  const processedFlights = groupFlightsByOutbound(flights);
+  let processedFlights = groupFlightsByOutbound(flights);
+
+  // Sort by best value: mileage price (if available), then cash price
+  processedFlights = processedFlights.sort((a, b) => {
+    const aFlight = 'id' in a ? a : a.returnOptions[0];
+    const bFlight = 'id' in b ? b : b.returnOptions[0];
+
+    const aMileageValue = (aFlight.totalMileage || 0) > 0
+      ? ((aFlight.totalMileage || 0) * 0.015) + (aFlight.totalMileagePrice || 0)
+      : Infinity;
+    const bMileageValue = (bFlight.totalMileage || 0) > 0
+      ? ((bFlight.totalMileage || 0) * 0.015) + (bFlight.totalMileagePrice || 0)
+      : Infinity;
+
+    // If both have mileage, sort by mileage value
+    if (aMileageValue !== Infinity && bMileageValue !== Infinity) {
+      return aMileageValue - bMileageValue;
+    }
+
+    // If only one has mileage, prefer the one with mileage
+    if (aMileageValue !== Infinity) return -1;
+    if (bMileageValue !== Infinity) return 1;
+
+    // Otherwise sort by cash price
+    return (aFlight.totalAmount || 0) - (bFlight.totalAmount || 0);
+  });
 
   return (
     <div className="space-y-6">
