@@ -20,6 +20,10 @@ export interface Location {
     longitude: number;
   };
   timezone?: string;
+  distance?: {
+    measurementValue?: number;
+    unit?: string;
+  };
 }
 
 export interface LocationSearchResult {
@@ -431,6 +435,16 @@ class ITAMatrixService {
       }
 
       const data = await response.json();
+
+      // Sort by distance (airports without distance come first, then sorted by distance)
+      if (data.locations) {
+        data.locations.sort((a: Location, b: Location) => {
+          const distA = a.distance?.measurementValue ?? 0;
+          const distB = b.distance?.measurementValue ?? 0;
+          return distA - distB;
+        });
+      }
+
       console.log('✅ ITAMatrixService: Found', data.locations?.length || 0, 'nearby airports');
       return data;
     } catch (error) {

@@ -171,6 +171,11 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
                     <div className="text-xs text-gray-400 mt-0.5">
                       {airport.cityName && `${airport.cityName} • `}
                       {airport.type}
+                      {airport.distance?.measurementValue && (
+                        <span className="text-accent-400 ml-1">
+                          • {Math.round(airport.distance.measurementValue)} mi
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-xs font-mono bg-accent-500/20 text-accent-300 px-2 py-1 rounded">
