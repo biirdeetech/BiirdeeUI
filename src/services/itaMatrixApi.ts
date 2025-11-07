@@ -373,6 +373,37 @@ class ITAMatrixService {
       throw error;
     }
   }
+
+  async geoSearch(params: {
+    center: string;
+    radiusMiles: number;
+    pageSize?: number;
+  }): Promise<LocationSearchResult> {
+    const { center, radiusMiles, pageSize = 50 } = params;
+
+    const url = `${this.locationBaseUrl}/v1/locationTypes/CITIES_AND_AIRPORTS/locationCodes/${center}/airports?maxMilesDistanceFromCenter=${radiusMiles}&pageSize=${pageSize}&key=${this.apiKey}`;
+
+    try {
+      console.log('📍 ITAMatrixService: Geo searching airports:', { center, radiusMiles });
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Geo search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ ITAMatrixService: Found', data.locations?.length || 0, 'nearby airports');
+      return data;
+    } catch (error) {
+      console.error('❌ ITAMatrixService: Geo search failed:', error);
+      throw error;
+    }
+  }
 }
 
 export default ITAMatrixService.getInstance();

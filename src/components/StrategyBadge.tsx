@@ -11,12 +11,12 @@ const StrategyBadge: React.FC<StrategyBadgeProps> = ({ type }) => {
   const config = {
     skiplag: {
       label: 'Skiplag Mode',
-      color: 'from-orange-600 to-red-600',
+      color: 'from-accent-600 to-accent-700',
       tooltip: 'Hidden City Ticketing: You\'ll exit at your via airport (layover), not the final destination. This can save money but has risks - use carefully!'
     },
     'fake-roundtrip': {
       label: 'Fake Round Trip Mode',
-      color: 'from-purple-600 to-pink-600',
+      color: 'from-accent-600 to-accent-700',
       tooltip: 'Throwaway Return: You\'ll only fly the outbound leg. Sometimes roundtrips are cheaper than one-way tickets. You won\'t use the return flight.'
     }
   };

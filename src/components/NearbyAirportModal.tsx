@@ -21,21 +21,23 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
   const [selectedAirports, setSelectedAirports] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [radiusMiles, setRadiusMiles] = useState(200);
 
   useEffect(() => {
     if (isOpen && centerAirportCode) {
       fetchNearbyAirports();
     }
-  }, [isOpen, centerAirportCode]);
+  }, [isOpen, centerAirportCode, radiusMiles]);
 
   const fetchNearbyAirports = async () => {
     setIsLoading(true);
     setError(null);
+    setSelectedAirports(new Set()); // Clear selections when refetching
     try {
       const result = await ITAMatrixService.geoSearch({
         center: centerAirportCode,
-        radiusMiles: 400,
-        pageSize: 50
+        radiusMiles: radiusMiles,
+        pageSize: 100
       });
       setAirports(result.locations || []);
     } catch (err) {
@@ -77,19 +79,42 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-          <div>
-            <h3 className="text-xl font-semibold text-white">Find Airports Near {centerAirportCode}</h3>
-            {centerAirportName && (
-              <p className="text-sm text-gray-400 mt-1">{centerAirportName}</p>
-            )}
+        <div className="p-6 border-b border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-semibold text-white">Find Airports Near {centerAirportCode}</h3>
+              {centerAirportName && (
+                <p className="text-sm text-gray-400 mt-1">{centerAirportName}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
+
+          {/* Distance Slider */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-300">Search Radius</label>
+              <span className="text-sm font-semibold text-accent-400">{radiusMiles} miles</span>
+            </div>
+            <input
+              type="range"
+              min="10"
+              max="600"
+              step="10"
+              value={radiusMiles}
+              onChange={(e) => setRadiusMiles(Number(e.target.value))}
+              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-accent-600"
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>10 mi</span>
+              <span>600 mi</span>
+            </div>
+          </div>
         </div>
 
         {/* Content */}
@@ -112,7 +137,8 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
           ) : airports.length === 0 ? (
             <div className="text-center py-12">
               <MapPin className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No nearby airports found within 400 miles.</p>
+              <p className="text-gray-400">No nearby airports found within {radiusMiles} miles.</p>
+              <p className="text-sm text-gray-500 mt-2">Try increasing the search radius above.</p>
             </div>
           ) : (
             <div className="space-y-2">
