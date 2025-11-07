@@ -434,12 +434,26 @@ class BiirdeeService {
       };
     });
 
+    // Helper to extract numeric value and currency from strings like "PKR651625" or "USD1234"
+    const extractPrice = (priceStr: string | undefined): number => {
+      if (!priceStr) return 0;
+      const numericStr = priceStr.replace(/^[A-Z]{3}/, '');
+      return parseFloat(numericStr) || 0;
+    };
+
+    const extractCurrency = (priceStr: string | undefined): string => {
+      if (!priceStr) return 'USD';
+      const match = priceStr.match(/^[A-Z]{3}/);
+      return match ? match[0] : 'USD';
+    };
+
     // Parse price from ext or displayTotal
-    const priceString = solution.ext?.totalPrice || solution.displayTotal || '0';
-    const price = parseFloat(priceString.replace(/[^0-9.]/g, ''));
+    const priceString = solution.ext?.totalPrice || solution.ext?.price || solution.displayTotal || '0';
+    const price = extractPrice(priceString);
+    const currency = extractCurrency(priceString);
 
     const pricePerMileString = solution.ext?.pricePerMile || '0';
-    const pricePerMile = parseFloat(pricePerMileString.replace(/[^0-9.]/g, ''));
+    const pricePerMile = extractPrice(pricePerMileString);
 
     // Determine match type based on enrichment and mileage data
     let matchType: 'exact' | 'partial' | 'none' = 'none';
@@ -473,6 +487,7 @@ class BiirdeeService {
       id: solution.id || `solution-${solution.solutionIndex}`,
       totalAmount: price,
       displayTotal: price,
+      currency: currency,
       slices: slices,
       ext: {
         pricePerMile: pricePerMile
@@ -500,6 +515,21 @@ class BiirdeeService {
     const solutions = biirdeeResponse.data.solutionList.solutions || [];
     console.log(`✅ BiirdeeService: Transforming ${solutions.length} solutions`);
 
+    // Helper to extract numeric value and currency from strings like "PKR651625" or "USD1234"
+    const extractPrice = (priceStr: string | undefined): number => {
+      if (!priceStr) return 0;
+      // Remove any currency code (3 letter prefix) and parse the number
+      const numericStr = priceStr.replace(/^[A-Z]{3}/, '');
+      return parseFloat(numericStr) || 0;
+    };
+
+    const extractCurrency = (priceStr: string | undefined): string => {
+      if (!priceStr) return 'USD';
+      // Extract the first 3 uppercase letters as currency code
+      const match = priceStr.match(/^[A-Z]{3}/);
+      return match ? match[0] : 'USD';
+    };
+
     const transformedSolutions = solutions.map((solution: any) => {
       const itinerary = solution.itinerary || {};
       const slices = itinerary.slices || [];
@@ -507,8 +537,9 @@ class BiirdeeService {
 
       return {
         id: solution.id,
-        totalAmount: parseFloat(solution.ext?.price?.replace('USD', '').trim() || '0'),
-        displayTotal: parseFloat(solution.displayTotal?.replace('USD', '').trim() || '0'),
+        totalAmount: extractPrice(solution.ext?.price),
+        displayTotal: extractPrice(solution.displayTotal),
+        currency: extractCurrency(solution.displayTotal || solution.ext?.price),
         slices: slices.map((slice: any) => {
           const segments = slice.segments || [];
           const flights = slice.flights || [];
@@ -565,7 +596,7 @@ class BiirdeeService {
           };
         }),
         ext: {
-          pricePerMile: parseFloat(solution.ext?.pricePerMile?.replace('USD', '').trim() || '0')
+          pricePerMile: extractPrice(solution.ext?.pricePerMile)
         }
       };
     });
