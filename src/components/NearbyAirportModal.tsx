@@ -24,6 +24,17 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
   const [radiusMiles, setRadiusMiles] = useState(200);
   const [debouncedRadius, setDebouncedRadius] = useState(200);
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setAirports([]);
+      setSelectedAirports(new Set());
+      setError(null);
+      setRadiusMiles(200);
+      setDebouncedRadius(200);
+    }
+  }, [isOpen]);
+
   // Debounce radius changes
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -34,7 +45,7 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
   }, [radiusMiles]);
 
   useEffect(() => {
-    if (isOpen && centerAirportCode) {
+    if (isOpen && centerAirportCode && debouncedRadius) {
       fetchNearbyAirports();
     }
   }, [isOpen, centerAirportCode, debouncedRadius]);
@@ -42,17 +53,34 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
   const fetchNearbyAirports = async () => {
     setIsLoading(true);
     setError(null);
-    setSelectedAirports(new Set()); // Clear selections when refetching
+    setSelectedAirports(new Set());
+
     try {
+      console.log('🔍 NearbyAirportModal: Fetching airports near', centerAirportCode, 'within', debouncedRadius, 'miles');
+
       const result = await ITAMatrixService.geoSearch({
         center: centerAirportCode,
         radiusMiles: debouncedRadius,
         pageSize: 100
       });
+
+      console.log('✅ NearbyAirportModal: Received', result.locations?.length || 0, 'airports');
       setAirports(result.locations || []);
-    } catch (err) {
-      console.error('Failed to fetch nearby airports:', err);
-      setError('Failed to load nearby airports. Please try again.');
+
+    } catch (err: any) {
+      console.error('❌ NearbyAirportModal: Failed to fetch nearby airports:', err);
+
+      let errorMessage = 'Failed to load nearby airports. Please try again.';
+
+      if (err.message?.includes('Could not find location data')) {
+        errorMessage = `Could not find location data for airport code "${centerAirportCode}".`;
+      } else if (err.message?.includes('No lat/lng data')) {
+        errorMessage = `Airport "${centerAirportCode}" does not have coordinate data.`;
+      } else if (err.message?.includes('Geo search failed')) {
+        errorMessage = 'Unable to search for nearby airports. Please try again.';
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
