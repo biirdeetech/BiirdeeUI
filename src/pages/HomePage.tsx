@@ -70,18 +70,18 @@ const HomePage: React.FC = () => {
         <div className="text-center mb-20">
           {/* Logo Animation */}
           <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="relative group/logo" style={{perspective: '400px'}}>
-              {/* Pulsing glow rings */}
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-xl opacity-60 group-hover/logo:animate-pulse"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-2xl opacity-40 group-hover/logo:animate-pulse delay-500 scale-110"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-3xl opacity-20 group-hover/logo:animate-pulse delay-1000 scale-125"></div>
+            <div className="relative group/logo">
+              {/* Pulsing glow rings - animate on hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-xl opacity-60 animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-2xl opacity-40 animate-pulse scale-110"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-3xl opacity-20 animate-pulse scale-125"></div>
 
-              <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group" style={{transformStyle: 'preserve-3d'}}>
+              <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group">
                 <Plane className="h-10 w-10 text-white group-hover:animate-bounce" />
 
-                {/* Orbiting elements - orbit on logo hover in 3D */}
-                <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full orbit-on-hover -translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full orbit-reverse-on-hover -translate-x-1/2 -translate-y-1/2"></div>
+                {/* Orbiting elements - 2D orbit around box on hover */}
+                <div className="absolute w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full orbit-on-hover shadow-lg shadow-yellow-400/50"></div>
+                <div className="absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full orbit-reverse-on-hover shadow-lg shadow-blue-400/50"></div>
               </div>
             </div>
             <div>

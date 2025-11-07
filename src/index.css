@@ -136,32 +136,70 @@ html {
   animation: pulseGlow 3s ease-in-out infinite;
 }
 
-/* Orbit animation for logo elements - 3D tilted orbit like planets */
+/* Orbit animation - 2D tilted ellipse around the entire box container */
 @keyframes orbit {
   0% {
-    transform: rotateY(75deg) rotateZ(0deg) translateX(35px) rotateZ(0deg);
-    z-index: 1;
+    left: -8px;
+    bottom: -8px;
+    opacity: 1;
+    z-index: 10;
+  }
+  25% {
+    left: 50%;
+    bottom: 100%;
+    opacity: 0.4;
+    z-index: -1;
   }
   50% {
+    left: calc(100% + 8px);
+    bottom: calc(100% + 8px);
+    opacity: 1;
+    z-index: 10;
+  }
+  75% {
+    left: 50%;
+    bottom: 0%;
+    opacity: 0.4;
     z-index: -1;
   }
   100% {
-    transform: rotateY(75deg) rotateZ(360deg) translateX(35px) rotateZ(-360deg);
-    z-index: 1;
+    left: -8px;
+    bottom: -8px;
+    opacity: 1;
+    z-index: 10;
   }
 }
 
 @keyframes orbitReverse {
   0% {
-    transform: rotateY(75deg) rotateZ(0deg) translateX(35px) rotateZ(0deg);
-    z-index: 1;
+    right: -8px;
+    top: -8px;
+    opacity: 1;
+    z-index: 10;
+  }
+  25% {
+    right: 50%;
+    top: 100%;
+    opacity: 0.4;
+    z-index: -1;
   }
   50% {
+    right: calc(100% + 8px);
+    top: calc(100% + 8px);
+    opacity: 1;
+    z-index: 10;
+  }
+  75% {
+    right: 50%;
+    top: 0%;
+    opacity: 0.4;
     z-index: -1;
   }
   100% {
-    transform: rotateY(75deg) rotateZ(-360deg) translateX(35px) rotateZ(360deg);
-    z-index: 1;
+    right: -8px;
+    top: -8px;
+    opacity: 1;
+    z-index: 10;
   }
 }
 
