@@ -379,20 +379,54 @@ class ITAMatrixService {
     radiusMiles: number;
     pageSize?: number;
   }): Promise<LocationSearchResult> {
-    const { center, radiusMiles, pageSize = 50 } = params;
-
-    const url = `${this.locationBaseUrl}/v1/locationTypes/CITIES_AND_AIRPORTS/locationCodes/${center}/airports?maxMilesDistanceFromCenter=${radiusMiles}&pageSize=${pageSize}&key=${this.apiKey}`;
+    const { center, radiusMiles } = params;
 
     try {
-      console.log('📍 ITAMatrixService: Geo searching airports:', { center, radiusMiles });
+      console.log('📍 ITAMatrixService: Step 1 - Getting lat/long for:', center);
+
+      // First, get the lat/long for the center airport
+      const locationResult = await this.searchLocations({
+        locationCode: center,
+        locationType: 'CITIES_AND_AIRPORTS'
+      });
+
+      if (!locationResult.locations || locationResult.locations.length === 0) {
+        throw new Error(`Could not find location data for ${center}`);
+      }
+
+      const location = locationResult.locations[0];
+      if (!location.latLng) {
+        throw new Error(`No lat/lng data available for ${center}`);
+      }
+
+      const { latitude, longitude } = location.latLng;
+      console.log('📍 ITAMatrixService: Step 2 - Searching airports near', { latitude, longitude, radiusMiles });
+
+      // Now do the geosearch with lat/long
+      const url = `${this.locationBaseUrl}/v1/geosearch/findairportsnearcoords?key=${this.apiKey}&alt=json`;
+
       const response = await fetch(url, {
-        method: 'GET',
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'x-alkali-application-key': 'applications/matrix',
+          'x-alkali-auth-apps-namespace': 'alkali_v2',
+          'x-alkali-auth-entities-namespace': 'alkali_v2',
+          'X-JavaScript-User-Agent': 'google-api-javascript-client/1.1.0',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Goog-Encode-Response-If-Executable': 'base64'
+        },
+        body: JSON.stringify({
+          latitude: latitude,
+          longitude: longitude,
+          radius: radiusMiles,
+          units: 'MI'
+        })
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ ITAMatrixService: Geo search failed:', response.status, errorText);
         throw new Error(`Geo search failed: ${response.status}`);
       }
 

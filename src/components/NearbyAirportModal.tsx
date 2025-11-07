@@ -22,12 +22,22 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [radiusMiles, setRadiusMiles] = useState(200);
+  const [debouncedRadius, setDebouncedRadius] = useState(200);
+
+  // Debounce radius changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedRadius(radiusMiles);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [radiusMiles]);
 
   useEffect(() => {
     if (isOpen && centerAirportCode) {
       fetchNearbyAirports();
     }
-  }, [isOpen, centerAirportCode, radiusMiles]);
+  }, [isOpen, centerAirportCode, debouncedRadius]);
 
   const fetchNearbyAirports = async () => {
     setIsLoading(true);
@@ -36,7 +46,7 @@ const NearbyAirportModal: React.FC<NearbyAirportModalProps> = ({
     try {
       const result = await ITAMatrixService.geoSearch({
         center: centerAirportCode,
-        radiusMiles: radiusMiles,
+        radiusMiles: debouncedRadius,
         pageSize: 100
       });
       setAirports(result.locations || []);
