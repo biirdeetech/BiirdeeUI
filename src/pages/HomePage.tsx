@@ -79,9 +79,9 @@ const HomePage: React.FC = () => {
               <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group">
                 <Plane className="h-10 w-10 text-white group-hover:animate-bounce" />
 
-                {/* Orbiting elements - only on logo hover */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full" style={{animation: 'none'}}></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full" style={{animation: 'none'}}></div>
+                {/* Orbiting elements - orbit on logo hover */}
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full orbit-on-hover"></div>
+                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full orbit-reverse-on-hover"></div>
               </div>
             </div>
             <div>

@@ -146,6 +146,32 @@ html {
   }
 }
 
+@keyframes orbitReverse {
+  from {
+    transform: rotate(0deg) translateX(25px) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translateX(25px) rotate(360deg);
+  }
+}
+
+/* Orbit animation classes that activate on hover */
+.orbit-on-hover {
+  animation: none;
+}
+
+.group\/logo:hover .orbit-on-hover {
+  animation: orbit 3s linear infinite;
+}
+
+.orbit-reverse-on-hover {
+  animation: none;
+}
+
+.group\/logo:hover .orbit-reverse-on-hover {
+  animation: orbitReverse 4s linear infinite;
+}
+
 /* Advanced floating animation */
 @keyframes float {
   0%, 100% {
