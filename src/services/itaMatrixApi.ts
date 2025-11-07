@@ -244,12 +244,19 @@ class ITAMatrixService {
     const solutions = googleResponse.solutionList.solutions || [];
     console.log(`✅ ITAMatrixService: Transforming ${solutions.length} solutions`);
 
-    // Helper to extract numeric value from currency strings like "PKR651625" or "USD1234"
+    // Helper to extract numeric value and currency from strings like "PKR651625" or "USD1234"
     const extractPrice = (priceStr: string | undefined): number => {
       if (!priceStr) return 0;
       // Remove any currency code (3 letter prefix) and parse the number
       const numericStr = priceStr.replace(/^[A-Z]{3}/, '');
       return parseFloat(numericStr) || 0;
+    };
+
+    const extractCurrency = (priceStr: string | undefined): string => {
+      if (!priceStr) return 'USD';
+      // Extract the first 3 uppercase letters as currency code
+      const match = priceStr.match(/^[A-Z]{3}/);
+      return match ? match[0] : 'USD';
     };
 
     // Transform each solution to match our FlightSolution interface
@@ -261,6 +268,7 @@ class ITAMatrixService {
         id: solution.id,
         totalAmount: extractPrice(solution.ext?.price),
         displayTotal: extractPrice(solution.displayTotal),
+        currency: extractCurrency(solution.displayTotal || solution.ext?.price),
         slices: slices.map((slice: any) => ({
           origin: slice.origin || { code: '', name: '' },
           destination: slice.destination || { code: '', name: '' },

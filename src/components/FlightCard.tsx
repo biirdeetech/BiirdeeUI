@@ -37,6 +37,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         isNonstop: groupedFlight.isNonstop && (!selectedReturn.returnSlice?.stops || selectedReturn.returnSlice.stops.length === 0),
         totalAmount: selectedReturn.totalAmount,
         displayTotal: selectedReturn.displayTotal,
+        currency: selectedReturn.currency || 'USD',
         pricePerMile: selectedReturn.ext.pricePerMile,
         hasMultipleReturns: groupedFlight.returnOptions.length > 1
       };
@@ -49,6 +50,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         isNonstop: regularFlight.slices.every(slice => !slice.stops || slice.stops.length === 0),
         totalAmount: regularFlight.totalAmount,
         displayTotal: regularFlight.displayTotal,
+        currency: regularFlight.currency || 'USD',
         pricePerMile: regularFlight.ext.pricePerMile,
         hasMultipleReturns: false,
         flightId: regularFlight.id,
@@ -61,7 +63,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     }
   };
 
-  const { slices, carrier, isNonstop, totalAmount, displayTotal, pricePerMile, hasMultipleReturns, flightId, totalMileage, totalMileagePrice, matchType, mileageDeals, fullyEnriched } = getFlightData();
+  const { slices, carrier, isNonstop, totalAmount, displayTotal, currency, pricePerMile, hasMultipleReturns, flightId, totalMileage, totalMileagePrice, matchType, mileageDeals, fullyEnriched } = getFlightData();
   const isPremium = PREMIUM_CARRIERS.includes(carrier.code);
 
   console.log('🎴 FlightCard: Rendering flight with', { 
@@ -145,13 +147,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     return diffDays;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+  const formatPrice = (price: number, currencyCode: string) => {
+    // Format number with commas
+    const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price);
+
+    // Return with currency code prefix
+    return `${currencyCode} ${formatted}`;
   };
 
   const openHacksPage = () => {
@@ -163,7 +167,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
       destination: firstSlice.destination.code,
       departDate: firstSlice.departure.split('T')[0],
       cabin: slices[0].cabins[0] || 'BUSINESS',
-      price: formatPrice(displayTotal)
+      price: formatPrice(displayTotal, currency)
     });
     
     // Add flight number if available
@@ -331,7 +335,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Total Price */}
               <div className="flex flex-col items-end">
                 <div className="text-xl font-medium text-neutral-100">
-                  {formatPrice(displayTotal)}
+                  {formatPrice(displayTotal, currency)}
                 </div>
                 {totalMileage > 0 && (
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -425,7 +429,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             </div>
                             <div className="text-right">
                               <div className="text-sm font-medium text-white">
-                                {formatPrice(returnOption.displayTotal)}
+                                {formatPrice(returnOption.displayTotal, returnOption.currency || 'USD')}
                               </div>
                               <div className="text-xs text-gray-400">
                                 ${formatPricePerMile(returnOption.ext.pricePerMile)}/mi

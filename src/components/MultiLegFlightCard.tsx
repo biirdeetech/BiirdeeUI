@@ -8,7 +8,7 @@ interface MultiLegFlightCardProps {
 }
 
 const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
-  const { slices, totalAmount, displayTotal, ext } = flight;
+  const { slices, totalAmount, displayTotal, currency, ext } = flight;
   const firstSlice = slices[0];
   const carrier = firstSlice.segments[0]?.carrier || { code: '', name: '', shortName: '' };
   const isPremium = PREMIUM_CARRIERS.includes(carrier.code);
@@ -81,13 +81,15 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
     return diffDays;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+  const formatPrice = (price: number, currencyCode: string) => {
+    // Format number with commas
+    const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price);
+
+    // Return with currency code prefix
+    return `${currencyCode} ${formatted}`;
   };
 
   const formatPricePerMile = (pricePerMile: number) => {
@@ -143,7 +145,7 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
           </div>
           <div className="text-right">
             <div className="text-xl font-medium text-neutral-100">
-              {formatPrice(displayTotal)}
+              {formatPrice(displayTotal, currency || 'USD')}
             </div>
             <div className="text-sm text-gray-300">
               ${formatPricePerMile(ext.pricePerMile)}/mile

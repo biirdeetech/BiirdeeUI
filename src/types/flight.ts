@@ -86,6 +86,7 @@ export interface FlightSolution {
   id: string;
   totalAmount: number;
   displayTotal: number;
+  currency: string;
   slices: FlightSlice[];
   ext: {
     pricePerMile: number;
@@ -103,6 +104,7 @@ export interface GroupedFlight {
     returnSlice: FlightSlice;
     totalAmount: number;
     displayTotal: number;
+    currency: string;
     ext: {
       pricePerMile: number;
     };
