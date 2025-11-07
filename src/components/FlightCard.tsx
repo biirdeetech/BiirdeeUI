@@ -474,6 +474,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
 
                 <div className="flex-1 px-1 sm:px-2 lg:px-4">
                   {(() => {
+                    const isNonstop = !slice.stops || slice.stops.length === 0;
+
+                    if (isNonstop) {
+                      // Nonstop flight - single green line with plane in middle
+                      return (
+                        <>
+                          <div className="flex items-center gap-1 relative">
+                            <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                            <Plane className="h-3 w-3 text-emerald-400" />
+                            <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                          </div>
+
+                          {/* Duration below */}
+                          <div className="text-center text-xs lg:text-sm font-medium text-gray-200 mt-2">
+                            <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3 inline mr-1" />
+                            {formatDuration(slice.duration)}
+                          </div>
+                        </>
+                      );
+                    }
+
+                    // Flights with stops - original complex layout
                     const { segments: segmentTimes, layovers: layoverTimes } = calculateSegmentTimes(slice);
 
                     return (
@@ -541,10 +563,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             );
                           })}
 
-                          {/* Plane icon for direct flights */}
-                          {(!slice.stops || slice.stops.length === 0) && (
-                            <Plane className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
-                          )}
                         </div>
 
                         {/* Total Duration - Long thin line at bottom */}
