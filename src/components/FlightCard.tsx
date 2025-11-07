@@ -227,12 +227,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 }}
               />
             )}
-            <div className={`px-2 py-1 rounded text-xs font-medium ${
-              isPremium ? 'bg-accent-600 text-white' : 'bg-gray-600 text-white'
-            }`}>
-              {carrier.code}
+            <div>
+              <div className="font-semibold text-white">{carrier.shortName}</div>
+              <div className="text-xs text-gray-400">
+                {slices[0].origin.code} → {slices[slices.length - 1].destination.code}
+                {slices[0].flights && slices[0].flights.length > 0 && (
+                  <span className="ml-2">Flight {slices[0].flights[0]}</span>
+                )}
+              </div>
             </div>
-            <span className="font-semibold text-white">{carrier.shortName}</span>
             {isNonstop && (
               <div className="px-2 py-1 bg-success-500/20 text-success-400 text-xs font-medium rounded">
                 Nonstop
@@ -407,26 +410,70 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-200">{slice.origin.code}</div>
                   <div className="text-xs text-gray-400 hidden lg:block">{slice.origin.name}</div>
+                  {/* Cabin class for this airport */}
+                  {slice.cabins && slice.cabins.length > 0 && (
+                    <div className="text-[10px] text-accent-300 mt-1">
+                      {slice.cabins[0]}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex-1 px-1 sm:px-2 lg:px-4">
                   <div className="flex items-center gap-2 text-gray-300">
-                    <div className="flex-1 border-t-2 border-gray-600"></div>
+                    <div className={`flex-1 ${
+                      slice.stops && slice.stops.length > 0 ? 'border-t-2 border-dashed border-gray-600' : 'border-t-2 border-gray-600'
+                    }`}></div>
                     <Plane className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
-                    <div className="flex-1 border-t-2 border-gray-600"></div>
+                    <div className={`flex-1 ${
+                      slice.stops && slice.stops.length > 0 ? 'border-t-2 border-dashed border-gray-600' : 'border-t-2 border-gray-600'
+                    }`}></div>
                   </div>
                   <div className="text-center text-xs lg:text-sm font-medium text-gray-200 mt-1 lg:mt-2">
                     <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3 inline mr-1" />
                     {formatDuration(slice.duration)}
                   </div>
+
+                  {/* Layover Information */}
                   {slice.stops && slice.stops.length > 0 && (
-                    <div className="text-center text-xs text-gray-400 mt-1">
-                      {slice.stops.length === 1 ? '1 stop' : `${slice.stops.length} stops`}: {slice.stops.map(stop => stop.code).join(', ')}
-                    </div>
-                  )}
-                  {slice.flights && slice.flights.length > 1 && (
-                    <div className="text-center text-[10px] text-gray-500 mt-0.5">
-                      Flights: {slice.flights.join(' → ')}
+                    <div className="flex flex-col items-center gap-2 mt-2">
+                      {slice.segments && slice.segments.map((segment, segIdx) => {
+                        // Show layover info between segments
+                        if (segIdx < slice.segments!.length - 1) {
+                          const layoverAirport = slice.stops![segIdx];
+                          const nextSegment = slice.segments![segIdx + 1];
+                          const currentArrival = segment.arrival;
+                          const nextDeparture = nextSegment.departure;
+
+                          // Calculate layover duration
+                          const layoverMinutes = Math.floor(
+                            (new Date(nextDeparture).getTime() - new Date(currentArrival).getTime()) / (1000 * 60)
+                          );
+
+                          return (
+                            <div key={segIdx} className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-2 bg-gray-800/50 px-2 py-1 rounded">
+                                {nextSegment.carrier && nextSegment.carrier.code && (
+                                  <img
+                                    src={`https://www.gstatic.com/flights/airline_logos/35px/${nextSegment.carrier.code}.png`}
+                                    alt={nextSegment.carrier.code}
+                                    className="h-4 w-4 object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                                <span className="text-[10px] text-gray-300">
+                                  {layoverAirport?.code}
+                                </span>
+                                <span className="text-[10px] text-gray-500">
+                                  {formatDuration(layoverMinutes)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
                   )}
                 </div>
@@ -447,6 +494,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                   </div>
                   <div className="text-xs sm:text-sm font-medium text-gray-200">{slice.destination.code}</div>
                   <div className="text-xs text-gray-400 hidden lg:block">{slice.destination.name}</div>
+                  {/* Cabin class for this airport */}
+                  {slice.cabins && slice.cabins.length > 0 && slice.cabins[slice.cabins.length - 1] && (
+                    <div className="text-[10px] text-accent-300 mt-1">
+                      {slice.cabins[slice.cabins.length - 1]}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -460,16 +513,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     {slice.flights.map((flight, idx) => (
                       <span key={idx} className="font-mono bg-gray-700 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-white font-medium text-xs">
                         {flight}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-400 font-medium">Class:</span>
-                  <div className="flex gap-1 flex-wrap">
-                    {slice.cabins.map((cabin, idx) => (
-                      <span key={idx} className="bg-accent-500/20 text-accent-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium">
-                        {cabin}
                       </span>
                     ))}
                   </div>
