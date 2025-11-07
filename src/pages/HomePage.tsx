@@ -37,28 +37,28 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950 relative overflow-hidden group/page">
-      {/* Animated Background Elements - Only animate on page hover */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950 relative overflow-hidden">
+      {/* Static Background Elements - No animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Large floating orbs */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-gradient-to-r from-accent-600/20 to-orange-500/20 rounded-full blur-3xl group-hover/page:animate-pulse"></div>
-        <div className="absolute top-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-600/15 to-cyan-500/15 rounded-full blur-3xl group-hover/page:animate-pulse delay-1000"></div>
-        <div className="absolute bottom-32 left-1/4 w-72 h-72 bg-gradient-to-r from-purple-600/15 to-pink-500/15 rounded-full blur-3xl group-hover/page:animate-pulse delay-2000"></div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-r from-indigo-600/20 to-violet-500/20 rounded-full blur-3xl group-hover/page:animate-pulse delay-3000"></div>
+        {/* Large floating orbs - static */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-gradient-to-r from-accent-600/20 to-orange-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-600/15 to-cyan-500/15 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-32 left-1/4 w-72 h-72 bg-gradient-to-r from-purple-600/15 to-pink-500/15 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-gradient-to-r from-indigo-600/20 to-violet-500/20 rounded-full blur-3xl"></div>
 
-        {/* Floating particles */}
-        <div className="absolute top-32 left-1/3 w-3 h-3 bg-gradient-to-r from-accent-400 to-orange-400 rounded-full group-hover/page:animate-ping delay-500 shadow-lg shadow-accent-400/50"></div>
-        <div className="absolute top-48 right-1/3 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full group-hover/page:animate-ping delay-1000 shadow-lg shadow-blue-400/50"></div>
-        <div className="absolute bottom-32 left-1/2 w-2.5 h-2.5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full group-hover/page:animate-ping delay-1500 shadow-lg shadow-purple-400/50"></div>
-        <div className="absolute top-64 left-2/3 w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full group-hover/page:animate-ping delay-2000"></div>
-        <div className="absolute bottom-48 right-1/4 w-2 h-2 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full group-hover/page:animate-ping delay-2500"></div>
+        {/* Floating particles - static */}
+        <div className="absolute top-32 left-1/3 w-3 h-3 bg-gradient-to-r from-accent-400 to-orange-400 rounded-full shadow-lg shadow-accent-400/50"></div>
+        <div className="absolute top-48 right-1/3 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full shadow-lg shadow-blue-400/50"></div>
+        <div className="absolute bottom-32 left-1/2 w-2.5 h-2.5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full shadow-lg shadow-purple-400/50"></div>
+        <div className="absolute top-64 left-2/3 w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full"></div>
+        <div className="absolute bottom-48 right-1/4 w-2 h-2 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full"></div>
 
         {/* Animated grid pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
 
-        {/* Moving light beams */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent-400/50 to-transparent group-hover/page:animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-blue-400/50 to-transparent group-hover/page:animate-pulse delay-1000"></div>
+        {/* Static light beams */}
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-accent-400/50 to-transparent"></div>
+        <div className="absolute bottom-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-blue-400/50 to-transparent"></div>
       </div>
 
       {/* Navigation */}
@@ -70,18 +70,18 @@ const HomePage: React.FC = () => {
         <div className="text-center mb-20">
           {/* Logo Animation */}
           <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="relative group/logo">
+            <div className="relative group/logo" style={{perspective: '400px'}}>
               {/* Pulsing glow rings */}
               <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-xl opacity-60 group-hover/logo:animate-pulse"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-2xl opacity-40 group-hover/logo:animate-pulse delay-500 scale-110"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-accent-600 to-orange-500 rounded-2xl blur-3xl opacity-20 group-hover/logo:animate-pulse delay-1000 scale-125"></div>
 
-              <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group">
+              <div className="relative bg-gradient-to-r from-accent-600 via-orange-500 to-accent-700 p-6 rounded-2xl shadow-2xl transform hover:scale-110 hover:rotate-3 transition-all duration-500 group" style={{transformStyle: 'preserve-3d'}}>
                 <Plane className="h-10 w-10 text-white group-hover:animate-bounce" />
 
-                {/* Orbiting elements - orbit on logo hover */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full orbit-on-hover"></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full orbit-reverse-on-hover"></div>
+                {/* Orbiting elements - orbit on logo hover in 3D */}
+                <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full orbit-on-hover -translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full orbit-reverse-on-hover -translate-x-1/2 -translate-y-1/2"></div>
               </div>
             </div>
             <div>
