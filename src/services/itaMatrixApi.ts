@@ -370,6 +370,14 @@ class ITAMatrixService {
       }
 
       const data = await response.json();
+
+      // When searching by locationCode, the API returns a single object, not { locations: [...] }
+      if (locationCode && !data.locations) {
+        const result = { locations: [data] };
+        console.log('✅ ITAMatrixService: Found location:', data.code);
+        return result;
+      }
+
       console.log('✅ ITAMatrixService: Found', data.locations?.length || 0, 'locations');
       return data;
     } catch (error) {
