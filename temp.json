@@ -1,0 +1,500 @@
+{
+    "api_version": "3.0",
+    "provider": "ita-matrix",
+    "token": "!VValVg7NAAZbdm6be3ZCk4IyxMsEHHY7ADQBEArZ1Cv1HzLd_5bbr_0u2eU0KS1nmiYsR5lyWsHqR2uHijuc_EShYzU5GlRKIoji3kX9AgAAAMdSAAAACGgBB34AQYzBXm4pvXLcFTDPxJagVqQ8yEQ7X69zA_uwW8nsTz-jtIgM4GsFQiC-mTnNMflIdLhbLqivBREQK1YemFuE9EVBmQOMlMNNHoWWnQrTfeuBUepk5BodHlx_4aUyWPOtNpQq2JgXg1-2qHMMmlUBTuY3JDX4CX8NuCXMppYkNUM-uUhfzwBUCEIbXH7_anUfcwyuwR9c6OGTt6VejbF57K_EdtCFNqCHWrcmgjeU4JbtqNKOFAZDrYhODie65IzTy2Q2TxRsc7A7KXkiliW6LLyTbm4mImHiuLG_tPPw4GgDuFY20uDZHDiVFgkgEDnqHnvglJraIs-AN3XbRzVNC-ebzkTP3MijDOy8wDm2T6QwTmc2ls7XTUsQembuhe78CTu5k-lzE1GCRuXsmd2fuoEdMiT8_V_yj2C71gMF1XpSG02qNxbWuLnfudEeDPuUhhLQOoNrjdUJTZJt_W1XNza1F3aVTmb5R4tEDbOht8SvOfK0BMKqjDURnOaUyA5FinAEFjIb-P5LKkuC5TRPULDTP1YbIyJdWMj9TN_DAeWs99i9H9DzgPM094-hGTv1BlEh-7ENoOmmbqLSwTrSFAr0N7XA3whE6c734T8ZTFCRFHXvunDW6Nug13-k7b0OF8pM2PZ8ULtykkmT3T6MX1T_T5dUNbzetCWhQbDJpHBkxBzfZGXTX-8yXOJrp2x7yvh7nZfmm-e4uUevWYuDGrGyJvNk6B9Gf_CA5Us1oUryIr-d1esUnqfNTxlfZJze-FY5BKFgs_BFiVQC1tO_nIRBiDDk11KS7Ofw9r1kT5SNG5Ty93MIxYnVs636k-rWEaCqrzHLCluDvoXONXjQYB_7-7g-gpb66H0P62BMIwaXlYsX650D1vf8UHKRih_X8HzoYCWjY5D1jLhVY4YYBURdrTjXdHSea6jRHLIJasRelfzh9DnlKPKQwJwlK7VNxbz0pmDpZWyxiJ0d68n9iEhrrmGnqLgZsMaHVBWwvCtP4vyv8GQtf4lkNv9xg8dlCHdxVW8cevqP38HSV3pybNymU_3me_JYN-ombAQU7mIVgc8_z7vU3mWTmslvYJU1nwUtQf-wXNMhZfi8NbCLCZQrV23D6a22ZZRtWBDOOLktZNMgThcWxsYUuslUwEWzmMTl6S-6Zr1FPmEr9028Mfdxge6oPu9Vc3JL1t_KcP4d_sB2D8pIR4wGbPQ3KSCMthtn9HRfDDRW1KwJYT9ziuW5Lj6OXckthMe6wdu5bRSnZA0LKRoq3BTL1G1zqdTMGUdO2eaZ5woYqDsjDzgaV0g",
+    "batchId": "562529904479684496",
+    "batchEmail": "batch562529904479684496+gapiRequest@googleapis.com",
+    "searchPayload": "eyJ0eXBlIjoib25lLXdheSIsInNsaWNlcyI6W3sib3JpZ2luIjpbIkxIRSJdLCJkZXN0IjpbIktVTCJdLCJkYXRlcyI6eyJzZWFyY2hEYXRlVHlwZSI6InNwZWNpZmljIiwiZGVwYXJ0dXJlRGF0ZSI6IjIwMjUtMTEtMTQiLCJkZXBhcnR1cmVEYXRlVHlwZSI6ImRlcGFydCIsImRlcGFydHVyZURhdGVNb2RpZmllciI6IjAiLCJkZXBhcnR1cmVEYXRlUHJlZmVycmVkVGltZXMiOltdLCJyZXR1cm5EYXRlVHlwZSI6ImRlcGFydCIsInJldHVybkRhdGVNb2RpZmllciI6IjAiLCJyZXR1cm5EYXRlUHJlZmVycmVkVGltZXMiOltdfSwicm91dGluZyI6IkJLSyIsImV4dCI6ImYgYmM9Y3xiYz1qfGJjPWR8YmM9aXxiYz16fGJjPWZ8YmM9YXxiYz1wIiwicm91dGluZ1JldCI6IiIsImV4dFJldCI6IiJ9XSwib3B0aW9ucyI6eyJjYWJpbiI6IkJVU0lORVNTIiwic3RvcHMiOiItMSIsImV4dHJhU3RvcHMiOiItMSIsImFsbG93QWlycG9ydENoYW5nZXMiOiJ0cnVlIiwic2hvd09ubHlBdmFpbGFibGUiOiJ0cnVlIn0sInBheCI6eyJhZHVsdHMiOiIxIn0sInNvbHV0aW9uIjp7InNlc3Npb25JZCI6bnVsbCwiamQiOnRydWUsIktnIjpudWxsLCJiaSI6bnVsbH19",
+    "requestPayload": {
+        "summarizers": [
+            "carrierStopMatrix",
+            "currencyNotice",
+            "solutionList",
+            "itineraryPriceSlider",
+            "itineraryCarrierList",
+            "itineraryDepartureTimeRanges",
+            "itineraryArrivalTimeRanges",
+            "durationSliderItinerary",
+            "itineraryOrigins",
+            "itineraryDestinations",
+            "itineraryStopCountList",
+            "warningsItinerary"
+        ],
+        "inputs": {
+            "filter": {},
+            "page": {
+                "current": 1,
+                "size": 25
+            },
+            "pax": {
+                "adults": 1
+            },
+            "slices": [
+                {
+                    "origins": [
+                        "LHE"
+                    ],
+                    "destinations": [
+                        "KUL"
+                    ],
+                    "date": "2025-11-14",
+                    "dateModifier": {
+                        "minus": 0,
+                        "plus": 0
+                    },
+                    "isArrivalDate": false,
+                    "commandLine": "f bc=c|bc=j|bc=d|bc=i|bc=z|bc=f|bc=a|bc=p",
+                    "routeLanguage": "BKK",
+                    "filter": {
+                        "warnings": {
+                            "values": []
+                        }
+                    },
+                    "selected": false
+                }
+            ],
+            "firstDayOfWeek": "SUNDAY",
+            "internalUser": false,
+            "sliceIndex": 0,
+            "sorts": "default",
+            "cabin": "BUSINESS",
+            "changeOfAirport": true,
+            "checkAvailability": true
+        },
+        "summarizerSet": "wholeTrip",
+        "name": "specificDatesSlice",
+        "bgProgramResponse": "!VValVg7NAAZbdm6be3ZCk4IyxMsEHHY7ADQBEArZ1Cv1HzLd_5bbr_0u2eU0KS1nmiYsR5lyWsHqR2uHijuc_EShYzU5GlRKIoji3kX9AgAAAMdSAAAACGgBB34AQYzBXm4pvXLcFTDPxJagVqQ8yEQ7X69zA_uwW8nsTz-jtIgM4GsFQiC-mTnNMflIdLhbLqivBREQK1YemFuE9EVBmQOMlMNNHoWWnQrTfeuBUepk5BodHlx_4aUyWPOtNpQq2JgXg1-2qHMMmlUBTuY3JDX4CX8NuCXMppYkNUM-uUhfzwBUCEIbXH7_anUfcwyuwR9c6OGTt6VejbF57K_EdtCFNqCHWrcmgjeU4JbtqNKOFAZDrYhODie65IzTy2Q2TxRsc7A7KXkiliW6LLyTbm4mImHiuLG_tPPw4GgDuFY20uDZHDiVFgkgEDnqHnvglJraIs-AN3XbRzVNC-ebzkTP3MijDOy8wDm2T6QwTmc2ls7XTUsQembuhe78CTu5k-lzE1GCRuXsmd2fuoEdMiT8_V_yj2C71gMF1XpSG02qNxbWuLnfudEeDPuUhhLQOoNrjdUJTZJt_W1XNza1F3aVTmb5R4tEDbOht8SvOfK0BMKqjDURnOaUyA5FinAEFjIb-P5LKkuC5TRPULDTP1YbIyJdWMj9TN_DAeWs99i9H9DzgPM094-hGTv1BlEh-7ENoOmmbqLSwTrSFAr0N7XA3whE6c734T8ZTFCRFHXvunDW6Nug13-k7b0OF8pM2PZ8ULtykkmT3T6MX1T_T5dUNbzetCWhQbDJpHBkxBzfZGXTX-8yXOJrp2x7yvh7nZfmm-e4uUevWYuDGrGyJvNk6B9Gf_CA5Us1oUryIr-d1esUnqfNTxlfZJze-FY5BKFgs_BFiVQC1tO_nIRBiDDk11KS7Ofw9r1kT5SNG5Ty93MIxYnVs636k-rWEaCqrzHLCluDvoXONXjQYB_7-7g-gpb66H0P62BMIwaXlYsX650D1vf8UHKRih_X8HzoYCWjY5D1jLhVY4YYBURdrTjXdHSea6jRHLIJasRelfzh9DnlKPKQwJwlK7VNxbz0pmDpZWyxiJ0d68n9iEhrrmGnqLgZsMaHVBWwvCtP4vyv8GQtf4lkNv9xg8dlCHdxVW8cevqP38HSV3pybNymU_3me_JYN-ombAQU7mIVgc8_z7vU3mWTmslvYJU1nwUtQf-wXNMhZfi8NbCLCZQrV23D6a22ZZRtWBDOOLktZNMgThcWxsYUuslUwEWzmMTl6S-6Zr1FPmEr9028Mfdxge6oPu9Vc3JL1t_KcP4d_sB2D8pIR4wGbPQ3KSCMthtn9HRfDDRW1KwJYT9ziuW5Lj6OXckthMe6wdu5bRSnZA0LKRoq3BTL1G1zqdTMGUdO2eaZ5woYqDsjDzgaV0g"
+    },
+    "data": {
+        "carrierStopMatrix": {
+            "columns": [
+                {
+                    "label": {
+                        "code": "TG",
+                        "shortName": "THAI"
+                    }
+                }
+            ],
+            "rows": [
+                {
+                    "cells": [
+                        {
+                            "minPrice": "PKR651625",
+                            "minPriceInColumn": true,
+                            "minPriceInGrid": true,
+                            "minPriceInRow": true
+                        }
+                    ],
+                    "label": 1
+                }
+            ]
+        },
+        "currencyNotice": {
+            "ext": {
+                "price": "PKR651625"
+            }
+        },
+        "durationSliderItinerary": [
+            {
+                "groups": [
+                    {
+                        "label": {
+                            "end": 552,
+                            "start": 550
+                        },
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    },
+                    {
+                        "label": {
+                            "end": 702,
+                            "start": 700
+                        },
+                        "minPrice": "PKR1222833"
+                    }
+                ],
+                "maxDuration": 700,
+                "minDuration": 550,
+                "index": 0
+            }
+        ],
+        "itineraryArrivalTimeRanges": [
+            {
+                "groups": [
+                    {
+                        "label": {
+                            "end": "08:00",
+                            "start": "00:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "11:00",
+                            "start": "08:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "14:00",
+                            "start": "11:00"
+                        },
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    },
+                    {
+                        "label": {
+                            "end": "17:00",
+                            "start": "14:00"
+                        },
+                        "minPrice": "PKR1222833"
+                    },
+                    {
+                        "label": {
+                            "end": "21:00",
+                            "start": "17:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "23:59",
+                            "start": "21:00"
+                        }
+                    }
+                ]
+            }
+        ],
+        "itineraryCarrierList": {
+            "groups": [
+                {
+                    "label": {
+                        "code": "TG",
+                        "shortName": "THAI"
+                    },
+                    "minPrice": "PKR651625",
+                    "minPriceInSummary": true
+                }
+            ]
+        },
+        "itineraryDepartureTimeRanges": [
+            {
+                "groups": [
+                    {
+                        "label": {
+                            "end": "08:00",
+                            "start": "00:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "11:00",
+                            "start": "08:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "14:00",
+                            "start": "11:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "17:00",
+                            "start": "14:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "21:00",
+                            "start": "17:00"
+                        }
+                    },
+                    {
+                        "label": {
+                            "end": "23:59",
+                            "start": "21:00"
+                        },
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    }
+                ]
+            }
+        ],
+        "itineraryDestinations": [
+            {
+                "groups": [
+                    {
+                        "label": {
+                            "code": "KUL",
+                            "name": "Kuala Lumpur International"
+                        },
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    }
+                ]
+            }
+        ],
+        "itineraryOrigins": [
+            {
+                "groups": [
+                    {
+                        "label": {
+                            "code": "LHE",
+                            "name": "Lahore Allama Iqbal International"
+                        },
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    }
+                ]
+            }
+        ],
+        "itineraryPriceSlider": {
+            "groups": [
+                {
+                    "label": {
+                        "end": "PKR657338",
+                        "start": "PKR651625"
+                    }
+                },
+                {
+                    "label": {
+                        "end": "PKR1222925",
+                        "start": "PKR1217212"
+                    }
+                }
+            ],
+            "maxPrice": "PKR1222833",
+            "minPrice": "PKR651625"
+        },
+        "itineraryStopCountList": {
+            "groups": [
+                {
+                    "label": 1,
+                    "minPrice": "PKR651625",
+                    "minPriceInSummary": true
+                }
+            ]
+        },
+        "solutionList": {
+            "pages": {
+                "count": 1,
+                "current": 1
+            },
+            "solutions": [
+                {
+                    "ext": {
+                        "price": "PKR651625",
+                        "pricePerMile": "PKR230.2561837456",
+                        "totalPrice": "PKR651625"
+                    },
+                    "itinerary": {
+                        "ext": {
+                            "dominantCarrier": {
+                                "code": "TG",
+                                "shortName": "THAI"
+                            }
+                        },
+                        "slices": [
+                            {
+                                "origin": {
+                                    "code": "LHE",
+                                    "name": "Lahore Allama Iqbal International"
+                                },
+                                "destination": {
+                                    "code": "KUL",
+                                    "name": "Kuala Lumpur International"
+                                },
+                                "arrival": "2025-11-15T11:55+08:00",
+                                "departure": "2025-11-14T23:45+05:00",
+                                "flights": [
+                                    "TG346",
+                                    "TG415"
+                                ],
+                                "stops": [
+                                    {
+                                        "code": "BKK",
+                                        "name": "Bangkok Suvarnabhumi International"
+                                    }
+                                ],
+                                "cabins": [
+                                    "BUSINESS"
+                                ],
+                                "segments": [
+                                    {
+                                        "pricings": [
+                                            {
+                                                "paxCount": 1
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "pricings": [
+                                            {
+                                                "paxCount": 1
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "duration": 550,
+                                "ext": {
+                                    "warnings": {
+                                        "types": [
+                                            "OVERNIGHT"
+                                        ],
+                                        "overnight": true
+                                    }
+                                }
+                            }
+                        ],
+                        "carriers": [
+                            {
+                                "code": "TG",
+                                "shortName": "THAI"
+                            }
+                        ],
+                        "singleCarrier": {
+                            "code": "TG",
+                            "shortName": "THAI"
+                        },
+                        "distance": {
+                            "units": "MI",
+                            "value": 2830
+                        }
+                    },
+                    "pricings": [
+                        {
+                            "ext": {
+                                "pax": {
+                                    "adults": 1
+                                }
+                            },
+                            "displayPrice": "PKR651625"
+                        }
+                    ],
+                    "displayTotal": "PKR651625",
+                    "id": "dhTtp024x54O6Z1caA2en6001",
+                    "passengerCount": 1
+                },
+                {
+                    "ext": {
+                        "price": "PKR1222833",
+                        "pricePerMile": "PKR432.0964664311",
+                        "totalPrice": "PKR1222833"
+                    },
+                    "itinerary": {
+                        "ext": {
+                            "dominantCarrier": {
+                                "code": "TG",
+                                "shortName": "THAI"
+                            }
+                        },
+                        "slices": [
+                            {
+                                "origin": {
+                                    "code": "LHE",
+                                    "name": "Lahore Allama Iqbal International"
+                                },
+                                "destination": {
+                                    "code": "KUL",
+                                    "name": "Kuala Lumpur International"
+                                },
+                                "arrival": "2025-11-15T14:25+08:00",
+                                "departure": "2025-11-14T23:45+05:00",
+                                "flights": [
+                                    "TG346",
+                                    "MH785"
+                                ],
+                                "stops": [
+                                    {
+                                        "code": "BKK",
+                                        "name": "Bangkok Suvarnabhumi International"
+                                    }
+                                ],
+                                "cabins": [
+                                    "BUSINESS"
+                                ],
+                                "segments": [
+                                    {
+                                        "pricings": [
+                                            {
+                                                "paxCount": 1
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "pricings": [
+                                            {
+                                                "paxCount": 1
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "duration": 700,
+                                "ext": {
+                                    "warnings": {
+                                        "types": [
+                                            "LONG_LAYOVER",
+                                            "OVERNIGHT"
+                                        ],
+                                        "overnight": true
+                                    }
+                                }
+                            }
+                        ],
+                        "carriers": [
+                            {
+                                "code": "TG",
+                                "shortName": "THAI"
+                            },
+                            {
+                                "code": "MH",
+                                "shortName": "Malaysia Airlines"
+                            }
+                        ],
+                        "singleCarrier": {
+                            "code": "*",
+                            "shortName": "Multiple Carriers"
+                        },
+                        "distance": {
+                            "units": "MI",
+                            "value": 2830
+                        }
+                    },
+                    "pricings": [
+                        {
+                            "ext": {
+                                "pax": {
+                                    "adults": 1
+                                }
+                            },
+                            "displayPrice": "PKR1222833"
+                        }
+                    ],
+                    "displayTotal": "PKR1222833",
+                    "id": "dhTtp024x54O6Z1caA2en6002",
+                    "passengerCount": 1
+                }
+            ],
+            "minPrice": "PKR651625",
+            "solutionCount": 2
+        },
+        "warningsItinerary": [
+            {
+                "groups": [
+                    {
+                        "label": "LONG_LAYOVER",
+                        "minPrice": "PKR1222833"
+                    },
+                    {
+                        "label": "OVERNIGHT",
+                        "minPrice": "PKR651625",
+                        "minPriceInSummary": true
+                    }
+                ]
+            }
+        ],
+        "id": "d2jSOj7ppoRzAfgRk0jGU2",
+        "session": "5ff0jGU2uJ4bdkh3PyrRCjVve",
+        "solutionCount": 2,
+        "solutionSet": "01Fpauq6Klt6SfbWNe7As66"
+    }
+}
