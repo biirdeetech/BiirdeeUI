@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info } from 'lucide-react';
+import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info, Sparkles } from 'lucide-react';
 import { getDefaultBookingClasses, bookingClassesToExt, extToBookingClasses } from '../utils/bookingClasses';
 import LocationSearchInput from './LocationSearchInput';
+import LocationSearchInputMulti from './LocationSearchInputMulti';
 import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
 import CurrencySearchInput from './CurrencySearchInput';
+import NearbyAirportModal from './NearbyAirportModal';
+import FakeRoundTripModal from './FakeRoundTripModal';
+import StrategyBadge from './StrategyBadge';
 import { Currency } from '../utils/currencies';
 
 // Helper function to get date 1 week from now
@@ -26,7 +30,7 @@ interface FlightLeg {
   id: string;
   origins: string[];
   destinations: string[];
-  via?: string;
+  vias: string[]; // Changed from via to vias (array)
   nonstop: boolean;
   departDate: string;
   flexibility: number; // 0, 1, or 2 days
@@ -45,6 +49,8 @@ interface FlightLeg {
   // Per-leg Aero options
   aero: boolean;
   fetchSummary: boolean;
+  // Strategy flags
+  isFakeRoundTrip?: boolean;
 }
 
 interface SearchFormProps {
@@ -62,7 +68,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       id: '1',
       origins: ['SFO'],
       destinations: ['CDG'],
-      via: '',
+      vias: [],
       nonstop: false,
       departDate: getDefaultDepartDate(),
       flexibility: 0,
@@ -85,6 +91,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
+
+  // Nearby airport modal state
+  const [nearbyModalOpen, setNearbyModalOpen] = useState(false);
+  const [nearbyModalConfig, setNearbyModalConfig] = useState<{
+    legId: string;
+    airportCode: string;
+    airportName?: string;
+    field: 'origins' | 'destinations';
+  } | null>(null);
+
+  // Fake round trip modal state
+  const [fakeRoundTripModalOpen, setFakeRoundTripModalOpen] = useState(false);
+  const [fakeRoundTripLegId, setFakeRoundTripLegId] = useState<string | null>(null);
 
   // Pagination and Aero options
   const [pageSize, setPageSize] = useState(25);
@@ -123,11 +142,14 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const cabin = searchParams.get(`leg${i}_cabin`) || searchParams.get('cabin') || 'BUSINESS';
 
         const ext = searchParams.get(`leg${i}_ext`) || '';
+        const viaParam = searchParams.get(`leg${i}_via`) || '';
+        const vias = viaParam ? viaParam.split(',').filter(v => v.trim()) : [];
+
         newLegs.push({
           id: Math.random().toString(36).substr(2, 9),
           origins: origins.length > 0 ? origins : [searchParams.get(i === 0 ? 'origin' : 'destination') || ''].filter(o => o),
           destinations: destinations.length > 0 ? destinations : [searchParams.get(i === 0 ? 'destination' : 'origin') || ''].filter(d => d),
-          via: searchParams.get(`leg${i}_via`) || '',
+          vias: vias,
           nonstop: searchParams.get(`leg${i}_nonstop`) === 'true',
           departDate,
           flexibility: parseInt(searchParams.get(`leg${i}_flexibility`) || '0'),
@@ -142,7 +164,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           allowAirportChanges: searchParams.get(`leg${i}_allowAirportChanges`) !== 'false',
           showOnlyAvailable: searchParams.get(`leg${i}_showOnlyAvailable`) !== 'false',
           aero: searchParams.get(`leg${i}_aero`) === 'true',
-          fetchSummary: searchParams.get(`leg${i}_fetchSummary`) === 'true'
+          fetchSummary: searchParams.get(`leg${i}_fetchSummary`) === 'true',
+          isFakeRoundTrip: searchParams.get(`leg${i}_isFakeRoundTrip`) === 'true'
         });
       }
 
@@ -178,7 +201,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       id: Math.random().toString(36).substr(2, 9),
       origins: legs.length === 1 ? legs[0].destinations : [''],
       destinations: legs.length === 1 ? legs[0].origins : [''],
-      via: '',
+      vias: [],
       nonstop: false,
       departDate: legs.length === 1 ? getDefaultReturnDate() : '',
       flexibility: 0,
@@ -307,11 +330,164 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const swapOriginsDestinations = (legId: string) => {
-    setLegs(legs.map(leg => 
-      leg.id === legId 
+    setLegs(legs.map(leg =>
+      leg.id === legId
         ? { ...leg, origins: leg.destinations, destinations: leg.origins }
         : leg
     ));
+  };
+
+  // Nearby airport modal handlers
+  const handleOpenNearbyModal = (legId: string, airportCode: string, field: 'origins' | 'destinations') => {
+    setNearbyModalConfig({ legId, airportCode, field });
+    setNearbyModalOpen(true);
+  };
+
+  const handleAddNearbyAirports = (airports: string[]) => {
+    if (!nearbyModalConfig) return;
+
+    const { legId, field } = nearbyModalConfig;
+    setLegs(legs.map(leg => {
+      if (leg.id === legId) {
+        const currentAirports = leg[field];
+        const newAirports = airports.filter(code => !currentAirports.includes(code));
+        return { ...leg, [field]: [...currentAirports, ...newAirports] };
+      }
+      return leg;
+    }));
+
+    setNearbyModalOpen(false);
+    setNearbyModalConfig(null);
+  };
+
+  // Fake round trip handlers
+  const handleGenerateFakeRoundTrip = (legId: string) => {
+    setFakeRoundTripLegId(legId);
+    setFakeRoundTripModalOpen(true);
+  };
+
+  const handleFakeRoundTripReturnToOrigin = () => {
+    if (!fakeRoundTripLegId) return;
+
+    const sourceLeg = legs.find(l => l.id === fakeRoundTripLegId);
+    if (!sourceLeg) return;
+
+    const newLeg: FlightLeg = {
+      id: Math.random().toString(36).substr(2, 9),
+      origins: sourceLeg.destinations,
+      destinations: sourceLeg.origins,
+      vias: [],
+      nonstop: false,
+      departDate: getDefaultReturnDate(),
+      flexibility: 0,
+      cabin: sourceLeg.cabin,
+      bookingClasses: sourceLeg.bookingClasses,
+      businessPlus: sourceLeg.businessPlus,
+      departureDateType: sourceLeg.departureDateType,
+      departureDateModifier: sourceLeg.departureDateModifier,
+      departureDatePreferredTimes: sourceLeg.departureDatePreferredTimes,
+      maxStops: sourceLeg.maxStops,
+      extraStops: sourceLeg.extraStops,
+      allowAirportChanges: sourceLeg.allowAirportChanges,
+      showOnlyAvailable: sourceLeg.showOnlyAvailable,
+      aero: sourceLeg.aero,
+      fetchSummary: sourceLeg.fetchSummary,
+      isFakeRoundTrip: true
+    };
+
+    // Mark the source leg as part of fake roundtrip
+    setLegs([
+      ...legs.map(leg => leg.id === fakeRoundTripLegId ? { ...leg, isFakeRoundTrip: true } : leg),
+      newLeg
+    ]);
+
+    setFakeRoundTripModalOpen(false);
+    setFakeRoundTripLegId(null);
+  };
+
+  const handleFakeRoundTripFindNearby = () => {
+    if (!fakeRoundTripLegId) return;
+
+    const sourceLeg = legs.find(l => l.id === fakeRoundTripLegId);
+    if (!sourceLeg || sourceLeg.destinations.length === 0) return;
+
+    setFakeRoundTripModalOpen(false);
+
+    // Create the return leg first
+    const newLeg: FlightLeg = {
+      id: Math.random().toString(36).substr(2, 9),
+      origins: sourceLeg.destinations,
+      destinations: [],
+      vias: [],
+      nonstop: false,
+      departDate: getDefaultReturnDate(),
+      flexibility: 0,
+      cabin: sourceLeg.cabin,
+      bookingClasses: sourceLeg.bookingClasses,
+      businessPlus: sourceLeg.businessPlus,
+      departureDateType: sourceLeg.departureDateType,
+      departureDateModifier: sourceLeg.departureDateModifier,
+      departureDatePreferredTimes: sourceLeg.departureDatePreferredTimes,
+      maxStops: sourceLeg.maxStops,
+      extraStops: sourceLeg.extraStops,
+      allowAirportChanges: sourceLeg.allowAirportChanges,
+      showOnlyAvailable: sourceLeg.showOnlyAvailable,
+      aero: sourceLeg.aero,
+      fetchSummary: sourceLeg.fetchSummary,
+      isFakeRoundTrip: true
+    };
+
+    setLegs([
+      ...legs.map(leg => leg.id === fakeRoundTripLegId ? { ...leg, isFakeRoundTrip: true } : leg),
+      newLeg
+    ]);
+
+    // Open nearby modal for the first origin airport
+    setNearbyModalConfig({
+      legId: newLeg.id,
+      airportCode: sourceLeg.origins[0],
+      field: 'destinations'
+    });
+    setNearbyModalOpen(true);
+    setFakeRoundTripLegId(null);
+  };
+
+  const handleFakeRoundTripManual = () => {
+    if (!fakeRoundTripLegId) return;
+
+    const sourceLeg = legs.find(l => l.id === fakeRoundTripLegId);
+    if (!sourceLeg) return;
+
+    const newLeg: FlightLeg = {
+      id: Math.random().toString(36).substr(2, 9),
+      origins: sourceLeg.destinations,
+      destinations: [],
+      vias: [],
+      nonstop: false,
+      departDate: getDefaultReturnDate(),
+      flexibility: 0,
+      cabin: sourceLeg.cabin,
+      bookingClasses: sourceLeg.bookingClasses,
+      businessPlus: sourceLeg.businessPlus,
+      departureDateType: sourceLeg.departureDateType,
+      departureDateModifier: sourceLeg.departureDateModifier,
+      departureDatePreferredTimes: sourceLeg.departureDatePreferredTimes,
+      maxStops: sourceLeg.maxStops,
+      extraStops: sourceLeg.extraStops,
+      allowAirportChanges: sourceLeg.allowAirportChanges,
+      showOnlyAvailable: sourceLeg.showOnlyAvailable,
+      aero: sourceLeg.aero,
+      fetchSummary: sourceLeg.fetchSummary,
+      isFakeRoundTrip: true
+    };
+
+    setLegs([
+      ...legs.map(leg => leg.id === fakeRoundTripLegId ? { ...leg, isFakeRoundTrip: true } : leg),
+      newLeg
+    ]);
+
+    setFakeRoundTripModalOpen(false);
+    setFakeRoundTripLegId(null);
   };
 
   const getTripType = () => {
@@ -360,7 +536,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     validatedLegs.forEach((leg, index) => {
       searchParams.append(`leg${index}_origins`, leg.origins.join(','));
       searchParams.append(`leg${index}_destinations`, leg.destinations.join(','));
-      searchParams.append(`leg${index}_via`, leg.via || '');
+      searchParams.append(`leg${index}_via`, leg.vias.join(','));
       searchParams.append(`leg${index}_nonstop`, leg.nonstop.toString());
       searchParams.append(`leg${index}_departDate`, leg.departDate);
       searchParams.append(`leg${index}_flexibility`, leg.flexibility.toString());
@@ -380,6 +556,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       // Per-leg Aero options - sync with global aeroEnabled
       searchParams.append(`leg${index}_aero`, aeroEnabled.toString());
       searchParams.append(`leg${index}_fetchSummary`, fetchSummary.toString());
+      // Strategy flags
+      if (leg.isFakeRoundTrip) {
+        searchParams.append(`leg${index}_isFakeRoundTrip`, 'true');
+      }
     });
     
     searchParams.append('legCount', validatedLegs.length.toString());
@@ -447,10 +627,21 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         <div className="space-y-4">
           {legs.map((leg, index) => (
             <div key={leg.id} className={`bg-gray-850/50 backdrop-blur-sm rounded-xl ${compact ? 'p-3' : 'p-5'} border border-gray-700 hover:border-gray-600 transition-all duration-200`}>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <span className={`bg-gradient-to-r from-accent-600 to-accent-700 text-white ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-lg font-medium shadow-lg`}>
                   Leg {index + 1}
                 </span>
+
+                {/* Strategy Badges */}
+                {leg.vias.length > 0 && (
+                  <StrategyBadge type="skiplag" />
+                )}
+                {leg.isFakeRoundTrip && (
+                  <StrategyBadge type="fake-roundtrip" />
+                )}
+
+                <div className="flex-1 border-t border-gray-700"></div>
+
                 {legs.length > 1 && (
                   <button
                     type="button"
@@ -460,98 +651,69 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     <Minus className="h-4 w-4" />
                   </button>
                 )}
-                <div className="flex-1 border-t border-gray-700"></div>
               </div>
               
-              <div className={`grid grid-cols-1 md:grid-cols-2 ${compact ? 'gap-4' : 'gap-6'}`}>
-                {/* Origins */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">From</label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {leg.origins.map((origin, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-accent-500/20 text-accent-300 rounded text-sm">
-                          {origin}
-                          <button
-                            type="button"
-                            onClick={() => removeOrigin(leg.id, idx)}
-                            className="text-accent-300 hover:text-accent-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+              {/* Origins and Destinations with Swap */}
+              <div className="flex gap-3 items-start">
+                <div className="flex-1">
+                  <LocationSearchInputMulti
+                    values={leg.origins}
+                    onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
+                    placeholder="Add origin (e.g., SFO)"
+                    label="From"
+                    onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'origins')}
+                    tagColor="accent"
+                  />
                 </div>
 
-                {/* Destinations */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">To</label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {leg.destinations.map((dest, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-sm">
-                          {dest}
-                          <button
-                            type="button"
-                            onClick={() => removeDestination(leg.id, idx)}
-                            className="text-blue-300 hover:text-blue-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => swapOriginsDestinations(leg.id)}
+                  className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center group shrink-0 mt-7"
+                  title="Switch origins and destinations"
+                >
+                  <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover:text-accent-400 transition-colors" />
+                </button>
 
-                {/* Input row with switch button */}
-                <div className="md:col-span-2">
-                  <div className="flex gap-3 items-center">
-                    <div className="flex-1">
-                      <LocationSearchInput
-                        value=""
-                        onChange={(code) => {
-                          if (code.trim()) {
-                            addOrigin(leg.id, code.toUpperCase());
-                          }
-                        }}
-                        placeholder="Origin (e.g., SFO)"
-                      />
-                    </div>
+                <div className="flex-1">
+                  <LocationSearchInputMulti
+                    values={leg.destinations}
+                    onChange={(destinations) => updateLeg(leg.id, 'destinations', destinations)}
+                    placeholder="Add destination (e.g., CDG)"
+                    label="To"
+                    onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'destinations')}
+                    tagColor="blue"
+                  />
+
+                  {/* Fake Round Trip Button */}
+                  {index === 0 && legs.length === 1 && leg.destinations.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => swapOriginsDestinations(leg.id)}
-                      className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center group shrink-0 mx-1"
-                      title="Switch origins and destinations"
+                      onClick={() => handleGenerateFakeRoundTrip(leg.id)}
+                      className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg transition-all text-sm font-medium"
                     >
-                      <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover:text-accent-400 transition-colors" />
+                      <Sparkles className="h-4 w-4" />
+                      Generate Fake Round Trip
                     </button>
-                    <div className="flex-1">
-                      <LocationSearchInput
-                        value=""
-                        onChange={(code) => {
-                          if (code.trim()) {
-                            addDestination(leg.id, code.toUpperCase());
-                          }
-                        }}
-                        placeholder="Destination (e.g., CDG)"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               <div className={`grid grid-cols-1 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'} gap-4 mt-4`}>
-                {/* Via Airport */}
+                {/* Via Airport (Multi-select) */}
                 <div>
-                  <LocationSearchInput
-                    value={leg.via || ''}
-                    onChange={(code) => updateLeg(leg.id, 'via', code.toUpperCase())}
-                    placeholder="e.g., LHR"
-                    label="Via (Optional)"
+                  <LocationSearchInputMulti
+                    values={leg.vias}
+                    onChange={(vias) => updateLeg(leg.id, 'vias', vias)}
+                    placeholder="Add layover (e.g., LHR)"
+                    label="Via / Layover (Optional)"
+                    tagColor="purple"
                   />
+                  {leg.vias.length > 0 && (
+                    <p className="text-xs text-purple-400 mt-1">
+                      Skiplag mode: You'll exit at these airports
+                    </p>
+                  )}
                 </div>
 
                 {/* Date */}
@@ -1146,6 +1308,30 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           {compact ? 'Update Search' : 'Search Flights'}
         </button>
       </form>
+
+      {/* Modals */}
+      <NearbyAirportModal
+        isOpen={nearbyModalOpen}
+        onClose={() => {
+          setNearbyModalOpen(false);
+          setNearbyModalConfig(null);
+        }}
+        onAddAirports={handleAddNearbyAirports}
+        centerAirportCode={nearbyModalConfig?.airportCode || ''}
+        centerAirportName={nearbyModalConfig?.airportCode || ''}
+      />
+
+      <FakeRoundTripModal
+        isOpen={fakeRoundTripModalOpen}
+        onClose={() => {
+          setFakeRoundTripModalOpen(false);
+          setFakeRoundTripLegId(null);
+        }}
+        onReturnToOrigin={handleFakeRoundTripReturnToOrigin}
+        onFindNearby={handleFakeRoundTripFindNearby}
+        onManual={handleFakeRoundTripManual}
+        originCode={legs.find(l => l.id === fakeRoundTripLegId)?.origins[0] || ''}
+      />
     </div>
   );
 };
