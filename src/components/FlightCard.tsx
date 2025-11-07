@@ -205,6 +205,51 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     return null;
   };
 
+  // Calculate segment durations and layover times
+  const calculateSegmentTimes = (slice: any) => {
+    if (!slice.stops || slice.stops.length === 0) {
+      // Direct flight - single segment
+      return {
+        segments: [{ duration: slice.duration }],
+        layovers: []
+      };
+    }
+
+    // We need to estimate segment times based on proportional distances
+    // Since we don't have actual segment times, we'll use the mileageBreakdown if available
+    const segments: { duration: number }[] = [];
+    const layovers: { duration: number, airportCode: string }[] = [];
+
+    if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
+      // Calculate total mileage
+      const totalMileage = slice.mileageBreakdown.reduce((sum: number, mb: any) => sum + (mb.mileage || 0), 0);
+      const totalFlightTime = slice.duration - layovers.reduce((sum, l) => sum + l.duration, 0);
+
+      // Calculate segment durations based on mileage proportion
+      slice.mileageBreakdown.forEach((mb: any, idx: number) => {
+        const proportion = totalMileage > 0 ? (mb.mileage || 0) / totalMileage : 1 / slice.mileageBreakdown.length;
+        segments.push({ duration: Math.round(totalFlightTime * proportion) });
+      });
+    } else {
+      // Fallback: divide time evenly among segments
+      const numSegments = (slice.stops?.length || 0) + 1;
+      const avgSegmentTime = Math.round(slice.duration / numSegments * 0.7); // Assume 70% is flight time
+      const avgLayoverTime = Math.round((slice.duration - (avgSegmentTime * numSegments)) / (slice.stops?.length || 1));
+
+      for (let i = 0; i < numSegments; i++) {
+        segments.push({ duration: avgSegmentTime });
+        if (i < numSegments - 1) {
+          layovers.push({
+            duration: avgLayoverTime,
+            airportCode: slice.stops?.[i]?.code || 'N/A'
+          });
+        }
+      }
+    }
+
+    return { segments, layovers };
+  };
+
   const handleReturnSelection = (index: number) => {
     setSelectedReturnIndex(index);
     setShowReturnDropdown(false);
@@ -428,70 +473,100 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 </div>
 
                 <div className="flex-1 px-1 sm:px-2 lg:px-4">
-                  {/* Flight line with layovers */}
-                  <div className="flex items-center gap-1 text-gray-300">
-                    {/* Line before layovers */}
-                    <div className={`flex-1 ${
-                      slice.stops && slice.stops.length > 0 ? 'border-t-2 border-gray-600' : 'border-t-2 border-gray-600'
-                    }`}></div>
+                  {(() => {
+                    const { segments: segmentTimes, layovers: layoverTimes } = calculateSegmentTimes(slice);
 
-                    {/* Layovers - display horizontally */}
-                    {slice.stops && slice.stops.length > 0 && slice.stops.map((stop, stopIdx) => {
-                      const nextFlightIdx = stopIdx + 1;
-                      const nextCarrier = slice.segments && slice.segments[nextFlightIdx] ? slice.segments[nextFlightIdx].carrier : null;
-
-                      return (
-                        <React.Fragment key={stopIdx}>
-                          <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded">
-                            {nextCarrier && nextCarrier.code && (
-                              <img
-                                src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
-                                alt={nextCarrier.code || 'airline'}
-                                className="h-3 w-3 object-contain"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                              />
-                            )}
-                            <span className="text-[9px] text-gray-300 font-medium">
-                              {stop?.code || 'N/A'}
-                            </span>
-                            {slice.flights && slice.flights[nextFlightIdx] && (
-                              <span className="text-[8px] text-gray-500 font-mono">
-                                {slice.flights[nextFlightIdx]}
-                              </span>
+                    return (
+                      <>
+                        {/* Flight line with layovers and time indicators */}
+                        <div className="flex items-center gap-1 text-gray-300 relative">
+                          {/* First segment line with duration */}
+                          <div className="flex-1 relative">
+                            <div className="border-t-2 border-gray-600"></div>
+                            {segmentTimes[0] && (
+                              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                                {formatDuration(segmentTimes[0].duration)}
+                              </div>
                             )}
                           </div>
-                          {stopIdx < slice.stops.length - 1 && (
-                            <div className="flex-1 border-t-2 border-dashed border-gray-600 min-w-[20px]"></div>
+
+                          {/* Layovers with time indicators */}
+                          {slice.stops && slice.stops.length > 0 && slice.stops.map((stop: any, stopIdx: number) => {
+                            const nextFlightIdx = stopIdx + 1;
+                            const nextCarrier = slice.segments && slice.segments[nextFlightIdx] ? slice.segments[nextFlightIdx].carrier : null;
+                            const hasNextSegment = segmentTimes[nextFlightIdx];
+
+                            return (
+                              <React.Fragment key={stopIdx}>
+                                {/* Layover indicator */}
+                                <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                                  {nextCarrier && nextCarrier.code && (
+                                    <img
+                                      src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
+                                      alt={nextCarrier.code || 'airline'}
+                                      className="h-3 w-3 object-contain"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  )}
+                                  <span className="text-[9px] text-gray-300 font-medium">
+                                    {stop?.code || 'N/A'}
+                                  </span>
+                                  {slice.flights && slice.flights[nextFlightIdx] && (
+                                    <span className="text-[8px] text-gray-500 font-mono">
+                                      {slice.flights[nextFlightIdx]}
+                                    </span>
+                                  )}
+                                  {/* Layover duration below */}
+                                  {layoverTimes[stopIdx] && (
+                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
+                                      {formatDuration(layoverTimes[stopIdx].duration)}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Segment between layovers or to arrival */}
+                                {hasNextSegment && (
+                                  <div className="flex-1 relative">
+                                    <div className={`border-t-2 ${
+                                      stopIdx < slice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                    }`}></div>
+                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                                      {formatDuration(segmentTimes[nextFlightIdx].duration)}
+                                    </div>
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+
+                          {/* Plane icon for direct flights */}
+                          {(!slice.stops || slice.stops.length === 0) && (
+                            <Plane className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
                           )}
-                        </React.Fragment>
-                      );
-                    })}
+                        </div>
 
-                    {/* Plane icon */}
-                    {(!slice.stops || slice.stops.length === 0) && (
-                      <Plane className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
-                    )}
+                        {/* Total Duration - Long thin line at bottom */}
+                        <div className="relative mt-8">
+                          <div className="border-t border-gray-700"></div>
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900 px-2">
+                            <div className="text-center text-[10px] font-medium text-gray-300 flex items-center gap-1">
+                              <Clock className="h-2.5 w-2.5 inline" />
+                              {formatDuration(slice.duration)}
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Line after layovers */}
-                    <div className={`flex-1 ${
-                      slice.stops && slice.stops.length > 0 ? 'border-t-2 border-gray-600' : 'border-t-2 border-gray-600'
-                    }`}></div>
-                  </div>
-
-                  {/* Duration */}
-                  <div className="text-center text-xs lg:text-sm font-medium text-gray-200 mt-1 lg:mt-2">
-                    <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3 inline mr-1" />
-                    {formatDuration(slice.duration)}
-                  </div>
-
-                  {/* Stop count */}
-                  {slice.stops && slice.stops.length > 0 && (
-                    <div className="text-center text-[10px] text-gray-400 mt-0.5">
-                      {slice.stops.length === 1 ? '1 stop' : `${slice.stops.length} stops`}
-                    </div>
-                  )}
+                        {/* Stop count */}
+                        {slice.stops && slice.stops.length > 0 && (
+                          <div className="text-center text-[10px] text-gray-400 mt-2">
+                            {slice.stops.length === 1 ? '1 stop' : `${slice.stops.length} stops`}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Arrival Airport */}
