@@ -484,17 +484,23 @@ const SearchPage: React.FC = () => {
   useEffect(() => {
     const currentPage = extractedParams.pageNum || 1;
 
-    // Search if we have required params and haven't loaded this page yet
+    // Search if we have required params
     if (extractedParams.origin && extractedParams.destination && extractedParams.departDate) {
-      // Check if we need to search for this page
-      if (lastLoadedPage.current !== currentPage) {
-        console.log('🔄 SearchPage: Search triggered for page', currentPage);
+      // Generate a key from all relevant search params (excluding page number)
+      const searchKey = flightCache.generateCacheKey({ ...extractedParams, pageNum: 1 });
+
+      // Check if search params changed OR if we're on a new page
+      const paramsChanged = lastSearchKey.current !== searchKey;
+      const pageChanged = lastLoadedPage.current !== currentPage;
+
+      if (paramsChanged || pageChanged) {
+        console.log('🔄 SearchPage: Search triggered -', paramsChanged ? 'params changed' : 'page changed', currentPage);
         searchFlights();
       } else {
-        console.log('⏭️  SearchPage: Page', currentPage, 'already loaded, skipping search');
+        console.log('⏭️  SearchPage: Same params and page, skipping search');
       }
     }
-  }, [extractedParams.origin, extractedParams.destination, extractedParams.departDate, extractedParams.pageNum, extractedParams.pageSize]);
+  }, [searchParams]);
 
   // Apply filters whenever results or filters change
   useEffect(() => {
@@ -511,6 +517,7 @@ const SearchPage: React.FC = () => {
     setFilteredResults(null);
     setError(null);
     lastLoadedPage.current = null;
+    lastSearchKey.current = null; // Force search re-trigger even with same params
   };
 
   const handleFiltersChange = (newFilters: FlightFilterState) => {

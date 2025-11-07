@@ -597,7 +597,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     if (onNewSearch) {
       onNewSearch();
     }
-    
+
+    // Add a timestamp to force re-triggering even with same params
+    searchParams.set('ts', Date.now().toString());
+
     navigate(`/search?${searchParams.toString()}`);
   };
 
