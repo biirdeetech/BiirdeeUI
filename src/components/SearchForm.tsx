@@ -799,7 +799,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                           <input
                             type="checkbox"
                             checked={leg.nonstop}
-                            onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setLegs(legs.map(l =>
+                                l.id === leg.id
+                                  ? {
+                                      ...l,
+                                      nonstop: isChecked,
+                                      maxStops: isChecked ? 0 : -1,
+                                      extraStops: isChecked ? 0 : -1
+                                    }
+                                  : l
+                              ));
+                            }}
                             className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                           />
                           <span className="text-sm text-gray-300">Nonstop only</span>
@@ -942,7 +954,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                         <input
                           type="checkbox"
                           checked={leg.nonstop}
-                          onChange={(e) => updateLeg(leg.id, 'nonstop', e.target.checked)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setLegs(legs.map(l =>
+                              l.id === leg.id
+                                ? {
+                                    ...l,
+                                    nonstop: isChecked,
+                                    maxStops: isChecked ? 0 : -1,
+                                    extraStops: isChecked ? 0 : -1
+                                  }
+                                : l
+                            ));
+                          }}
                           className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                         />
                         <span className="text-sm text-gray-300">Nonstop only</span>
