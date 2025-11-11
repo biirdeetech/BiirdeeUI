@@ -135,18 +135,22 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
           {values.map((value, idx) => (
             <span
               key={idx}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${getTagColorClasses()} rounded text-sm transition-colors group`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${getTagColorClasses()} rounded text-sm transition-colors`}
             >
               {value}
               {onOpenNearbySearch && (
-                <button
-                  type="button"
-                  onClick={(e) => handleNearbySearch(value, e)}
-                  className="text-current opacity-70 hover:opacity-100 transition-opacity"
-                  title="Find nearby airports"
-                >
-                  <Locate className="h-3.5 w-3.5" />
-                </button>
+                <div className="relative group/tooltip">
+                  <button
+                    type="button"
+                    onClick={(e) => handleNearbySearch(value, e)}
+                    className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                  >
+                    <Locate className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
+                    Find nearby airports
+                  </div>
+                </div>
               )}
               <button
                 type="button"

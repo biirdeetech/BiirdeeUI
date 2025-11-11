@@ -695,14 +695,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 {/* Fake Round Trip Button */}
                 {index === 0 && legs.length === 1 && leg.destinations.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateFakeRoundTrip(leg.id)}
-                    className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg px-3 py-2 transition-all flex items-center justify-center group shrink-0 mt-7"
-                    title="Generate fake round trip with connecting city"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </button>
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateFakeRoundTrip(leg.id)}
+                      className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg p-2.5 transition-all flex items-center justify-center shrink-0 mt-7"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </button>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-gray-900 text-gray-200 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
+                      Generate fake round trip
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-700"></div>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -807,34 +812,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 )}
               </div>
 
-              {/* Flight Type, Cabin Class, and Booking Classes Row */}
-              <div className={`mt-4 grid ${compact ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 lg:grid-cols-3'} gap-4`}>
-                {/* Flight Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={leg.nonstop}
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        setLegs(legs.map(l =>
-                          l.id === leg.id
-                            ? {
-                                ...l,
-                                nonstop: isChecked,
-                                maxStops: isChecked ? 0 : -1,
-                                extraStops: isChecked ? 0 : -1
-                              }
-                            : l
-                        ));
-                      }}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                    />
-                    <span className="text-sm text-gray-300">Nonstop only</span>
-                  </label>
-                </div>
-
+              {/* Cabin Class and Booking Classes Row */}
+              <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
                 {/* Cabin Class */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
@@ -1014,7 +993,93 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               {/* Per-Leg ITA Matrix & Aero Options */}
               {showAdvancedOptions && (
               <div className="mt-4 pt-4 border-t border-gray-700">
-                <h4 className="text-sm font-medium text-gray-200 mb-3">Search Options for this Leg</h4>
+                <h4 className="text-sm font-medium text-gray-200 mb-3">Advanced Search Options for this Leg</h4>
+
+                {/* Flight Type */}
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.nonstop}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setLegs(legs.map(l =>
+                          l.id === leg.id
+                            ? {
+                                ...l,
+                                nonstop: isChecked,
+                                maxStops: isChecked ? 0 : -1,
+                                extraStops: isChecked ? 0 : -1
+                              }
+                            : l
+                        ));
+                      }}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-sm text-gray-300">Nonstop only</span>
+                  </label>
+                </div>
+
+                {/* Date Type and Modifier */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Date Type</label>
+                    <select
+                      value={leg.departureDateType}
+                      onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    >
+                      <option value="depart">Depart</option>
+                      <option value="arrive">Arrive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Date Modifier</label>
+                    <select
+                      value={leg.departureDateModifier}
+                      onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
+                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                    >
+                      <option value="0">Exact date</option>
+                      <option value="1">± 1 day</option>
+                      <option value="10">+ 1 day</option>
+                      <option value="11">- 1 day</option>
+                      <option value="2">± 2 days</option>
+                      <option value="22">- 2 days</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Preferred Departure Times */}
+                <div className="mb-4">
+                  <label className="block text-xs text-gray-300 mb-2">Preferred Departure Times</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {[
+                      { value: 0, label: '< 8 AM' },
+                      { value: 1, label: '8-11 AM' },
+                      { value: 2, label: '11 AM-2 PM' },
+                      { value: 3, label: '2-5 PM' },
+                      { value: 4, label: '5-9 PM' },
+                      { value: 5, label: '> 9 PM' }
+                    ].map(slot => (
+                      <label key={slot.value} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={leg.departureDatePreferredTimes.includes(slot.value)}
+                          onChange={(e) => {
+                            const times = leg.departureDatePreferredTimes;
+                            const newTimes = e.target.checked
+                              ? [...times, slot.value]
+                              : times.filter(t => t !== slot.value);
+                            updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
+                          }}
+                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                        />
+                        <span className="text-xs text-gray-300">{slot.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
