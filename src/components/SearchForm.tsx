@@ -180,7 +180,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setAeroEnabled(searchParams.get('aero') === 'true');
       setAirlines(searchParams.get('airlines') || '');
       setStrictAirlineMatch(searchParams.get('strict_airline_match') === 'true');
-      setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '120'));
+      setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '900'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
 
