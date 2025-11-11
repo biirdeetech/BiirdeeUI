@@ -938,31 +938,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <h4 className="text-sm font-medium text-gray-200 mb-3">Advanced Search Options for this Leg</h4>
 
-                {/* Flight Type */}
-                <div className="mb-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={leg.nonstop}
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        setLegs(legs.map(l =>
-                          l.id === leg.id
-                            ? {
-                                ...l,
-                                nonstop: isChecked,
-                                maxStops: isChecked ? 0 : -1,
-                                extraStops: isChecked ? 0 : -1
-                              }
-                            : l
-                        ));
-                      }}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                    />
-                    <span className="text-sm text-gray-300">Nonstop only</span>
-                  </label>
-                </div>
-
                 {/* Date Type and Modifier */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
