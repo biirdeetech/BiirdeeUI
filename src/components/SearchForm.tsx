@@ -619,6 +619,32 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 ))}
               </select>
             </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={legs.every(leg => leg.nonstop)}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  setLegs(legs.map(leg => ({
+                    ...leg,
+                    nonstop: isChecked,
+                    maxStops: isChecked ? 0 : -1,
+                    extraStops: isChecked ? 0 : -1
+                  })));
+                }}
+                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+              />
+              <span className="text-sm text-gray-300">Nonstop only</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aeroEnabled}
+                onChange={(e) => setAeroEnabled(e.target.checked)}
+                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+              />
+              <span className="text-sm text-gray-300">Aero Enabled</span>
+            </label>
             <button
               type="button"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
