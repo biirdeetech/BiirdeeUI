@@ -683,16 +683,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 <div className="relative self-end mb-[2px]">
                   {/* Via Badge - appears on top of button */}
                   {leg.vias.length > 0 && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-1 z-20">
                       {leg.vias.map((via, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-600/90 text-purple-100 rounded text-xs"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-600/90 text-purple-100 rounded text-xs whitespace-nowrap"
                         >
                           {via}
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const newVias = leg.vias.filter((_, i) => i !== idx);
                               updateLeg(leg.id, 'vias', newVias);
                             }}
@@ -732,22 +733,31 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                     {/* Via Input - appears below button when plus is clicked */}
                     {showViaInput === leg.id && (
-                      <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-30">
-                        <div className="relative">
+                      <div
+                        className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-30"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }
+                        }}
+                      >
+                        <div className="relative w-64">
                           <LocationSearchInputWithCallback
-                            onSelect={(code) => {
-                              if (code && !leg.vias.includes(code)) {
-                                updateLeg(leg.id, 'vias', [...leg.vias, code]);
+                            value={null}
+                            onChange={(location) => {
+                              if (location.code && !leg.vias.includes(location.code)) {
+                                updateLeg(leg.id, 'vias', [...leg.vias, location.code]);
                                 setShowViaInput(null);
                               }
                             }}
                             placeholder="Via / Layover"
-                            className="w-64"
                           />
                           <button
                             type="button"
                             onClick={() => setShowViaInput(null)}
-                            className="absolute -top-2 -right-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white"
+                            className="absolute -top-2 -right-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white z-10"
                           >
                             <X className="h-3 w-3" />
                           </button>
