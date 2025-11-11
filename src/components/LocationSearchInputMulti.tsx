@@ -10,6 +10,7 @@ interface LocationSearchInputMultiProps {
   label?: string;
   onOpenNearbySearch?: (airportCode: string) => void;
   tagColor?: 'accent' | 'blue' | 'purple';
+  constrainBadges?: boolean;
 }
 
 const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
@@ -19,7 +20,8 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
   locationType = 'CITIES_AND_AIRPORTS',
   label,
   onOpenNearbySearch,
-  tagColor = 'accent'
+  tagColor = 'accent',
+  constrainBadges = false
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -132,7 +134,7 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
       {/* Tags Display - Always reserve space for consistent height */}
       <div className="min-h-[36px] mb-2">
         {values.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className={constrainBadges ? "flex gap-2 overflow-x-auto scrollbar-hide" : "flex flex-wrap gap-2"}>
             {values.map((value, idx) => (
               <span
                 key={idx}

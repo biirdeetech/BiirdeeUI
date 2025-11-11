@@ -664,7 +664,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 )}
               </div>
               
-              {/* Origins, Destinations, Date Row */}
+              {/* Origins and Destinations Row */}
               <div className="flex gap-3 items-start">
                 <div className="flex-1">
                   <LocationSearchInputMulti
@@ -674,17 +674,70 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     label="From"
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'origins')}
                     tagColor="accent"
+                    constrainBadges={true}
                   />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => swapOriginsDestinations(leg.id)}
-                  className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center group shrink-0 self-end mb-[2px]"
-                  title="Switch origins and destinations"
-                >
-                  <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover:text-accent-400 transition-colors" />
-                </button>
+                {/* Swap Button with Via/Layover */}
+                <div className="relative self-end mb-[2px]">
+                  {/* Via Badge - appears on top of button */}
+                  {leg.vias.length > 0 && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                      {leg.vias.map((via, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-600/90 text-purple-100 rounded text-xs"
+                        >
+                          {via}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVias = leg.vias.filter((_, i) => i !== idx);
+                              updateLeg(leg.id, 'vias', newVias);
+                            }}
+                            className="hover:text-white transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="relative group/swap">
+                    <button
+                      type="button"
+                      onClick={() => swapOriginsDestinations(leg.id)}
+                      className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center shrink-0"
+                      title="Switch origins and destinations"
+                    >
+                      <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover/swap:text-accent-400 transition-colors" />
+                    </button>
+
+                    {/* Plus icon overlay - shows on hover */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none">
+                      <Plus className="h-4 w-4 text-purple-400" />
+                    </div>
+
+                    {/* Via Input - appears on hover */}
+                    <div className="absolute left-full ml-2 top-0 opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none group-hover/swap:pointer-events-auto z-20">
+                      <LocationSearchInputWithCallback
+                        onSelect={(code) => {
+                          if (code && !leg.vias.includes(code)) {
+                            updateLeg(leg.id, 'vias', [...leg.vias, code]);
+                          }
+                        }}
+                        placeholder="Via / Layover"
+                        className="w-48"
+                      />
+                    </div>
+
+                    {/* Tooltip */}
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
+                      Via / Layover
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex-1">
                   <LocationSearchInputMulti
@@ -694,6 +747,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     label="To"
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'destinations')}
                     tagColor="blue"
+                    constrainBadges={true}
                   />
                 </div>
 
@@ -713,41 +767,25 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </div>
                   </div>
                 )}
-
-                <div className={compact ? 'w-40' : 'w-48'}>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Date</label>
-                  {/* Invisible space reservation for consistent height with From/To inputs */}
-                  <div className="min-h-[36px] mb-2"></div>
-                  <input
-                    type="date"
-                    value={leg.departDate}
-                    onChange={(e) => updateLeg(leg.id, 'departDate', e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                    required
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                </div>
               </div>
 
-              {/* Via Airport Row */}
+              {/* Date Row */}
               <div className="mt-4">
-                <LocationSearchInputMulti
-                  values={leg.vias}
-                  onChange={(vias) => updateLeg(leg.id, 'vias', vias)}
-                  placeholder="Add layover (e.g., LHR)"
-                  label="Via / Layover (Optional)"
-                  tagColor="purple"
+                <label className="block text-sm font-medium text-gray-300 mb-2">Departure Date</label>
+                <input
+                  type="date"
+                  value={leg.departDate}
+                  onChange={(e) => updateLeg(leg.id, 'departDate', e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                  required
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
-                {leg.vias.length > 0 && (
-                  <p className="text-xs text-purple-400 mt-1">
-                    Skiplag mode: You'll exit at these airports
-                  </p>
-                )}
               </div>
+
 
 
               {/* Cabin Class and Booking Classes Row */}
@@ -755,6 +793,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 {/* Cabin Class */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
+                  {/* Invisible space reservation for alignment with Booking Classes badges */}
+                  <div className="min-h-[36px] mb-2"></div>
                   <select
                     value={leg.businessPlus ? 'BUSINESS_PLUS' : leg.cabin}
                     onChange={(e) => {
@@ -828,19 +868,21 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    {leg.bookingClasses.map((bookingClass) => (
-                      <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-sm font-mono">
-                        {bookingClass}
-                        <button
-                          type="button"
-                          onClick={() => removeBookingClass(leg.id, bookingClass)}
-                          className="text-purple-300 hover:text-purple-100"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
+                  <div className="min-h-[36px] mb-2">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                      {leg.bookingClasses.map((bookingClass) => (
+                        <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-sm font-mono whitespace-nowrap">
+                          {bookingClass}
+                          <button
+                            type="button"
+                            onClick={() => removeBookingClass(leg.id, bookingClass)}
+                            className="text-purple-300 hover:text-purple-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <input
                     type="text"
