@@ -462,9 +462,18 @@ class BiirdeeService {
     const pricePerMileString = solution.ext?.pricePerMile || '0';
     const pricePerMile = extractPrice(pricePerMileString);
 
-    // Determine match type based on enrichment and mileage data
+    // Determine match type based on mileage breakdown data
     let matchType: 'exact' | 'partial' | 'none' = 'none';
-    if (solution.fullyEnriched) {
+
+    // Check if there's at least one full match in any slice's mileage breakdown
+    const hasFullMatch = slices.some(slice =>
+      slice.mileageBreakdown?.some((mb: any) =>
+        mb.exactMatch === true ||
+        (mb.allMatchingFlights?.some((flight: any) => flight.exactMatch === true))
+      )
+    );
+
+    if (hasFullMatch) {
       matchType = 'exact';
     } else if (solution.totalMileage > 0) {
       matchType = 'partial';

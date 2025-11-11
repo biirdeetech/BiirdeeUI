@@ -667,27 +667,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     })()}
                   </div>
                 )}
-
-                {/* View Segments Button */}
-                {slice.segments && slice.segments.length > 0 && (
-                  <button
-                    onClick={() => setExpandedSegments(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
-                    className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs font-medium hover:bg-blue-500/30 transition-colors flex items-center gap-1"
-                  >
-                    <Plane className="h-3 w-3" />
-                    View Segments
-                    <ChevronRight className={`h-3 w-3 transition-transform ${expandedSegments[sliceIndex] ? 'rotate-90' : ''}`} />
-                  </button>
-                )}
               </div>
             </div>
-
-            {/* Expanded Segment Details */}
-            {expandedSegments[sliceIndex] && (
-              <div className="mt-3">
-                <FlightSegmentDetails slice={slice} />
-              </div>
-            )}
 
             {/* Expanded Mileage Alternatives */}
             {expandedSlices[sliceIndex] && slice.mileageBreakdown && (
@@ -702,8 +683,36 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     </div>
                   )}
                 </div>
-                {slice.mileageBreakdown.map((breakdown, bdIndex) => (
-                  breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0 && (
+                {slice.mileageBreakdown.map((breakdown, bdIndex) => {
+                  // Sort allMatchingFlights by time proximity to original departure
+                  const sortedFlights = breakdown.allMatchingFlights ? [...breakdown.allMatchingFlights].sort((a, b) => {
+                    const aTime = new Date(a.departure.at).getTime();
+                    const bTime = new Date(b.departure.at).getTime();
+                    const originalTime = new Date(slice.departure).getTime();
+                    const aDiff = Math.abs(aTime - originalTime);
+                    const bDiff = Math.abs(bTime - originalTime);
+                    return aDiff - bDiff;
+                  }) : [];
+
+                  // Calculate time difference in minutes for color coding
+                  const getTimeProximityColor = (departureTime: string) => {
+                    const flightTime = new Date(departureTime).getTime();
+                    const originalTime = new Date(slice.departure).getTime();
+                    const diffMinutes = Math.abs(flightTime - originalTime) / (1000 * 60);
+
+                    if (diffMinutes <= 120) {
+                      // Within 120 minutes - greenish, fade based on distance
+                      const opacity = Math.max(0.2, 1 - (diffMinutes / 120) * 0.8);
+                      return {
+                        borderColor: `rgba(34, 197, 94, ${opacity})`,
+                        bgColor: `rgba(34, 197, 94, ${opacity * 0.15})`
+                      };
+                    }
+                    return null;
+                  };
+
+                  return (
+                    sortedFlights.length > 0 && (
                     <div key={bdIndex} className="space-y-1.5">
                       <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
                         <span className="text-gray-500">Leg {bdIndex + 1}:</span>
@@ -712,12 +721,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
                       <div className="space-y-1.5 pl-2">
-                        {breakdown.allMatchingFlights.map((altFlight, altIndex) => {
+                        {sortedFlights.map((altFlight, altIndex) => {
+                          const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
                           return (
                             <button
                               key={altIndex}
                               className="w-full flex items-center justify-between text-xs bg-gray-800/70 hover:bg-gray-700/70 px-3 py-2 rounded transition-colors group border border-gray-700 hover:border-purple-500/50"
+                              style={proximityColors ? {
+                                borderColor: proximityColors.borderColor,
+                                backgroundColor: proximityColors.bgColor
+                              } : {}}
                             >
                               <div className="flex items-center gap-2 flex-1">
                                 <div className="flex flex-col items-start">
@@ -768,8 +782,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         })}
                       </div>
                     </div>
-                  )
-                ))}
+                    )
+                  );
+                })}
               </div>
             )}
           </div>
