@@ -154,8 +154,8 @@ class ITAMatrixService {
         sliceIndex: 0,
         sorts: "default",
         checkAvailability: false,
-        currency: "USD",
-        salesCity: "NYC",
+        currency: params.currency ? { code: params.currency } : { code: "USD" },
+        salesCity: params.sales_city || "NYC",
         cabin: "COACH",
         maxStopCount: params.maxStops || 2
       },
