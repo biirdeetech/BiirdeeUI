@@ -68,7 +68,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: ['SFO'],
       destinations: ['CDG'],
       vias: [],
-      nonstop: true,
+      nonstop: false,
       departDate: getDefaultDepartDate(),
       cabin: 'BUSINESS',
       bookingClasses: (() => {
@@ -115,7 +115,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
-  const [currency, setCurrency] = useState<Currency | null>(null);
+  const [currency, setCurrency] = useState<Currency | null>({ code: 'USD', displayName: 'United States Dollar (USD)' });
 
   // Initialize form from URL params when in compact mode
   // Use a ref to track the last URL we initialized from to avoid infinite loops
@@ -145,12 +145,13 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const viaParam = searchParams.get(`leg${i}_via`) || '';
         const vias = viaParam ? viaParam.split(',').filter(v => v.trim()) : [];
 
+        const isNonstop = searchParams.get(`leg${i}_nonstop`) === 'true';
         newLegs.push({
           id: Math.random().toString(36).substr(2, 9),
           origins: origins.length > 0 ? origins : [searchParams.get(i === 0 ? 'origin' : 'destination') || ''].filter(o => o),
           destinations: destinations.length > 0 ? destinations : [searchParams.get(i === 0 ? 'destination' : 'origin') || ''].filter(d => d),
           vias: vias,
-          nonstop: searchParams.get(`leg${i}_nonstop`) === 'true',
+          nonstop: isNonstop,
           departDate,
           cabin,
           bookingClasses: ext ? extToBookingClasses(ext) : getDefaultBookingClasses(cabin),
@@ -158,8 +159,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           departureDateType: (searchParams.get(`leg${i}_departureDateType`) as 'depart' | 'arrive') || 'depart',
           departureDateModifier: (searchParams.get(`leg${i}_departureDateModifier`) as '0' | '1' | '10' | '11' | '2' | '22') || '0',
           departureDatePreferredTimes: searchParams.get(`leg${i}_departureDatePreferredTimes`)?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [],
-          maxStops: parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
-          extraStops: parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),
+          maxStops: isNonstop ? 0 : parseInt(searchParams.get(`leg${i}_maxStops`) || '-1'),
+          extraStops: isNonstop ? 0 : parseInt(searchParams.get(`leg${i}_extraStops`) || '-1'),
           allowAirportChanges: searchParams.get(`leg${i}_allowAirportChanges`) !== 'false',
           showOnlyAvailable: searchParams.get(`leg${i}_showOnlyAvailable`) !== 'false',
           aero: searchParams.get(`leg${i}_aero`) === 'true',

@@ -226,11 +226,8 @@ const SearchPage: React.FC = () => {
 
   // Initialize filters from URL parameters
   const initializeFilters = (): FlightFilterState => {
-    // Check if any leg has nonstop flag
-    const hasNonstop = extractedParams.slices?.some(slice => slice.nonstop) || false;
-
     return {
-      nonstopOnly: hasNonstop,
+      nonstopOnly: false, // Always start with filter off
       businessOnly: false, // Always start with filter off
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],

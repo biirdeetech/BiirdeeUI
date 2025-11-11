@@ -111,6 +111,8 @@ class BiirdeeService {
           biirdeeSlice.routing = slice.routing;
         } else if (slice.via) {
           biirdeeSlice.routing = slice.via;
+        } else if (slice.nonstop) {
+          biirdeeSlice.routing = 'N';
         }
 
         if (slice.ext) {
@@ -139,6 +141,8 @@ class BiirdeeService {
         outboundSlice.routing = params.slices[0].routing;
       } else if (params.slices?.[0]?.via) {
         outboundSlice.routing = params.slices[0].via;
+      } else if (params.slices?.[0]?.nonstop) {
+        outboundSlice.routing = 'N';
       }
 
       if (params.slices?.[0]?.ext) {
@@ -168,6 +172,8 @@ class BiirdeeService {
           returnSlice.routing = params.slices[1].routing;
         } else if (params.slices?.[1]?.via) {
           returnSlice.routing = params.slices[1].via;
+        } else if (params.slices?.[1]?.nonstop) {
+          returnSlice.routing = 'N';
         }
 
         if (params.slices?.[1]?.ext) {
