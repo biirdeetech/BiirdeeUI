@@ -621,10 +621,14 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
             <button
               type="button"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+              className={`flex items-center gap-2 px-3 py-2 border rounded transition-all ${
+                showAdvancedOptions
+                  ? 'bg-accent-600 hover:bg-accent-700 border-accent-500 text-white shadow-lg shadow-accent-500/20'
+                  : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
+              }`}
               title="Advanced Options"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className={`h-4 w-4 ${showAdvancedOptions ? 'animate-pulse' : ''}`} />
               <span className="text-sm">Advanced</span>
             </button>
           </div>
@@ -660,7 +664,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 )}
               </div>
               
-              {/* Origins and Destinations with Swap */}
+              {/* Origins, Destinations, Date Row */}
               <div className="flex gap-3 items-start">
                 <div className="flex-1">
                   <LocationSearchInputMulti
@@ -676,7 +680,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 <button
                   type="button"
                   onClick={() => swapOriginsDestinations(leg.id)}
-                  className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center group shrink-0 mt-7"
+                  className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center group shrink-0 self-end mb-[2px]"
                   title="Switch origins and destinations"
                 >
                   <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover:text-accent-400 transition-colors" />
@@ -695,11 +699,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 {/* Fake Round Trip Button */}
                 {index === 0 && legs.length === 1 && leg.destinations.length > 0 && (
-                  <div className="relative group">
+                  <div className="relative group self-end mb-[2px]">
                     <button
                       type="button"
                       onClick={() => handleGenerateFakeRoundTrip(leg.id)}
-                      className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg p-2.5 transition-all flex items-center justify-center shrink-0 mt-7"
+                      className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg p-2.5 transition-all flex items-center justify-center"
                     >
                       <Sparkles className="h-4 w-4" />
                     </button>
@@ -709,28 +713,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </div>
                   </div>
                 )}
-              </div>
 
-              <div className={`grid grid-cols-1 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'} gap-4 mt-4`}>
-                {/* Via Airport (Multi-select) */}
-                <div>
-                  <LocationSearchInputMulti
-                    values={leg.vias}
-                    onChange={(vias) => updateLeg(leg.id, 'vias', vias)}
-                    placeholder="Add layover (e.g., LHR)"
-                    label="Via / Layover (Optional)"
-                    tagColor="purple"
-                  />
-                  {leg.vias.length > 0 && (
-                    <p className="text-xs text-purple-400 mt-1">
-                      Skiplag mode: You'll exit at these airports
-                    </p>
-                  )}
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Departure Date</label>
+                <div className={compact ? 'w-40' : 'w-48'}>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Date</label>
                   <input
                     type="date"
                     value={leg.departDate}
@@ -744,73 +729,24 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     }}
                   />
                 </div>
+              </div>
 
-                {!compact && (
-                  <>
-                    {/* Date Type and Modifier */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Date Type</label>
-                        <select
-                          value={leg.departureDateType}
-                          onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
-                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                        >
-                          <option value="depart">Depart</option>
-                          <option value="arrive">Arrive</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Date Modifier</label>
-                        <select
-                          value={leg.departureDateModifier}
-                          onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
-                          className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                        >
-                          <option value="0">Exact date</option>
-                          <option value="1">± 1 day</option>
-                          <option value="10">+ 1 day</option>
-                          <option value="11">- 1 day</option>
-                          <option value="2">± 2 days</option>
-                          <option value="22">- 2 days</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Preferred Time Slots */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Preferred Departure Times</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { value: 0, label: '< 8 AM' },
-                          { value: 1, label: '8-11 AM' },
-                          { value: 2, label: '11 AM-2 PM' },
-                          { value: 3, label: '2-5 PM' },
-                          { value: 4, label: '5-9 PM' },
-                          { value: 5, label: '> 9 PM' }
-                        ].map(slot => (
-                          <label key={slot.value} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={leg.departureDatePreferredTimes.includes(slot.value)}
-                              onChange={(e) => {
-                                const times = leg.departureDatePreferredTimes;
-                                const newTimes = e.target.checked
-                                  ? [...times, slot.value]
-                                  : times.filter(t => t !== slot.value);
-                                updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
-                              }}
-                              className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                            />
-                            <span className="text-sm text-gray-300">{slot.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                  </>
+              {/* Via Airport Row */}
+              <div className="mt-4">
+                <LocationSearchInputMulti
+                  values={leg.vias}
+                  onChange={(vias) => updateLeg(leg.id, 'vias', vias)}
+                  placeholder="Add layover (e.g., LHR)"
+                  label="Via / Layover (Optional)"
+                  tagColor="purple"
+                />
+                {leg.vias.length > 0 && (
+                  <p className="text-xs text-purple-400 mt-1">
+                    Skiplag mode: You'll exit at these airports
+                  </p>
                 )}
               </div>
+
 
               {/* Cabin Class and Booking Classes Row */}
               <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
@@ -924,71 +860,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 </div>
               </div>
 
-              {/* Compact Mode Additional Options */}
-              {compact && (
-                <>
-                {/* Date Type and Modifier */}
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Date Type</label>
-                    <select
-                      value={leg.departureDateType}
-                      onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                    >
-                      <option value="depart">Depart</option>
-                      <option value="arrive">Arrive</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Date Modifier</label>
-                    <select
-                      value={leg.departureDateModifier}
-                      onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                    >
-                      <option value="0">Exact date</option>
-                      <option value="1">± 1 day</option>
-                      <option value="10">+ 1 day</option>
-                      <option value="11">- 1 day</option>
-                      <option value="2">± 2 days</option>
-                      <option value="22">- 2 days</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Preferred Time Slots */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Preferred Departure Times</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: 0, label: '< 8 AM' },
-                      { value: 1, label: '8-11 AM' },
-                      { value: 2, label: '11 AM-2 PM' },
-                      { value: 3, label: '2-5 PM' },
-                      { value: 4, label: '5-9 PM' },
-                      { value: 5, label: '> 9 PM' }
-                    ].map(slot => (
-                      <label key={slot.value} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={leg.departureDatePreferredTimes.includes(slot.value)}
-                          onChange={(e) => {
-                            const times = leg.departureDatePreferredTimes;
-                            const newTimes = e.target.checked
-                              ? [...times, slot.value]
-                              : times.filter(t => t !== slot.value);
-                            updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
-                          }}
-                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                        />
-                        <span className="text-sm text-gray-300">{slot.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                </>
-              )}
 
               {/* Per-Leg ITA Matrix & Aero Options */}
               {showAdvancedOptions && (
