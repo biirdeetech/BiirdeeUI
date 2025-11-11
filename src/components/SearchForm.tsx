@@ -742,7 +742,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                               }
                             }}
                             placeholder="Via / Layover"
-                            className="w-48"
+                            className="w-64"
                           />
                           <button
                             type="button"
