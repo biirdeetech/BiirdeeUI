@@ -266,8 +266,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
     }`}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {carrier.code && (
               <img
                 src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
@@ -306,9 +306,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
             {/* Price Display - Right Aligned with Mileage on Left */}
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-wrap items-baseline gap-3 justify-end">
               {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
                 <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
             </div>
 
             {/* Action Buttons - Match badges on left, buttons on right */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-end">
               {/* Match Type Badge - Left Side */}
               {matchType && matchType !== 'none' && (
                 <div>
@@ -653,10 +653,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                       {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) ? (
                         <button
                           onClick={() => setExpandedSlices(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
-                          className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1"
+                          className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1 relative"
                         >
                           {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
                           <ChevronDown className={`h-3 w-3 transition-transform ${expandedSlices[sliceIndex] ? 'rotate-180' : ''}`} />
+                          {(() => {
+                            const programCount = countMileagePrograms(slice.mileageBreakdown);
+                            return programCount > 1 && (
+                              <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-900">
+                                {programCount}
+                              </div>
+                            );
+                          })()}
                         </button>
                       ) : (
                         <span className="bg-purple-500/20 text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium">
@@ -664,14 +672,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         </span>
                       )}
                     </div>
-                    {(() => {
-                      const programCount = countMileagePrograms(slice.mileageBreakdown);
-                      return programCount > 0 && (
-                        <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-0.5 rounded border border-gray-700">
-                          {programCount} {programCount === 1 ? 'program' : 'programs'} available
-                        </span>
-                      );
-                    })()}
                   </div>
                 )}
               </div>
