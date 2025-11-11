@@ -1282,7 +1282,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       type="number"
                       min="0"
                       value={timeTolerance}
-                      onChange={(e) => setTimeTolerance(parseInt(e.target.value) || 120)}
+                      onChange={(e) => setTimeTolerance(parseInt(e.target.value) || 900)}
                       className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     />
                   </div>
