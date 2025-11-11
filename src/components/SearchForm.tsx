@@ -111,7 +111,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [aeroEnabled, setAeroEnabled] = useState(true);
   const [airlines, setAirlines] = useState('');
   const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
-  const [timeTolerance, setTimeTolerance] = useState(120);
+  const [timeTolerance, setTimeTolerance] = useState(900);
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
