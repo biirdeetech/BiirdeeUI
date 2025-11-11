@@ -85,9 +85,9 @@ class BiirdeeService {
 
   private mapFlexibility(flexibility?: number): string {
     if (!flexibility || flexibility === 0) return '0';
-    if (flexibility === 1) return '11';
-    if (flexibility === 2) return '22';
-    if (flexibility === 3) return '33';
+    if (flexibility === 1) return '1'; // ±1 day (symmetric)
+    if (flexibility === 2) return '2'; // ±2 days (symmetric)
+    if (flexibility === 3) return '3'; // ±3 days (symmetric)
     return '0';
   }
 
