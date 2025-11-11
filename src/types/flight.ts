@@ -172,6 +172,10 @@ export interface FlightSegment {
   departure?: string;
   arrival?: string;
   flightNumber?: string;
+  origin?: Airport;
+  destination?: Airport;
+  duration?: number;
+  cabin?: string;
 }
 
 export interface Pricing {

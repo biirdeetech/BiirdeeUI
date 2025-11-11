@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus } from 'lucide-react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight } from 'lucide-react';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
 import MileageDealsDropdown from './MileageDealsDropdown';
 import MileageDealModal from './MileageDealModal';
+import FlightSegmentDetails from './FlightSegmentDetails';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -20,6 +21,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [selectedMileageDeal, setSelectedMileageDeal] = useState<MileageDeal | null>(null);
   const [showMileageDealModal, setShowMileageDealModal] = useState(false);
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
+  const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
 
   const handleSelectMileageDeal = (deal: MileageDeal) => {
     setSelectedMileageDeal(deal);
@@ -665,8 +667,27 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     })()}
                   </div>
                 )}
+
+                {/* View Segments Button */}
+                {slice.segments && slice.segments.length > 0 && (
+                  <button
+                    onClick={() => setExpandedSegments(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
+                    className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs font-medium hover:bg-blue-500/30 transition-colors flex items-center gap-1"
+                  >
+                    <Plane className="h-3 w-3" />
+                    View Segments
+                    <ChevronRight className={`h-3 w-3 transition-transform ${expandedSegments[sliceIndex] ? 'rotate-90' : ''}`} />
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Expanded Segment Details */}
+            {expandedSegments[sliceIndex] && (
+              <div className="mt-3">
+                <FlightSegmentDetails slice={slice} />
+              </div>
+            )}
 
             {/* Expanded Mileage Alternatives */}
             {expandedSlices[sliceIndex] && slice.mileageBreakdown && (
