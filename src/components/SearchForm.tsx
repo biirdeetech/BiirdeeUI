@@ -33,7 +33,6 @@ interface FlightLeg {
   vias: string[]; // Changed from via to vias (array)
   nonstop: boolean;
   departDate: string;
-  flexibility: number; // 0, 1, or 2 days
   cabin: string;
   bookingClasses: string[];
   businessPlus: boolean; // Track if Business+ is enabled
@@ -71,7 +70,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: false,
       departDate: getDefaultDepartDate(),
-      flexibility: 0,
       cabin: 'BUSINESS',
       bookingClasses: (() => {
         const businessClasses = getDefaultBookingClasses('BUSINESS');
@@ -152,7 +150,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           vias: vias,
           nonstop: searchParams.get(`leg${i}_nonstop`) === 'true',
           departDate,
-          flexibility: parseInt(searchParams.get(`leg${i}_flexibility`) || '0'),
           cabin,
           bookingClasses: ext ? extToBookingClasses(ext) : getDefaultBookingClasses(cabin),
           businessPlus: cabin === 'BUSINESS' || cabin === 'FIRST',
@@ -204,7 +201,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: false,
       departDate: legs.length === 1 ? getDefaultReturnDate() : '',
-      flexibility: 0,
       cabin: legs[0].cabin,
       bookingClasses: getDefaultBookingClasses(legs[0].cabin),
       businessPlus: legs[0].businessPlus,
@@ -379,7 +375,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: false,
       departDate: getDefaultReturnDate(),
-      flexibility: 0,
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,
       businessPlus: sourceLeg.businessPlus,
@@ -421,7 +416,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: false,
       departDate: getDefaultReturnDate(),
-      flexibility: 0,
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,
       businessPlus: sourceLeg.businessPlus,
@@ -465,7 +459,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: false,
       departDate: getDefaultReturnDate(),
-      flexibility: 0,
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,
       businessPlus: sourceLeg.businessPlus,
@@ -539,7 +532,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_via`, leg.vias.join(','));
       searchParams.append(`leg${index}_nonstop`, leg.nonstop.toString());
       searchParams.append(`leg${index}_departDate`, leg.departDate);
-      searchParams.append(`leg${index}_flexibility`, leg.flexibility.toString());
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
       // Date controls
@@ -844,19 +836,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       </div>
                     </div>
 
-                    {/* Flexibility */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Date Flexibility</label>
-                      <select
-                        value={leg.flexibility}
-                        onChange={(e) => updateLeg(leg.id, 'flexibility', Number(e.target.value))}
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                      >
-                        <option value={0}>Exact date</option>
-                        <option value={1}>± 1 day</option>
-                        <option value={2}>± 2 days</option>
-                      </select>
-                    </div>
                   </>
                 )}
               </div>
@@ -1000,19 +979,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </div>
                   </div>
 
-                  {/* Flexibility */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Date Flexibility</label>
-                    <select
-                      value={leg.flexibility}
-                      onChange={(e) => updateLeg(leg.id, 'flexibility', Number(e.target.value))}
-                      className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                    >
-                      <option value={0}>Exact date</option>
-                      <option value={1}>± 1 day</option>
-                      <option value={2}>± 2 days</option>
-                    </select>
-                  </div>
                 </div>
 
                 {/* Date Type and Modifier */}

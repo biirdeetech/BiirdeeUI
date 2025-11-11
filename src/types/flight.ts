@@ -9,7 +9,6 @@ export interface FlightSearchParams {
   passengers: number;
   maxStops?: number;
   extraStops?: number;
-  flexibility?: number;
   // Multi-city specific fields
   slices?: FlightSliceParams[];
   // Pagination options
@@ -34,13 +33,11 @@ export interface FlightSliceParams {
   destinations: string[];
   departDate: string;
   cabin: 'COACH' | 'PREMIUM_COACH' | 'BUSINESS' | 'FIRST';
-  flexibility?: number;
   via?: string;
   routing?: string;
   ext?: string;
   routingRet?: string;
   extRet?: string;
-  returnFlexibility?: number;
   nonstop?: boolean;
   // Date controls
   departureDateType?: 'depart' | 'arrive';

@@ -83,13 +83,6 @@ class BiirdeeService {
     return String(maxStops);
   }
 
-  private mapFlexibility(flexibility?: number): string {
-    if (!flexibility || flexibility === 0) return '0';
-    if (flexibility === 1) return '1'; // ±1 day (symmetric)
-    if (flexibility === 2) return '2'; // ±2 days (symmetric)
-    if (flexibility === 3) return '3'; // ±3 days (symmetric)
-    return '0';
-  }
 
   private buildBiirdeeRequest(params: FlightSearchParams): any {
     console.log('🔧 BiirdeeService: Building request for:', params);
@@ -106,7 +99,7 @@ class BiirdeeService {
             searchDateType: 'specific',
             departureDate: slice.departDate,
             departureDateType: slice.departureDateType || 'depart',
-            departureDateModifier: slice.departureDateModifier || this.mapFlexibility(slice.flexibility),
+            departureDateModifier: slice.departureDateModifier || '0',
             departureDatePreferredTimes: slice.departureDatePreferredTimes || [],
             returnDateType: slice.returnDateType || 'depart',
             returnDateModifier: slice.returnDateModifier || '0',
@@ -134,7 +127,7 @@ class BiirdeeService {
           searchDateType: 'specific',
           departureDate: params.departDate,
           departureDateType: params.slices?.[0]?.departureDateType || 'depart',
-          departureDateModifier: params.slices?.[0]?.departureDateModifier || this.mapFlexibility(params.slices?.[0]?.flexibility),
+          departureDateModifier: params.slices?.[0]?.departureDateModifier || '0',
           departureDatePreferredTimes: params.slices?.[0]?.departureDatePreferredTimes || [],
           returnDateType: params.slices?.[0]?.returnDateType || 'depart',
           returnDateModifier: params.slices?.[0]?.returnDateModifier || '0',
@@ -163,7 +156,7 @@ class BiirdeeService {
             searchDateType: 'specific',
             departureDate: params.returnDate,
             departureDateType: params.slices?.[1]?.departureDateType || 'depart',
-            departureDateModifier: params.slices?.[1]?.departureDateModifier || this.mapFlexibility(params.slices?.[1]?.flexibility),
+            departureDateModifier: params.slices?.[1]?.departureDateModifier || '0',
             departureDatePreferredTimes: params.slices?.[1]?.departureDatePreferredTimes || [],
             returnDateType: params.slices?.[1]?.returnDateType || 'depart',
             returnDateModifier: params.slices?.[1]?.returnDateModifier || '0',

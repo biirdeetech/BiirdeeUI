@@ -270,7 +270,7 @@ const HacksPage: React.FC = () => {
               destinations: [urlParams.destination],
               departDate: frtDates.outbound,
               cabin: urlParams.cabin as any,
-              flexibility: 0,
+              departureDateModifier: '0',
               nonstop: false,
               routing: urlParams.flightNumber,
               ext: bookingClassesToExt(outboundBookingClasses)
@@ -280,7 +280,7 @@ const HacksPage: React.FC = () => {
               destinations: frtReturnDestinations,
               departDate: dateRange.date,
               cabin: frtReturnLeg.cabin as any,
-              flexibility: dateRange.modifier.plus,
+              departureDateModifier: String(dateRange.modifier.plus) as '0' | '1' | '10' | '11' | '2' | '22',
               nonstop: frtReturnLeg.nonstop,
               ext: bookingClassesToExt(returnBookingClasses)
             }
@@ -358,7 +358,7 @@ const HacksPage: React.FC = () => {
             destinations: selectedFinalCities,
             departDate: urlParams.departDate,
             cabin: urlParams.cabin as any,
-            flexibility: 0,
+            departureDateModifier: '0',
             nonstop: false,
             routing: urlParams.destination,
             ext: bookingClassesToExt(outboundBookingClasses)

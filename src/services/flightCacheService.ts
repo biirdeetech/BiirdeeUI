@@ -17,19 +17,17 @@ class FlightCacheService {
   private readonly TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
   generateCacheKey(params: FlightSearchParams): string {
-    // Serialize slices with all their params (via, nonstop, ext, flexibility, routing, etc.)
+    // Serialize slices with all their params (via, nonstop, ext, routing, etc.)
     const slicesKey = params.slices?.map(slice => ({
       origins: slice.origins.sort().join(','),
       destinations: slice.destinations.sort().join(','),
       departDate: slice.departDate,
       cabin: slice.cabin,
-      flexibility: slice.flexibility ?? 0,
       via: slice.via || '',
       routing: slice.routing || '',
       ext: slice.ext || '',
       routingRet: slice.routingRet || '',
       extRet: slice.extRet || '',
-      returnFlexibility: slice.returnFlexibility ?? 0,
       nonstop: slice.nonstop || false
     })) || [];
 
@@ -46,7 +44,6 @@ class FlightCacheService {
       // Routing & stops
       maxStops: params.maxStops ?? -1,
       extraStops: params.extraStops ?? -1,
-      flexibility: params.flexibility ?? 0,
 
       // Multi-city slices (includes via, nonstop, ext, routing for each leg)
       slices: slicesKey,

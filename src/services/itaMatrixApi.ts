@@ -74,12 +74,6 @@ class ITAMatrixService {
           destinations: slice.destinations,
           date: slice.departDate,
           isArrivalDate: false,
-          ...(slice.flexibility && slice.flexibility > 0 && {
-            dateModifier: {
-              minus: slice.flexibility,
-              plus: slice.flexibility
-            }
-          }),
           commandLine: generateCommandLine(slice.cabin, params.maxStops),
           ...(currentSliceRouteLanguage && { routeLanguage: currentSliceRouteLanguage }),
           filter: {
@@ -109,12 +103,6 @@ class ITAMatrixService {
         destinations: params.slices?.[0]?.destinations || [params.destination],
         date: params.departDate,
         isArrivalDate: false,
-        ...(params.slices?.[0]?.flexibility && params.slices[0].flexibility > 0 && {
-          dateModifier: {
-            minus: params.slices[0].flexibility,
-            plus: params.slices[0].flexibility
-          }
-        }),
         commandLine: generateCommandLine(params.cabin, params.maxStops),
         ...(outboundRouteLanguage && { routeLanguage: outboundRouteLanguage }),
         filter: {
@@ -143,12 +131,6 @@ class ITAMatrixService {
           destinations: params.slices?.[1]?.destinations || [params.origin],
           date: params.returnDate,
           isArrivalDate: false,
-          ...(params.slices?.[1]?.flexibility && params.slices[1].flexibility > 0 && {
-            dateModifier: {
-              minus: params.slices[1].flexibility,
-              plus: params.slices[1].flexibility
-            }
-          }),
           commandLine: generateCommandLine(params.cabin, params.maxStops),
           ...(returnRouteLanguage && { routeLanguage: returnRouteLanguage }),
           filter: {
