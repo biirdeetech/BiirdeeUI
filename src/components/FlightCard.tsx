@@ -720,64 +720,152 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="text-gray-600">•</span>
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
-                      <div className="space-y-1.5 pl-2">
+                      <div className="space-y-2 pl-2">
                         {sortedFlights.map((altFlight, altIndex) => {
                           const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
+
+                          // Calculate time difference
+                          const flightTime = new Date(altFlight.departure.at).getTime();
+                          const originalTime = new Date(slice.departure).getTime();
+                          const diffMinutes = Math.round((flightTime - originalTime) / (1000 * 60));
+                          const timeDiffText = diffMinutes === 0 ? 'Same time' :
+                            diffMinutes > 0 ? `+${diffMinutes}m` : `${diffMinutes}m`;
+
+                          // Calculate duration
+                          const depTime = new Date(altFlight.departure.at);
+                          const arrTime = new Date(altFlight.arrival.at);
+                          const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
+                          const durationHours = Math.floor(durationMinutes / 60);
+                          const durationMins = durationMinutes % 60;
+
+                          // Calculate mileage value
+                          const priceNum = typeof altFlight.mileagePrice === 'string'
+                            ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+                            : altFlight.mileagePrice;
+
                           return (
-                            <button
+                            <div
                               key={altIndex}
-                              className="w-full flex items-center justify-between text-xs bg-gray-800/70 hover:bg-gray-700/70 px-3 py-2 rounded transition-colors group border border-gray-700 hover:border-purple-500/50"
+                              className="bg-gray-800/50 hover:bg-gray-800/70 rounded-lg border-2 transition-all duration-200"
                               style={proximityColors ? {
                                 borderColor: proximityColors.borderColor,
                                 backgroundColor: proximityColors.bgColor
-                              } : {}}
+                              } : { borderColor: 'rgb(55, 65, 81)' }}
                             >
-                              <div className="flex items-center gap-2 flex-1">
-                                <div className="flex flex-col items-start">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-purple-300 font-medium">{altFlight.flightNumber}</span>
-                                    <span className="text-gray-500">•</span>
-                                    <span className="text-gray-300">Book via {carrierName}</span>
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
-                                    <span>
-                                      {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                      {' → '}
-                                      {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                    </span>
-                                    {altFlight.numberOfStops > 0 && (
-                                      <span className="text-orange-400">
-                                        • {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
-                                      </span>
-                                    )}
-                                    {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && <span className="text-green-400">✓ Full Match</span>}
-                                    {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && <span className="text-blue-400">Carrier Match</span>}
-                                    {altFlight.routeMatch && !altFlight.carrierMatch && <span className="text-yellow-400">Route Only</span>}
-                                    {!altFlight.routeMatch && <span className="text-gray-400">Time Match</span>}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-0.5">
-                                <div className="text-purple-300 font-semibold whitespace-nowrap">
-                                  {altFlight.mileage.toLocaleString()} miles
-                                </div>
-                                <div className="text-[10px] text-gray-400">
-                                  + {formatMileagePrice(altFlight.mileagePrice)}
-                                </div>
-                                {(() => {
-                                  const priceNum = typeof altFlight.mileagePrice === 'string'
-                                    ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
-                                    : altFlight.mileagePrice;
-                                  const pricePerMi = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
-                                  return pricePerMi > 0 && (
-                                    <div className="text-[9px] text-gray-500">
-                                      ${pricePerMi.toFixed(3)}/mi
+                              <div className="p-3">
+                                {/* Header: Flight Number, Carrier, and Match Badges */}
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-3">
+                                    {/* Carrier Logo */}
+                                    <img
+                                      src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
+                                      alt={carrierName}
+                                      className="h-7 w-7 rounded"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-mono text-base font-semibold text-white">{altFlight.flightNumber}</span>
+                                        <span className="text-xs text-gray-400">via {carrierName}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Match Type Badge */}
+                                        {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && (
+                                          <span className="inline-flex items-center px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
+                                            ✓ Full Match
+                                          </span>
+                                        )}
+                                        {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
+                                          <span className="inline-flex items-center px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full font-medium border border-blue-500/30">
+                                            Carrier Match
+                                          </span>
+                                        )}
+                                        {altFlight.routeMatch && !altFlight.carrierMatch && (
+                                          <span className="inline-flex items-center px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
+                                            Route Match
+                                          </span>
+                                        )}
+                                        {!altFlight.routeMatch && (
+                                          <span className="inline-flex items-center px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded-full font-medium border border-gray-500/30">
+                                            Time Match
+                                          </span>
+                                        )}
+
+                                        {/* Time Proximity Badge */}
+                                        {Math.abs(diffMinutes) <= 120 && (
+                                          <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium border ${
+                                            Math.abs(diffMinutes) <= 30 ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                            Math.abs(diffMinutes) <= 60 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
+                                            'bg-green-500/10 text-green-400 border-green-500/20'
+                                          }`}>
+                                            <Clock className="h-3 w-3 mr-1" />
+                                            {timeDiffText}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                  );
-                                })()}
+                                  </div>
+
+                                  {/* Prominent Mileage Value */}
+                                  <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400/40 rounded-lg px-4 py-2 text-right">
+                                    <div className="text-xs text-purple-300 font-medium mb-0.5">Mileage Value</div>
+                                    <div className="text-2xl font-bold text-purple-200">
+                                      ${priceNum.toFixed(2)}
+                                    </div>
+                                    <div className="text-xs text-purple-400 mt-0.5">
+                                      {altFlight.mileage.toLocaleString()} miles
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Flight Details Grid */}
+                                <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-700/50">
+                                  {/* Departure */}
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">Departure</div>
+                                    <div className="text-sm font-semibold text-white">
+                                      {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {new Date(altFlight.departure.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </div>
+                                  </div>
+
+                                  {/* Duration & Stops */}
+                                  <div className="text-center">
+                                    <div className="text-xs text-gray-500 mb-1">Duration</div>
+                                    <div className="text-sm font-semibold text-white">
+                                      {durationHours}h {durationMins}m
+                                    </div>
+                                    {altFlight.numberOfStops > 0 ? (
+                                      <div className="text-xs text-orange-400 font-medium mt-1">
+                                        {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-green-400 font-medium mt-1">
+                                        Nonstop
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Arrival */}
+                                  <div className="text-right">
+                                    <div className="text-xs text-gray-500 mb-1">Arrival</div>
+                                    <div className="text-sm font-semibold text-white">
+                                      {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {new Date(altFlight.arrival.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
