@@ -720,7 +720,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="text-gray-600">•</span>
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
-                      <div className="space-y-2 pl-2">
+                      <div className="space-y-1.5 pl-2">
                         {sortedFlights.map((altFlight, altIndex) => {
                           const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
@@ -744,125 +744,104 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
                             : altFlight.mileagePrice;
 
+                          // Format times
+                          const formatTime = (dateStr: string) => {
+                            return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                          };
+
                           return (
                             <div
                               key={altIndex}
-                              className="bg-gray-800/50 hover:bg-gray-800/70 rounded-lg border-2 transition-all duration-200"
+                              className="bg-gray-800/40 hover:bg-gray-800/60 rounded border transition-all duration-200"
                               style={proximityColors ? {
                                 borderColor: proximityColors.borderColor,
                                 backgroundColor: proximityColors.bgColor
                               } : { borderColor: 'rgb(55, 65, 81)' }}
                             >
-                              <div className="p-3">
-                                {/* Header: Flight Number, Carrier, and Match Badges */}
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-3">
-                                    {/* Carrier Logo */}
+                              <div className="px-3 py-2">
+                                {/* Compact Header */}
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
                                     <img
                                       src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
                                       alt={carrierName}
-                                      className="h-7 w-7 rounded"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
+                                      className="h-5 w-5 rounded"
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                     />
-                                    <div>
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-mono text-base font-semibold text-white">{altFlight.flightNumber}</span>
-                                        <span className="text-xs text-gray-400">via {carrierName}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        {/* Match Type Badge */}
-                                        {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && (
-                                          <span className="inline-flex items-center px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
-                                            ✓ Full Match
-                                          </span>
-                                        )}
-                                        {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
-                                          <span className="inline-flex items-center px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full font-medium border border-blue-500/30">
-                                            Carrier Match
-                                          </span>
-                                        )}
-                                        {altFlight.routeMatch && !altFlight.carrierMatch && (
-                                          <span className="inline-flex items-center px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
-                                            Route Match
-                                          </span>
-                                        )}
-                                        {!altFlight.routeMatch && (
-                                          <span className="inline-flex items-center px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded-full font-medium border border-gray-500/30">
-                                            Time Match
-                                          </span>
-                                        )}
-
-                                        {/* Time Proximity Badge */}
-                                        {Math.abs(diffMinutes) <= 120 && (
-                                          <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium border ${
-                                            Math.abs(diffMinutes) <= 30 ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-                                            Math.abs(diffMinutes) <= 60 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
-                                            'bg-green-500/10 text-green-400 border-green-500/20'
-                                          }`}>
-                                            <Clock className="h-3 w-3 mr-1" />
-                                            {timeDiffText}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
+                                    <span className="font-mono text-sm font-semibold text-white">{altFlight.flightNumber}</span>
+                                    <span className="text-xs text-gray-400">via {carrierName}</span>
                                   </div>
 
-                                  {/* Prominent Mileage Value */}
-                                  <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400/40 rounded-lg px-4 py-2 text-right">
-                                    <div className="text-xs text-purple-300 font-medium mb-0.5">Mileage Value</div>
-                                    <div className="text-2xl font-bold text-purple-200">
-                                      ${priceNum.toFixed(2)}
-                                    </div>
-                                    <div className="text-xs text-purple-400 mt-0.5">
-                                      {altFlight.mileage.toLocaleString()} miles
-                                    </div>
+                                  {/* Compact Mileage Display */}
+                                  <div className="flex items-baseline gap-1.5 bg-purple-500/15 border border-purple-400/30 rounded px-2 py-1">
+                                    <span className="text-xs text-purple-300 font-medium">Value:</span>
+                                    <span className="text-base font-bold text-purple-200">${priceNum.toFixed(2)}</span>
+                                    <span className="text-xs text-purple-400">/ {altFlight.mileage.toLocaleString()}mi</span>
                                   </div>
                                 </div>
 
-                                {/* Flight Details Grid */}
-                                <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-700/50">
-                                  {/* Departure */}
-                                  <div>
-                                    <div className="text-xs text-gray-500 mb-1">Departure</div>
-                                    <div className="text-sm font-semibold text-white">
-                                      {new Date(altFlight.departure.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                {/* Flight Line Visualization (similar to main card) */}
+                                <div className="relative mb-2">
+                                  {/* Route Line */}
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="text-xs">
+                                      <div className="font-bold text-white">{formatTime(altFlight.departure.at)}</div>
+                                      <div className="text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
                                     </div>
-                                    <div className="text-xs text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
-                                    <div className="text-xs text-gray-500">
-                                      {new Date(altFlight.departure.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    <div className="flex-1 mx-2 flex items-center">
+                                      <div className="flex-1 border-t-2 border-gray-600"></div>
+                                      {altFlight.numberOfStops > 0 && (
+                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2 py-0.5 text-[10px] text-orange-300 whitespace-nowrap">
+                                          {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                        </div>
+                                      )}
+                                      <div className="flex-1 border-t-2 border-gray-600"></div>
+                                      <Plane className="h-3 w-3 text-gray-500" />
+                                    </div>
+                                    <div className="text-xs text-right">
+                                      <div className="font-bold text-white">{formatTime(altFlight.arrival.at)}</div>
+                                      <div className="text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
                                     </div>
                                   </div>
 
-                                  {/* Duration & Stops */}
-                                  <div className="text-center">
-                                    <div className="text-xs text-gray-500 mb-1">Duration</div>
-                                    <div className="text-sm font-semibold text-white">
-                                      {durationHours}h {durationMins}m
-                                    </div>
-                                    {altFlight.numberOfStops > 0 ? (
-                                      <div className="text-xs text-orange-400 font-medium mt-1">
-                                        {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs text-green-400 font-medium mt-1">
-                                        Nonstop
-                                      </div>
-                                    )}
+                                  {/* Duration below line */}
+                                  <div className="text-center text-xs text-gray-400">
+                                    <Clock className="h-2.5 w-2.5 inline mr-1" />
+                                    {durationHours}h {durationMins}m
                                   </div>
+                                </div>
 
-                                  {/* Arrival */}
-                                  <div className="text-right">
-                                    <div className="text-xs text-gray-500 mb-1">Arrival</div>
-                                    <div className="text-sm font-semibold text-white">
-                                      {new Date(altFlight.arrival.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                    </div>
-                                    <div className="text-xs text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
-                                    <div className="text-xs text-gray-500">
-                                      {new Date(altFlight.arrival.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                    </div>
-                                  </div>
+                                {/* Compact Badges Row */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded font-medium border border-green-500/30">
+                                      ✓ Full
+                                    </span>
+                                  )}
+                                  {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded font-medium border border-blue-500/30">
+                                      Carrier
+                                    </span>
+                                  )}
+                                  {altFlight.routeMatch && !altFlight.carrierMatch && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded font-medium border border-yellow-500/30">
+                                      Route
+                                    </span>
+                                  )}
+                                  {!altFlight.routeMatch && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] rounded font-medium border border-gray-500/30">
+                                      Time
+                                    </span>
+                                  )}
+                                  {Math.abs(diffMinutes) <= 120 && (
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] rounded font-medium border ${
+                                      Math.abs(diffMinutes) <= 30 ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                      Math.abs(diffMinutes) <= 60 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
+                                      'bg-green-500/10 text-green-400 border-green-500/20'
+                                    }`}>
+                                      {timeDiffText}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
