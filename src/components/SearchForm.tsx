@@ -606,20 +606,23 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-white`}>
             {compact ? 'Modify Search' : 'Flight Search'}
           </h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-300">Passengers</label>
               <select
                 value={passengers}
                 onChange={(e) => setPassengers(Number(e.target.value))}
-                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
+
+            <div className="h-6 w-px bg-gray-700"></div>
+
+            <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
                 checked={legs.every(leg => leg.nonstop)}
@@ -632,23 +635,29 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     extraStops: isChecked ? 0 : -1
                   })));
                 }}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                className="sr-only peer"
               />
-              <span className="text-sm text-gray-300">Nonstop only</span>
+              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors">Nonstop only</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
+
+            <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
                 checked={aeroEnabled}
                 onChange={(e) => setAeroEnabled(e.target.checked)}
-                className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                className="sr-only peer"
               />
-              <span className="text-sm text-gray-300">Aero Enabled</span>
+              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors">Aero Enabled</span>
             </label>
+
+            <div className="h-6 w-px bg-gray-700"></div>
+
             <button
               type="button"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className={`flex items-center gap-2 px-3 py-2 border rounded transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all ${
                 showAdvancedOptions
                   ? 'bg-accent-600 hover:bg-accent-700 border-accent-500 text-white shadow-lg shadow-accent-500/20'
                   : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
