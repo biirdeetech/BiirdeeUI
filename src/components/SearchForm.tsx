@@ -603,11 +603,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     <div className={`bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl ${compact ? 'p-4' : 'p-8'} hover:border-gray-600 transition-all duration-300`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-white`}>
-            {compact ? 'Modify Search' : 'Flight Search'}
-          </h3>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3">
+          {/* Title Row */}
+          <div className="flex items-center justify-between">
+            <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-white`}>
+              {compact ? 'Modify Search' : 'Flight Search'}
+            </h3>
+          </div>
+
+          {/* Controls Row - Responsive */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Passengers */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-300">Passengers</label>
               <select
@@ -621,8 +627,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               </select>
             </div>
 
-            <div className="h-6 w-px bg-gray-700"></div>
+            {/* Divider - hide on small screens */}
+            <div className="hidden sm:block h-6 w-px bg-gray-700"></div>
 
+            {/* Nonstop Toggle */}
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
@@ -639,9 +647,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors">Nonstop only</span>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Nonstop only</span>
             </label>
 
+            {/* Aero Toggle */}
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
                 type="checkbox"
@@ -650,15 +659,17 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors">Aero Enabled</span>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Aero Enabled</span>
             </label>
 
-            <div className="h-6 w-px bg-gray-700"></div>
+            {/* Divider - hide on small screens */}
+            <div className="hidden sm:block h-6 w-px bg-gray-700"></div>
 
+            {/* Advanced Button */}
             <button
               type="button"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all whitespace-nowrap ${
                 showAdvancedOptions
                   ? 'bg-accent-600 hover:bg-accent-700 border-accent-500 text-white shadow-lg shadow-accent-500/20'
                   : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
