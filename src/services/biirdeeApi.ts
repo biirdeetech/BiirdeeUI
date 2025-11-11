@@ -209,7 +209,12 @@ class BiirdeeService {
         ...(params.strict_leg_match !== undefined && { strict_leg_match: params.strict_leg_match }),
         summary: globalSummary,
         ...(params.sales_city && { sales_city: params.sales_city }),
-        ...(params.currency && { currency: params.currency })
+        ...(params.currency && {
+          currency: {
+            code: params.currency,
+            displayName: params.currency
+          }
+        })
       },
       pax: {
         adults: String(params.passengers || 1)
