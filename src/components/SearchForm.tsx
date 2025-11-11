@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info, Sparkles } from 'lucide-react';
+import { Search, Plus, Minus, ArrowRight, X, ArrowLeftRight, Info, Sparkles, Settings } from 'lucide-react';
 import { getDefaultBookingClasses, bookingClassesToExt, extToBookingClasses } from '../utils/bookingClasses';
 import LocationSearchInput from './LocationSearchInput';
 import LocationSearchInputMulti from './LocationSearchInputMulti';
@@ -68,7 +68,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: ['SFO'],
       destinations: ['CDG'],
       vias: [],
-      nonstop: false,
+      nonstop: true,
       departDate: getDefaultDepartDate(),
       cabin: 'BUSINESS',
       bookingClasses: (() => {
@@ -106,7 +106,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   // Pagination and Aero options
   const [pageSize, setPageSize] = useState(25);
   const [pageNum, setPageNum] = useState(1);
-  const [aeroEnabled, setAeroEnabled] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [aeroEnabled, setAeroEnabled] = useState(true);
   const [airlines, setAirlines] = useState('');
   const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
   const [timeTolerance, setTimeTolerance] = useState(120);
@@ -604,17 +605,28 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-white`}>
             {compact ? 'Modify Search' : 'Flight Search'}
           </h3>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-300">Passengers</label>
-            <select
-              value={passengers}
-              onChange={(e) => setPassengers(Number(e.target.value))}
-              className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-300">Passengers</label>
+              <select
+                value={passengers}
+                onChange={(e) => setPassengers(Number(e.target.value))}
+                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 hover:text-white transition-colors"
+              title="Advanced Options"
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                <option key={num} value={num}>{num}</option>
-              ))}
-            </select>
+              <Settings className="h-4 w-4" />
+              <span className="text-sm">Advanced</span>
+            </button>
           </div>
         </div>
 
@@ -679,19 +691,19 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'destinations')}
                     tagColor="blue"
                   />
-
-                  {/* Fake Round Trip Button */}
-                  {index === 0 && legs.length === 1 && leg.destinations.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateFakeRoundTrip(leg.id)}
-                      className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg transition-all text-sm font-medium"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      Generate Fake Round Trip
-                    </button>
-                  )}
                 </div>
+
+                {/* Fake Round Trip Button */}
+                {index === 0 && legs.length === 1 && leg.destinations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateFakeRoundTrip(leg.id)}
+                    className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-lg px-3 py-2 transition-all flex items-center justify-center group shrink-0 mt-7"
+                    title="Generate fake round trip with connecting city"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               <div className={`grid grid-cols-1 ${compact ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'} gap-4 mt-4`}>
@@ -800,29 +812,27 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 {/* Flight Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={leg.nonstop}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          setLegs(legs.map(l =>
-                            l.id === leg.id
-                              ? {
-                                  ...l,
-                                  nonstop: isChecked,
-                                  maxStops: isChecked ? 0 : -1,
-                                  extraStops: isChecked ? 0 : -1
-                                }
-                              : l
-                          ));
-                        }}
-                        className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                      />
-                      <span className="text-sm text-gray-300">Nonstop only</span>
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leg.nonstop}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setLegs(legs.map(l =>
+                          l.id === leg.id
+                            ? {
+                                ...l,
+                                nonstop: isChecked,
+                                maxStops: isChecked ? 0 : -1,
+                                extraStops: isChecked ? 0 : -1
+                              }
+                            : l
+                        ));
+                      }}
+                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                    />
+                    <span className="text-sm text-gray-300">Nonstop only</span>
+                  </label>
                 </div>
 
                 {/* Cabin Class */}
@@ -1002,6 +1012,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               )}
 
               {/* Per-Leg ITA Matrix & Aero Options */}
+              {showAdvancedOptions && (
               <div className="mt-4 pt-4 border-t border-gray-700">
                 <h4 className="text-sm font-medium text-gray-200 mb-3">Search Options for this Leg</h4>
 
@@ -1067,6 +1078,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </label>
                 </div>
               </div>
+              )}
             </div>
           ))}
           
@@ -1091,6 +1103,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           </span>
         </div>
 
+        {/* Advanced Options Section */}
+        {showAdvancedOptions && (
+        <>
         {/* Global Configuration Section */}
         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-4">
           <h4 className="text-sm font-medium text-gray-300">Global Configuration</h4>
@@ -1224,6 +1239,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               )}
           </div>
         </details>
+        </>
+        )}
 
         {/* Search Button */}
         <button
