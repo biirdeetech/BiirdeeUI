@@ -716,6 +716,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 <div className={compact ? 'w-40' : 'w-48'}>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Date</label>
+                  {/* Invisible space reservation for consistent height with From/To inputs */}
+                  <div className="min-h-[36px] mb-2"></div>
                   <input
                     type="date"
                     value={leg.departDate}

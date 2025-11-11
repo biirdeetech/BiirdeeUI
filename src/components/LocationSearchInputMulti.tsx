@@ -129,40 +129,42 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
         </label>
       )}
 
-      {/* Tags Display */}
-      {values.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {values.map((value, idx) => (
-            <span
-              key={idx}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${getTagColorClasses()} rounded text-sm transition-colors`}
-            >
-              {value}
-              {onOpenNearbySearch && (
-                <div className="relative group/tooltip">
-                  <button
-                    type="button"
-                    onClick={(e) => handleNearbySearch(value, e)}
-                    className="text-current opacity-70 hover:opacity-100 transition-opacity"
-                  >
-                    <Locate className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
-                    Find nearby airports
-                  </div>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => handleRemove(idx)}
-                className="text-current opacity-70 hover:opacity-100 transition-opacity"
+      {/* Tags Display - Always reserve space for consistent height */}
+      <div className="min-h-[36px] mb-2">
+        {values.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {values.map((value, idx) => (
+              <span
+                key={idx}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${getTagColorClasses()} rounded text-sm transition-colors`}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+                {value}
+                {onOpenNearbySearch && (
+                  <div className="relative group/tooltip">
+                    <button
+                      type="button"
+                      onClick={(e) => handleNearbySearch(value, e)}
+                      className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                    >
+                      <Locate className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
+                      Find nearby airports
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(idx)}
+                  className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Input Field */}
       <div className="relative">
