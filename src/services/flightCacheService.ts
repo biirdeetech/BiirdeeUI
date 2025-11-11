@@ -59,7 +59,7 @@ class FlightCacheService {
       aero: params.aero || false,
       airlines: params.airlines || '',
       strict_airline_match: params.strict_airline_match || false,
-      time_tolerance: params.time_tolerance || 120,
+      time_tolerance: params.time_tolerance || 900,
       strict_leg_match: params.strict_leg_match || false,
       summary: params.summary || false
     };
