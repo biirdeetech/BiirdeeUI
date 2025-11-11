@@ -127,7 +127,7 @@ const SearchPage: React.FC = () => {
         aero: searchParams.get('aero') === 'true',
         airlines: searchParams.get('airlines') || undefined,
         strict_airline_match: searchParams.get('strict_airline_match') === 'true',
-        time_tolerance: parseInt(searchParams.get('time_tolerance') || '120'),
+        time_tolerance: parseInt(searchParams.get('time_tolerance') || '900'),
         strict_leg_match: searchParams.get('strict_leg_match') === 'true',
         summary: searchParams.get('summary') === 'true',
         sales_city: searchParams.get('sales_city') || undefined,
