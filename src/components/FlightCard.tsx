@@ -915,10 +915,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Best Mileage */}
               {(() => {
                 const bestMileage = [...mileageDeals].sort((a, b) => {
-                  const aMiles = a.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const bMiles = b.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const aMiles = (a.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const bMiles = (b.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
                   return aMiles - bMiles;
                 })[0];
+                if (!bestMileage || !bestMileage.flights) return null;
                 const totalMiles = bestMileage.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
                 const totalTax = bestMileage.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                 return (
@@ -934,10 +935,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Best Tax */}
               {(() => {
                 const bestTax = [...mileageDeals].sort((a, b) => {
-                  const aTax = a.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                  const bTax = b.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const aTax = (a.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const bTax = (b.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                   return aTax - bTax;
                 })[0];
+                if (!bestTax || !bestTax.flights) return null;
                 const totalMiles = bestTax.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
                 const totalTax = bestTax.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                 return (
@@ -953,14 +955,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Best Cash Value */}
               {(() => {
                 const bestValue = [...mileageDeals].sort((a, b) => {
-                  const aMiles = a.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const aTax = a.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const aMiles = (a.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const aTax = (a.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                   const aValue = (aMiles * 0.015) + aTax;
-                  const bMiles = b.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const bTax = b.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const bMiles = (b.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const bTax = (b.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                   const bValue = (bMiles * 0.015) + bTax;
                   return aValue - bValue;
                 })[0];
+                if (!bestValue || !bestValue.flights) return null;
                 const totalMiles = bestValue.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
                 const totalTax = bestValue.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
                 const cashValue = (totalMiles * 0.015) + totalTax;
