@@ -32,7 +32,7 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       enabled: false,
       airlines: '',
       strict_airline_match: false,
-      time_tolerance: 600,
+      time_tolerance: 900,
       strict_leg_match: false,
       summary: false,
       salesCity: null as { code: string; name: string } | null,
