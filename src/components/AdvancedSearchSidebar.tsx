@@ -393,7 +393,7 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
               onChange={(e) => {
                 setAdvancedSettings(prev => ({
                   ...prev,
-                  aero: { ...prev.aero, time_tolerance: parseInt(e.target.value) || 120 }
+                  aero: { ...prev.aero, time_tolerance: parseInt(e.target.value) || 900 }
                 }));
               }}
               onBlur={() => onSettingsChange(advancedSettings)}
