@@ -791,84 +791,76 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       </div>
                     </div>
 
-                    {/* Nonstop */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={leg.nonstop}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked;
-                              setLegs(legs.map(l =>
-                                l.id === leg.id
-                                  ? {
-                                      ...l,
-                                      nonstop: isChecked,
-                                      maxStops: isChecked ? 0 : -1,
-                                      extraStops: isChecked ? 0 : -1
-                                    }
-                                  : l
-                              ));
-                            }}
-                            className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                          />
-                          <span className="text-sm text-gray-300">Nonstop only</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={leg.businessPlus}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked;
-                              if (isChecked) {
-                                // Set cabin to Business and combine Business + First classes
-                                const businessClasses = getDefaultBookingClasses('BUSINESS');
-                                const firstClasses = getDefaultBookingClasses('FIRST');
-                                const combined = [...new Set([...businessClasses, ...firstClasses])];
-                                updateLegMultiple(leg.id, {
-                                  businessPlus: true,
-                                  cabin: 'BUSINESS',
-                                  bookingClasses: combined
-                                });
-                              } else {
-                                // Keep current cabin but reset to its default classes
-                                const currentCabin = leg.cabin;
-                                updateLegMultiple(leg.id, {
-                                  businessPlus: false,
-                                  bookingClasses: getDefaultBookingClasses(currentCabin)
-                                });
-                              }
-                            }}
-                            className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                          />
-                          <span className="text-sm text-gray-300">Business+ only</span>
-                        </label>
-                      </div>
-                    </div>
-
                   </>
                 )}
               </div>
 
-              {/* Cabin Class */}
-              <div className={`mt-4 ${compact ? 'max-w-full' : 'max-w-xs'}`}>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
-                <select
-                  value={leg.cabin}
-                  onChange={(e) => updateLeg(leg.id, 'cabin', e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                >
-                  <option value="COACH">Economy</option>
-                  <option value="PREMIUM-COACH">Premium Economy</option>
-                  <option value="BUSINESS">Business</option>
-                  <option value="FIRST">First Class</option>
-                </select>
-              </div>
+              {/* Flight Type, Cabin Class, and Booking Classes Row */}
+              <div className={`mt-4 grid ${compact ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 lg:grid-cols-3'} gap-4`}>
+                {/* Flight Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={leg.nonstop}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setLegs(legs.map(l =>
+                            l.id === leg.id
+                              ? {
+                                  ...l,
+                                  nonstop: isChecked,
+                                  maxStops: isChecked ? 0 : -1,
+                                  extraStops: isChecked ? 0 : -1
+                                }
+                              : l
+                          ));
+                        }}
+                        className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-300">Nonstop only</span>
+                    </label>
+                  </div>
+                </div>
 
-              {/* Booking Class Codes */}
-              <div className="mt-4">
+                {/* Cabin Class */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
+                  <select
+                    value={leg.businessPlus ? 'BUSINESS_PLUS' : leg.cabin}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === 'BUSINESS_PLUS') {
+                        const businessClasses = getDefaultBookingClasses('BUSINESS');
+                        const firstClasses = getDefaultBookingClasses('FIRST');
+                        const combined = [...new Set([...businessClasses, ...firstClasses])];
+                        updateLegMultiple(leg.id, {
+                          businessPlus: true,
+                          cabin: 'BUSINESS',
+                          bookingClasses: combined
+                        });
+                      } else {
+                        updateLegMultiple(leg.id, {
+                          businessPlus: false,
+                          cabin: value,
+                          bookingClasses: getDefaultBookingClasses(value)
+                        });
+                      }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                  >
+                    <option value="COACH">Economy</option>
+                    <option value="PREMIUM-COACH">Premium Economy</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="BUSINESS_PLUS">Business+ Only</option>
+                    <option value="FIRST">First Class</option>
+                  </select>
+                </div>
+
+                {/* Booking Class Codes */}
+                <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label className="block text-sm font-medium text-gray-300">Booking Classes</label>
                   <div className="relative">
@@ -940,71 +932,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 <p className="text-xs text-gray-500 mt-1">
                   Auto-populated based on cabin class. Add/remove specific fare classes.
                 </p>
+                </div>
               </div>
 
               {/* Compact Mode Additional Options */}
               {compact && (
                 <>
-                <div className="mt-4 grid grid-cols-2 gap-4">
-                  {/* Nonstop */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Flight Type</label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={leg.nonstop}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            setLegs(legs.map(l =>
-                              l.id === leg.id
-                                ? {
-                                    ...l,
-                                    nonstop: isChecked,
-                                    maxStops: isChecked ? 0 : -1,
-                                    extraStops: isChecked ? 0 : -1
-                                  }
-                                : l
-                            ));
-                          }}
-                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                        />
-                        <span className="text-sm text-gray-300">Nonstop only</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={leg.businessPlus}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            if (isChecked) {
-                              // Set cabin to Business and combine Business + First classes
-                              const businessClasses = getDefaultBookingClasses('BUSINESS');
-                              const firstClasses = getDefaultBookingClasses('FIRST');
-                              const combined = [...new Set([...businessClasses, ...firstClasses])];
-                              updateLegMultiple(leg.id, {
-                                businessPlus: true,
-                                cabin: 'BUSINESS',
-                                bookingClasses: combined
-                              });
-                            } else {
-                              // Keep current cabin but reset to its default classes
-                              const currentCabin = leg.cabin;
-                              updateLegMultiple(leg.id, {
-                                businessPlus: false,
-                                bookingClasses: getDefaultBookingClasses(currentCabin)
-                              });
-                            }
-                          }}
-                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
-                        />
-                        <span className="text-sm text-gray-300">Business+ only</span>
-                      </label>
-                    </div>
-                  </div>
-
-                </div>
-
                 {/* Date Type and Modifier */}
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
