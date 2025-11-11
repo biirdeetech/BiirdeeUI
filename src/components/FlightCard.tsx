@@ -312,7 +312,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
                 <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
+                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5 relative">
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-bold text-orange-300">{totalMileage.toLocaleString()}</span>
                       <span className="text-xs text-orange-400">miles</span>
@@ -326,12 +326,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         @ ${(totalMileagePrice / totalMileage).toFixed(3)}/mi
                       </span>
                     </div>
+                    {/* Alternative Programs Badge */}
+                    {mileageDeals && mileageDeals.length > 1 && (
+                      <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-900">
+                        {mileageDeals.length}
+                      </div>
+                    )}
                   </div>
-                  {mileageDeals && mileageDeals.length > 1 && (
-                    <span className="inline-flex items-center px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full font-medium border border-blue-400/30">
-                      {mileageDeals.length} programs
-                    </span>
-                  )}
                 </div>
               )}
 
@@ -347,7 +348,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 </div>
                 {totalMileage > 0 && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage Value
+                    Mileage Value: ${((totalMileage * 0.015) + totalMileagePrice).toFixed(2)}
                   </div>
                 )}
               </div>
@@ -789,23 +790,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                 </div>
 
                                 {/* Mileage value badge with proper calculation */}
-                                <div className="flex items-center gap-2">
-                                  <div className="bg-gradient-to-r from-orange-500/15 to-amber-500/15 border border-orange-400/40 rounded-lg px-2.5 py-1.5">
-                                    <div className="flex items-baseline gap-1">
-                                      <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
-                                      <span className="text-[10px] text-orange-400/70">mi</span>
-                                      <span className="text-xs text-orange-400/60">+</span>
-                                      <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
-                                      <span className="text-[9px] text-orange-500/50 ml-0.5">@ ${perMile.toFixed(3)}/mi</span>
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <div className="bg-gradient-to-r from-orange-500/15 to-amber-500/15 border border-orange-400/40 rounded-lg px-2.5 py-1.5">
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
+                                        <span className="text-[10px] text-orange-400/70">mi</span>
+                                        <span className="text-xs text-orange-400/60">+</span>
+                                        <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
+                                        <span className="text-[9px] text-orange-500/50 ml-0.5">@ ${perMile.toFixed(3)}/mi</span>
+                                      </div>
                                     </div>
+                                    <button
+                                      onClick={() => setShowAddToProposal(true)}
+                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add
+                                    </button>
                                   </div>
-                                  <button
-                                    onClick={() => setShowAddToProposal(true)}
-                                    className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    Add
-                                  </button>
+                                  <div className="text-[10px] text-gray-400">
+                                    Mileage Value: ${((altFlight.mileage * 0.015) + priceNum).toFixed(2)}
+                                  </div>
                                 </div>
                               </div>
 
@@ -855,22 +861,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {isWithinTolerance && altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded font-medium border border-green-500/30">
-                                      ✓ Full Match
+                                      Match Type: Exact
                                     </span>
                                   )}
                                   {isWithinTolerance && !altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded font-medium border border-blue-500/30">
-                                      Carrier
+                                      Match Type: Carrier
                                     </span>
                                   )}
                                   {isWithinTolerance && altFlight.routeMatch && !altFlight.carrierMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded font-medium border border-yellow-500/30">
-                                      Route
+                                      Match Type: Route
                                     </span>
                                   )}
                                   {isWithinTolerance && !altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] rounded font-medium border border-gray-500/30">
-                                      Time
+                                      Match Type: Time
                                     </span>
                                   )}
                                   {isWithinTolerance && Math.abs(diffMinutes) <= 960 && (
@@ -879,7 +885,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                       Math.abs(diffMinutes) <= 480 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
                                       'bg-green-500/10 text-green-400 border-green-500/20'
                                     }`}>
-                                      {timeDiffText}
+                                      Time Difference: {timeDiffText}
                                     </span>
                                   )}
                                   {altFlight.cabin && (
@@ -903,83 +909,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         ))}
       </div>
 
-      {/* Best Mileage Options Display (direct, no modal) */}
-      {mileageDeals && mileageDeals.length > 0 && (
-        <div className="px-3 sm:px-4 lg:px-6 pb-4">
-          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-200">Best Mileage Options</h3>
-              <span className="text-xs text-gray-400">{mileageDeals.length} program{mileageDeals.length > 1 ? 's' : ''} available</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* Best Mileage */}
-              {(() => {
-                const bestMileage = [...mileageDeals].sort((a, b) => {
-                  const aMiles = (a.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const bMiles = (b.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  return aMiles - bMiles;
-                })[0];
-                if (!bestMileage || !bestMileage.flights) return null;
-                const totalMiles = bestMileage.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                const totalTax = bestMileage.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                return (
-                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-3">
-                    <div className="text-xs text-green-400 font-medium mb-1">Lowest Miles</div>
-                    <div className="text-lg font-bold text-green-300">{totalMiles.toLocaleString()}</div>
-                    <div className="text-xs text-green-400/80">+ ${totalTax.toFixed(2)} tax</div>
-                    <div className="text-[10px] text-green-500/60 mt-1">{bestMileage.program}</div>
-                  </div>
-                );
-              })()}
-
-              {/* Best Tax */}
-              {(() => {
-                const bestTax = [...mileageDeals].sort((a, b) => {
-                  const aTax = (a.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                  const bTax = (b.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                  return aTax - bTax;
-                })[0];
-                if (!bestTax || !bestTax.flights) return null;
-                const totalMiles = bestTax.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                const totalTax = bestTax.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                return (
-                  <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-lg p-3">
-                    <div className="text-xs text-blue-400 font-medium mb-1">Lowest Tax</div>
-                    <div className="text-lg font-bold text-blue-300">${totalTax.toFixed(2)}</div>
-                    <div className="text-xs text-blue-400/80">{totalMiles.toLocaleString()} miles</div>
-                    <div className="text-[10px] text-blue-500/60 mt-1">{bestTax.program}</div>
-                  </div>
-                );
-              })()}
-
-              {/* Best Cash Value */}
-              {(() => {
-                const bestValue = [...mileageDeals].sort((a, b) => {
-                  const aMiles = (a.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const aTax = (a.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                  const aValue = (aMiles * 0.015) + aTax;
-                  const bMiles = (b.flights || []).reduce((sum, f) => sum + (f.mileage || 0), 0);
-                  const bTax = (b.flights || []).reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                  const bValue = (bMiles * 0.015) + bTax;
-                  return aValue - bValue;
-                })[0];
-                if (!bestValue || !bestValue.flights) return null;
-                const totalMiles = bestValue.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
-                const totalTax = bestValue.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
-                const cashValue = (totalMiles * 0.015) + totalTax;
-                return (
-                  <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/30 rounded-lg p-3">
-                    <div className="text-xs text-amber-400 font-medium mb-1">Best Cash Value</div>
-                    <div className="text-lg font-bold text-amber-300">${cashValue.toFixed(2)}</div>
-                    <div className="text-xs text-amber-400/80">{totalMiles.toLocaleString()} mi + ${totalTax.toFixed(2)}</div>
-                    <div className="text-[10px] text-amber-500/60 mt-1">{bestValue.program}</div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add to Proposal Modal */}
       {showAddToProposal && (
