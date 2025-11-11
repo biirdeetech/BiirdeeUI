@@ -89,6 +89,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
+  const [showViaInput, setShowViaInput] = useState<string | null>(null);
 
   // Nearby airport modal state
   const [nearbyModalOpen, setNearbyModalOpen] = useState(false);
@@ -679,7 +680,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 </div>
 
                 {/* Swap Button with Via/Layover */}
-                <div className="relative self-end mb-[2px] group/swap">
+                <div className="relative self-end mb-[2px]">
                   {/* Via Badge - appears on top of button */}
                   {leg.vias.length > 0 && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
@@ -704,41 +705,55 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </div>
                   )}
 
-                  {/* Hover detection area - extends to where input will appear */}
-                  <div className="absolute -top-2 -left-2 -right-52 -bottom-2 z-0" />
-
-                  <div className="relative z-10">
+                  <div className="relative group/swap">
                     <button
                       type="button"
                       onClick={() => swapOriginsDestinations(leg.id)}
                       className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center shrink-0"
                       title="Switch origins and destinations"
                     >
-                      <ArrowLeftRight className="h-4 w-4 text-gray-400 group-hover/swap:text-accent-400 transition-colors" />
+                      <ArrowLeftRight className="h-4 w-4 text-gray-400 transition-colors" />
                     </button>
 
-                    {/* Plus icon overlay - shows on hover */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none">
-                      <Plus className="h-4 w-4 text-purple-400" />
-                    </div>
-
-                    {/* Via Input - appears on hover, floats above */}
-                    <div className="absolute left-full ml-2 top-0 opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none group-hover/swap:pointer-events-auto z-30">
-                      <LocationSearchInputWithCallback
-                        onSelect={(code) => {
-                          if (code && !leg.vias.includes(code)) {
-                            updateLeg(leg.id, 'vias', [...leg.vias, code]);
-                          }
+                    {/* Plus icon button - floats above on hover */}
+                    {leg.vias.length === 0 && showViaInput !== leg.id && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowViaInput(leg.id);
                         }}
-                        placeholder="Via / Layover"
-                        className="w-48"
-                      />
-                    </div>
+                        className="absolute -top-10 left-1/2 -translate-x-1/2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 hover:border-purple-500 text-purple-300 rounded-full p-2 transition-all opacity-0 group-hover/swap:opacity-100 z-20"
+                        title="Add via / layover"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    )}
 
-                    {/* Tooltip */}
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
-                      Via / Layover
-                    </div>
+                    {/* Via Input - appears below button when plus is clicked */}
+                    {showViaInput === leg.id && (
+                      <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-30">
+                        <div className="relative">
+                          <LocationSearchInputWithCallback
+                            onSelect={(code) => {
+                              if (code && !leg.vias.includes(code)) {
+                                updateLeg(leg.id, 'vias', [...leg.vias, code]);
+                                setShowViaInput(null);
+                              }
+                            }}
+                            placeholder="Via / Layover"
+                            className="w-48"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowViaInput(null)}
+                            className="absolute -top-2 -right-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
