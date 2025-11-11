@@ -572,7 +572,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     if (strictAirlineMatch) {
       searchParams.append('strict_airline_match', 'true');
     }
-    if (timeTolerance !== 120) {
+    if (timeTolerance !== 900) {
       searchParams.append('time_tolerance', timeTolerance.toString());
     }
     if (strictLegMatch) {
