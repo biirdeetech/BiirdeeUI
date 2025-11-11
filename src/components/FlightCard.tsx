@@ -311,20 +311,26 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
             <div className="flex items-baseline gap-3">
               {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
-                <div>
-                  {mileageDeals && mileageDeals.length === 1 ? (
-                    <button
-                      onClick={() => handleSelectMileageDeal(mileageDeals[0])}
-                      className="px-2 py-1 bg-accent-500/30 text-accent-300 text-xs font-medium rounded hover:bg-accent-500/40 transition-colors whitespace-nowrap"
-                    >
-                      {totalMileage.toLocaleString()} miles
-                      {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
-                    </button>
-                  ) : (
-                    <div className="px-2 py-1 bg-accent-500/30 text-accent-300 text-xs font-medium rounded whitespace-nowrap">
-                      {totalMileage.toLocaleString()} miles
-                      {totalMileagePrice > 0 && ` + $${totalMileagePrice.toFixed(2)}`}
+                <div className="flex items-center gap-2">
+                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-bold text-orange-300">{totalMileage.toLocaleString()}</span>
+                      <span className="text-xs text-orange-400">miles</span>
+                      {totalMileagePrice > 0 && (
+                        <>
+                          <span className="text-xs text-orange-400">+</span>
+                          <span className="text-sm font-semibold text-orange-300">${totalMileagePrice.toFixed(2)}</span>
+                        </>
+                      )}
+                      <span className="text-[10px] text-orange-500/70 ml-1">
+                        @ ${(totalMileagePrice / totalMileage).toFixed(3)}/mi
+                      </span>
                     </div>
+                  </div>
+                  {mileageDeals && mileageDeals.length > 1 && (
+                    <span className="inline-flex items-center px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full font-medium border border-blue-400/30">
+                      {mileageDeals.length} programs
+                    </span>
                   )}
                 </div>
               )}
@@ -341,7 +347,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                 </div>
                 {totalMileage > 0 && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage value: ${((totalMileage * 0.015) + (totalMileagePrice || 0)).toFixed(2)}
+                    Mileage Value
                   </div>
                 )}
               </div>
@@ -720,7 +726,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="text-gray-600">•</span>
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
-                      <div className="space-y-1.5 pl-2">
+                      <div className="space-y-2 pl-2">
                         {sortedFlights.map((altFlight, altIndex) => {
                           const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
@@ -732,6 +738,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                           const timeDiffText = diffMinutes === 0 ? 'Same time' :
                             diffMinutes > 0 ? `+${diffMinutes}m` : `${diffMinutes}m`;
 
+                          // Check if within tolerance (only show matches within 960 minutes)
+                          const isWithinTolerance = Math.abs(diffMinutes) <= 960 && altFlight.timeComparison?.withinTolerance;
+
                           // Calculate duration
                           const depTime = new Date(altFlight.departure.at);
                           const arrTime = new Date(altFlight.arrival.at);
@@ -739,107 +748,143 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                           const durationHours = Math.floor(durationMinutes / 60);
                           const durationMins = durationMinutes % 60;
 
-                          // Calculate mileage value
+                          // Calculate mileage value - use proper per-mile calculation
                           const priceNum = typeof altFlight.mileagePrice === 'string'
                             ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
                             : altFlight.mileagePrice;
+                          const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
 
                           // Format times in AM/PM
                           const formatTime = (dateStr: string) => {
                             return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                           };
 
+                          // Format date
+                          const formatDate = (dateStr: string) => {
+                            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          };
+
                           return (
                             <div
                               key={altIndex}
-                              className="bg-gray-800/40 hover:bg-gray-800/60 rounded border transition-all duration-200"
-                              style={proximityColors ? {
+                              className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border transition-all duration-200 overflow-hidden"
+                              style={proximityColors && isWithinTolerance ? {
                                 borderColor: proximityColors.borderColor,
                                 backgroundColor: proximityColors.bgColor
                               } : { borderColor: 'rgb(55, 65, 81)' }}
                             >
-                              <div className="px-3 py-2">
-                                {/* Compact Header */}
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <img
-                                      src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
-                                      alt={carrierName}
-                                      className="h-5 w-5 rounded"
-                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                    />
-                                    <span className="font-mono text-sm font-semibold text-white">{altFlight.flightNumber}</span>
-                                    <span className="text-xs text-gray-400">via {carrierName}</span>
-                                  </div>
-
-                                  {/* Compact Mileage Display */}
-                                  <div className="flex items-baseline gap-1.5 bg-purple-500/15 border border-purple-400/30 rounded px-2 py-1">
-                                    <span className="text-xs text-purple-300 font-medium">Value:</span>
-                                    <span className="text-base font-bold text-purple-200">${priceNum.toFixed(2)}</span>
-                                    <span className="text-xs text-purple-400">/ {altFlight.mileage.toLocaleString()}mi</span>
+                              {/* Header with carrier and mileage */}
+                              <div className="flex items-center justify-between px-3 py-2 bg-gray-900/30 border-b border-gray-700/50">
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
+                                    alt={carrierName}
+                                    className="h-6 w-6 rounded"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                  <div>
+                                    <div className="text-sm font-semibold text-white">{altFlight.flightNumber}</div>
+                                    <div className="text-xs text-gray-400">{carrierName}</div>
                                   </div>
                                 </div>
 
-                                {/* Flight Line Visualization (similar to main card) */}
-                                <div className="relative mb-2">
-                                  {/* Route Line */}
-                                  <div className="flex items-center justify-between mb-1">
-                                    <div className="text-xs">
-                                      <div className="font-bold text-white">{formatTime(altFlight.departure.at)}</div>
-                                      <div className="text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
+                                {/* Mileage value badge with proper calculation */}
+                                <div className="flex items-center gap-2">
+                                  <div className="bg-gradient-to-r from-orange-500/15 to-amber-500/15 border border-orange-400/40 rounded-lg px-2.5 py-1.5">
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
+                                      <span className="text-[10px] text-orange-400/70">mi</span>
+                                      <span className="text-xs text-orange-400/60">+</span>
+                                      <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
+                                      <span className="text-[9px] text-orange-500/50 ml-0.5">@ ${perMile.toFixed(3)}/mi</span>
                                     </div>
-                                    <div className="flex-1 mx-2 flex items-center">
-                                      <div className="flex-1 border-t-2 border-gray-600"></div>
-                                      {altFlight.numberOfStops > 0 && (
-                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2 py-0.5 text-[10px] text-orange-300 whitespace-nowrap">
+                                  </div>
+                                  <button
+                                    onClick={() => setShowAddToProposal(true)}
+                                    className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    Add
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Flight details */}
+                              <div className="px-3 py-2.5">
+                                {/* Flight route visualization */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  {/* Departure */}
+                                  <div className="flex-shrink-0">
+                                    <div className="text-sm font-bold text-white">{formatTime(altFlight.departure.at)}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
+                                    <div className="text-[10px] text-gray-500">{formatDate(altFlight.departure.at)}</div>
+                                  </div>
+
+                                  {/* Route line with centered plane icon */}
+                                  <div className="flex-1 flex items-center justify-center relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                      <div className="w-full border-t-2 border-gray-600"></div>
+                                    </div>
+                                    <div className="relative bg-gray-900 px-2 flex items-center gap-1.5">
+                                      {altFlight.numberOfStops > 0 ? (
+                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-1.5 py-0.5 text-[9px] text-orange-300">
                                           {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
                                         </div>
+                                      ) : (
+                                        <div className="bg-green-500/20 border border-green-500/30 rounded px-1.5 py-0.5 text-[9px] text-green-300">
+                                          Nonstop
+                                        </div>
                                       )}
-                                      <div className="flex-1 border-t-2 border-gray-600"></div>
-                                      <Plane className="h-3 w-3 text-gray-500" />
-                                    </div>
-                                    <div className="text-xs text-right">
-                                      <div className="font-bold text-white">{formatTime(altFlight.arrival.at)}</div>
-                                      <div className="text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
+                                      <Plane className="h-3 w-3 text-gray-400" />
+                                      <div className="text-[10px] text-gray-400">
+                                        <Clock className="h-2 w-2 inline mr-0.5" />
+                                        {durationHours}h{durationMins}m
+                                      </div>
                                     </div>
                                   </div>
 
-                                  {/* Duration below line */}
-                                  <div className="text-center text-xs text-gray-400">
-                                    <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                    {durationHours}h {durationMins}m
+                                  {/* Arrival */}
+                                  <div className="flex-shrink-0 text-right">
+                                    <div className="text-sm font-bold text-white">{formatTime(altFlight.arrival.at)}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
+                                    <div className="text-[10px] text-gray-500">{formatDate(altFlight.arrival.at)}</div>
                                   </div>
                                 </div>
 
-                                {/* Compact Badges Row */}
+                                {/* Match badges - only show if within tolerance */}
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  {altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && altFlight.timeComparison?.withinTolerance && (
+                                  {isWithinTolerance && altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded font-medium border border-green-500/30">
-                                      ✓ Full
+                                      ✓ Full Match
                                     </span>
                                   )}
-                                  {!altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
+                                  {isWithinTolerance && !altFlight.exactMatch && altFlight.carrierMatch && altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded font-medium border border-blue-500/30">
                                       Carrier
                                     </span>
                                   )}
-                                  {altFlight.routeMatch && !altFlight.carrierMatch && (
+                                  {isWithinTolerance && altFlight.routeMatch && !altFlight.carrierMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded font-medium border border-yellow-500/30">
                                       Route
                                     </span>
                                   )}
-                                  {!altFlight.routeMatch && (
+                                  {isWithinTolerance && !altFlight.routeMatch && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[10px] rounded font-medium border border-gray-500/30">
                                       Time
                                     </span>
                                   )}
-                                  {Math.abs(diffMinutes) <= 120 && (
+                                  {isWithinTolerance && Math.abs(diffMinutes) <= 960 && (
                                     <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] rounded font-medium border ${
-                                      Math.abs(diffMinutes) <= 30 ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-                                      Math.abs(diffMinutes) <= 60 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
+                                      Math.abs(diffMinutes) <= 120 ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                                      Math.abs(diffMinutes) <= 480 ? 'bg-green-500/15 text-green-400 border-green-500/25' :
                                       'bg-green-500/10 text-green-400 border-green-500/20'
                                     }`}>
                                       {timeDiffText}
+                                    </span>
+                                  )}
+                                  {altFlight.cabin && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-700/50 text-gray-300 text-[10px] rounded font-medium">
+                                      {altFlight.cabin}
                                     </span>
                                   )}
                                 </div>
@@ -858,13 +903,78 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         ))}
       </div>
 
-      {/* Multiple Mileage Deals Dropdown (bottom left after flight details) */}
-      {mileageDeals && mileageDeals.length > 1 && (
+      {/* Best Mileage Options Display (direct, no modal) */}
+      {mileageDeals && mileageDeals.length > 0 && (
         <div className="px-3 sm:px-4 lg:px-6 pb-4">
-          <MileageDealsDropdown
-            deals={mileageDeals}
-            onSelectDeal={handleSelectMileageDeal}
-          />
+          <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-200">Best Mileage Options</h3>
+              <span className="text-xs text-gray-400">{mileageDeals.length} program{mileageDeals.length > 1 ? 's' : ''} available</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Best Mileage */}
+              {(() => {
+                const bestMileage = [...mileageDeals].sort((a, b) => {
+                  const aMiles = a.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const bMiles = b.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  return aMiles - bMiles;
+                })[0];
+                const totalMiles = bestMileage.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                const totalTax = bestMileage.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                return (
+                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg p-3">
+                    <div className="text-xs text-green-400 font-medium mb-1">Lowest Miles</div>
+                    <div className="text-lg font-bold text-green-300">{totalMiles.toLocaleString()}</div>
+                    <div className="text-xs text-green-400/80">+ ${totalTax.toFixed(2)} tax</div>
+                    <div className="text-[10px] text-green-500/60 mt-1">{bestMileage.program}</div>
+                  </div>
+                );
+              })()}
+
+              {/* Best Tax */}
+              {(() => {
+                const bestTax = [...mileageDeals].sort((a, b) => {
+                  const aTax = a.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const bTax = b.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  return aTax - bTax;
+                })[0];
+                const totalMiles = bestTax.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                const totalTax = bestTax.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                return (
+                  <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-lg p-3">
+                    <div className="text-xs text-blue-400 font-medium mb-1">Lowest Tax</div>
+                    <div className="text-lg font-bold text-blue-300">${totalTax.toFixed(2)}</div>
+                    <div className="text-xs text-blue-400/80">{totalMiles.toLocaleString()} miles</div>
+                    <div className="text-[10px] text-blue-500/60 mt-1">{bestTax.program}</div>
+                  </div>
+                );
+              })()}
+
+              {/* Best Cash Value */}
+              {(() => {
+                const bestValue = [...mileageDeals].sort((a, b) => {
+                  const aMiles = a.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const aTax = a.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const aValue = (aMiles * 0.015) + aTax;
+                  const bMiles = b.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                  const bTax = b.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                  const bValue = (bMiles * 0.015) + bTax;
+                  return aValue - bValue;
+                })[0];
+                const totalMiles = bestValue.flights.reduce((sum, f) => sum + (f.mileage || 0), 0);
+                const totalTax = bestValue.flights.reduce((sum, f) => sum + (typeof f.mileagePrice === 'string' ? parseFloat(f.mileagePrice.replace(/[^0-9.]/g, '')) : f.mileagePrice || 0), 0);
+                const cashValue = (totalMiles * 0.015) + totalTax;
+                return (
+                  <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/30 rounded-lg p-3">
+                    <div className="text-xs text-amber-400 font-medium mb-1">Best Cash Value</div>
+                    <div className="text-lg font-bold text-amber-300">${cashValue.toFixed(2)}</div>
+                    <div className="text-xs text-amber-400/80">{totalMiles.toLocaleString()} mi + ${totalTax.toFixed(2)}</div>
+                    <div className="text-[10px] text-amber-500/60 mt-1">{bestValue.program}</div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
 
