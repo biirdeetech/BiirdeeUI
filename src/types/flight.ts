@@ -24,8 +24,8 @@ export interface FlightSearchParams {
   time_tolerance?: number;
   strict_leg_match?: boolean;
   summary?: boolean;
-  sales_city?: string;
-  currency?: string;
+  sales_city?: string | { code: string; name: string };
+  currency?: string | { code: string; displayName: string };
 }
 
 export interface FlightSliceParams {

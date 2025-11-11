@@ -190,7 +190,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
       const currencyCode = searchParams.get('currency');
       if (currencyCode) {
-        setCurrency({ code: currencyCode, name: currencyCode });
+        setCurrency({ code: currencyCode, displayName: currencyCode });
       }
     }
   }, [compact, searchParams]);
@@ -1159,12 +1159,28 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               <label className="block text-xs text-gray-400 mb-1">
                 Sales City (Optional)
               </label>
-              <LocationSearchInputWithCallback
-                value={salesCity}
-                onChange={(location) => setSalesCity(location)}
-                locationType="SALES_CITIES"
-                placeholder="Search sales city..."
-              />
+              {salesCity ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm flex items-center justify-between">
+                    <span>{salesCity.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSalesCity(null)}
+                      className="text-gray-400 hover:text-red-400 transition-colors ml-2"
+                      title="Clear"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <LocationSearchInputWithCallback
+                  value={salesCity}
+                  onChange={(location) => setSalesCity(location)}
+                  locationType="SALES_CITIES"
+                  placeholder="Search sales city..."
+                />
+              )}
               <p className="text-xs text-gray-500 mt-1">
                 Point of sale for pricing
               </p>
@@ -1173,11 +1189,27 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               <label className="block text-xs text-gray-400 mb-1">
                 Currency (Optional)
               </label>
-              <CurrencySearchInput
-                value={currency}
-                onChange={(curr) => setCurrency(curr)}
-                placeholder="Search currency..."
-              />
+              {currency ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm flex items-center justify-between">
+                    <span>{currency.displayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrency(null)}
+                      className="text-gray-400 hover:text-red-400 transition-colors ml-2"
+                      title="Clear"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <CurrencySearchInput
+                  value={currency}
+                  onChange={(curr) => setCurrency(curr)}
+                  placeholder="Search currency..."
+                />
+              )}
               <p className="text-xs text-gray-500 mt-1">
                 Display prices in currency
               </p>
