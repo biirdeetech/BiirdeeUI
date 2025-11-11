@@ -679,7 +679,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 </div>
 
                 {/* Swap Button with Via/Layover */}
-                <div className="relative self-end mb-[2px]">
+                <div className="relative self-end mb-[2px] group/swap">
                   {/* Via Badge - appears on top of button */}
                   {leg.vias.length > 0 && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
@@ -704,7 +704,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     </div>
                   )}
 
-                  <div className="relative group/swap">
+                  {/* Hover detection area - extends to where input will appear */}
+                  <div className="absolute -top-2 -left-2 -right-52 -bottom-2 z-0" />
+
+                  <div className="relative z-10">
                     <button
                       type="button"
                       onClick={() => swapOriginsDestinations(leg.id)}
@@ -719,8 +722,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       <Plus className="h-4 w-4 text-purple-400" />
                     </div>
 
-                    {/* Via Input - appears on hover */}
-                    <div className="absolute left-full ml-2 top-0 opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none group-hover/swap:pointer-events-auto z-20">
+                    {/* Via Input - appears on hover, floats above */}
+                    <div className="absolute left-full ml-2 top-0 opacity-0 group-hover/swap:opacity-100 transition-opacity pointer-events-none group-hover/swap:pointer-events-auto z-30">
                       <LocationSearchInputWithCallback
                         onSelect={(code) => {
                           if (code && !leg.vias.includes(code)) {
