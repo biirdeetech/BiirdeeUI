@@ -111,7 +111,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [aeroEnabled, setAeroEnabled] = useState(true);
   const [airlines, setAirlines] = useState('');
   const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
-  const [timeTolerance, setTimeTolerance] = useState(900);
+  const [timeTolerance, setTimeTolerance] = useState(960);
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
@@ -180,7 +180,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setAeroEnabled(searchParams.get('aero') === 'true');
       setAirlines(searchParams.get('airlines') || '');
       setStrictAirlineMatch(searchParams.get('strict_airline_match') === 'true');
-      setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '900'));
+      setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '960'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
 
@@ -572,7 +572,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     if (strictAirlineMatch) {
       searchParams.append('strict_airline_match', 'true');
     }
-    if (timeTolerance !== 900) {
+    if (timeTolerance !== 960) {
       searchParams.append('time_tolerance', timeTolerance.toString());
     }
     if (strictLegMatch) {
@@ -1282,7 +1282,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       type="number"
                       min="0"
                       value={timeTolerance}
-                      onChange={(e) => setTimeTolerance(parseInt(e.target.value) || 900)}
+                      onChange={(e) => setTimeTolerance(parseInt(e.target.value) || 960)}
                       className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     />
                   </div>

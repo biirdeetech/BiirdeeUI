@@ -32,7 +32,7 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       enabled: false,
       airlines: '',
       strict_airline_match: false,
-      time_tolerance: 900,
+      time_tolerance: 960,
       strict_leg_match: false,
       summary: false,
       salesCity: null as { code: string; name: string } | null,
@@ -393,7 +393,7 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
               onChange={(e) => {
                 setAdvancedSettings(prev => ({
                   ...prev,
-                  aero: { ...prev.aero, time_tolerance: parseInt(e.target.value) || 900 }
+                  aero: { ...prev.aero, time_tolerance: parseInt(e.target.value) || 960 }
                 }));
               }}
               onBlur={() => onSettingsChange(advancedSettings)}

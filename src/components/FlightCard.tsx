@@ -744,9 +744,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
                             : altFlight.mileagePrice;
 
-                          // Format times
+                          // Format times in AM/PM
                           const formatTime = (dateStr: string) => {
-                            return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                           };
 
                           return (
