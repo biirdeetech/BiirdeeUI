@@ -69,10 +69,9 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
       const alternatives = sorted.slice(1);
 
       // Split alternatives into best match (within 5 hours) and time insensitive
-      const alternativesBestMatch = alternatives.filter(deal => {
-        const timeDiff = calculateTimeDifference(deal);
-        return timeDiff <= 5; // Within 5 hours
-      }).sort((a, b) => {
+      // For now, since we don't have actual time data, put all in best matches
+      // TODO: Update when time difference data is available
+      const alternativesBestMatch = alternatives.slice().sort((a, b) => {
         // Sort by value first, then by time difference
         const aValue = a.mileage + (a.mileagePrice * 100);
         const bValue = b.mileage + (b.mileagePrice * 100);
@@ -83,14 +82,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
         return calculateTimeDifference(a) - calculateTimeDifference(b);
       });
 
-      const alternativesTimeInsensitive = alternatives.filter(deal => {
-        const timeDiff = calculateTimeDifference(deal);
-        return timeDiff > 5; // More than 5 hours
-      }).sort((a, b) => {
-        const aValue = a.mileage + (a.mileagePrice * 100);
-        const bValue = b.mileage + (b.mileagePrice * 100);
-        return aValue - bValue;
-      });
+      const alternativesTimeInsensitive: MileageDeal[] = [];
+      // Will be populated when time difference calculation is implemented
 
       result.push({
         airline: sorted[0].airline,
