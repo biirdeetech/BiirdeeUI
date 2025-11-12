@@ -504,12 +504,13 @@ const SearchPage: React.FC = () => {
         comparison = aDuration - bDuration;
       } else if (filterState.sortBy === 'miles') {
         // Sort by mileage (for aero searches)
-        const aMileage = a.totalMileage || Infinity;
-        const bMileage = b.totalMileage || Infinity;
+        // Flights without mileage go to end
+        const aMileage = a.totalMileage || (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
+        const bMileage = b.totalMileage || (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
         comparison = aMileage - bMileage;
 
         // If mileage is equal, compare fees
-        if (comparison === 0) {
+        if (comparison === 0 && a.totalMileage && b.totalMileage) {
           const aMileagePrice = a.totalMileagePrice || 0;
           const bMileagePrice = b.totalMileagePrice || 0;
           comparison = aMileagePrice - bMileagePrice;

@@ -1,122 +1,200 @@
-import React, { useState } from 'react';
-import { ChevronDown, Plane, AlertTriangle, Info } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, Plane, Clock, Zap } from 'lucide-react';
 import { MileageDeal } from '../types/flight';
+import { FlightSlice } from '../types/flight';
 
 interface MileageDealsDropdownProps {
   deals: MileageDeal[];
   onSelectDeal: (deal: MileageDeal) => void;
-  flightDeparture?: string; // Expected departure time
+  flightSlices?: FlightSlice[]; // Full flight slice data for comparison
 }
 
-const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({ deals, onSelectDeal, flightDeparture }) => {
+const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({
+  deals,
+  onSelectDeal,
+  flightSlices
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'best-match' | 'time-insensitive'>('best-match');
 
-  // Calculate time difference in hours (placeholder - deals don't have time info yet)
-  const getTimeDifferenceStyle = (deal: MileageDeal) => {
-    // For now, we'll use mileage as a proxy for time difference
-    // This will be updated when we have actual time data
-    const timeDiffHours = 0; // Placeholder
+  // Categorize deals by time sensitivity (5 hour threshold)
+  const { bestMatchDeals, timeInsensitiveDeals } = useMemo(() => {
+    // For now, we'll categorize based on match type since we don't have timing data
+    // Full matches are assumed to be within 5 hours, partial matches may be outside
+    const bestMatch = deals.filter(deal => deal.matchType === 'full');
+    const timeInsensitive = deals.filter(deal => deal.matchType === 'partial');
 
-    if (timeDiffHours > 2) {
-      return {
-        opacity: 'opacity-50',
-        warning: 'Over 2 hours difference',
-        bgColor: 'bg-red-500/10 border-red-500/30',
-        icon: <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
-      };
-    } else if (timeDiffHours > 1) {
-      return {
-        opacity: 'opacity-75',
-        warning: `${timeDiffHours.toFixed(1)} hours difference`,
-        bgColor: 'bg-yellow-500/10 border-yellow-500/30',
-        icon: <Info className="h-3.5 w-3.5 text-yellow-400" />
-      };
-    }
+    // Sort each group by best value (miles + fees)
+    const sortByValue = (a: MileageDeal, b: MileageDeal) => {
+      const aValue = a.mileage + (a.mileagePrice * 100); // Weight fees
+      const bValue = b.mileage + (b.mileagePrice * 100);
+      return aValue - bValue;
+    };
 
     return {
-      opacity: 'opacity-100',
-      warning: null,
-      bgColor: '',
-      icon: null
+      bestMatchDeals: bestMatch.sort(sortByValue),
+      timeInsensitiveDeals: timeInsensitive.sort(sortByValue)
     };
-  };
+  }, [deals]);
 
   if (!deals || deals.length === 0) {
     return null;
   }
 
+  const activeDeals = activeTab === 'best-match' ? bestMatchDeals : timeInsensitiveDeals;
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+        className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all shadow-md"
       >
         <Plane className="h-4 w-4" />
-        <span>{deals.length} {deals.length === 1 ? 'deal' : 'deals'} found</span>
+        <span>{deals.length} Mile{deals.length === 1 ? '' : 's'} Program{deals.length === 1 ? '' : 's'}</span>
         <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
-            <div className="p-3 bg-gray-900 border-b border-gray-700">
-              <h4 className="text-sm font-semibold text-white">Alternative Booking Options</h4>
-              <p className="text-xs text-gray-400 mt-1">Click to view details</p>
+          <div className="absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 overflow-hidden">
+            {/* Header */}
+            <div className="p-4 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Plane className="h-4 w-4 text-accent-400" />
+                Mileage Booking Options
+              </h4>
+              <p className="text-xs text-gray-400 mt-1">Book using airline miles instead of cash</p>
             </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-700 bg-gray-800/50">
+              <button
+                onClick={() => setActiveTab('best-match')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all relative ${
+                  activeTab === 'best-match'
+                    ? 'text-white bg-gray-800'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  <span>Best Matches</span>
+                  {bestMatchDeals.length > 0 && (
+                    <span className="ml-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
+                      {bestMatchDeals.length}
+                    </span>
+                  )}
+                </div>
+                {activeTab === 'best-match' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-500" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('time-insensitive')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all relative ${
+                  activeTab === 'time-insensitive'
+                    ? 'text-white bg-gray-800'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>More Options</span>
+                  {timeInsensitiveDeals.length > 0 && (
+                    <span className="ml-1 px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded-full font-medium">
+                      {timeInsensitiveDeals.length}
+                    </span>
+                  )}
+                </div>
+                {activeTab === 'time-insensitive' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-500" />
+                )}
+              </button>
+            </div>
+
+            {/* Deals List */}
             <div className="max-h-96 overflow-y-auto">
-              {deals.map((deal, index) => {
-                const timeStyle = getTimeDifferenceStyle(deal);
-                return (
+              {activeDeals.length === 0 ? (
+                <div className="px-4 py-8 text-center text-gray-400 text-sm">
+                  No {activeTab === 'best-match' ? 'best match' : 'additional'} options available
+                </div>
+              ) : (
+                activeDeals.map((deal, index) => (
                   <button
-                    key={index}
+                    key={`${deal.airlineCode}-${index}`}
                     onClick={() => {
                       onSelectDeal(deal);
                       setIsOpen(false);
                     }}
-                    className={`w-full px-4 py-3 hover:bg-gray-700 transition-all text-left border-b border-gray-700 last:border-b-0 ${timeStyle.opacity} ${timeStyle.bgColor}`}
+                    className={`w-full px-4 py-4 hover:bg-gray-800 transition-all text-left border-b border-gray-700 last:border-b-0 ${
+                      activeTab === 'best-match' && deal.matchType === 'full'
+                        ? 'bg-green-500/5'
+                        : ''
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-medium text-white">
-                            Book via {deal.airline}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-semibold text-white truncate">
+                            {deal.airline}
                           </span>
                           {deal.matchType === 'full' && (
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
+                            <span className="flex-shrink-0 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
                               Full Match
                             </span>
                           )}
                           {deal.matchType === 'partial' && (
-                            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
+                            <span className="flex-shrink-0 px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
                               Partial
                             </span>
                           )}
-                          {timeStyle.warning && (
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs">
-                              {timeStyle.icon}
-                              <span className={timeStyle.opacity === 'opacity-50' ? 'text-red-400' : 'text-yellow-400'}>
-                                {timeStyle.warning}
-                              </span>
-                            </div>
+                        </div>
+                        <div className="text-xs text-gray-400 mb-1">
+                          Code: <span className="font-mono">{deal.airlineCode}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {deal.cabins.slice(0, 3).map((cabin, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded"
+                            >
+                              {cabin}
+                            </span>
+                          ))}
+                          {deal.cabins.length > 3 && (
+                            <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-xs rounded">
+                              +{deal.cabins.length - 3} more
+                            </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-400">
-                          {deal.cabins.join(', ')}
-                        </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <div className="text-lg font-bold text-accent-400">
                           {deal.mileage.toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-400">
-                          miles {deal.mileagePrice > 0 && `+ $${deal.mileagePrice.toFixed(2)}`}
+                          miles
                         </div>
+                        {deal.mileagePrice > 0 && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            + ${deal.mileagePrice.toFixed(2)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </button>
-                );
-              })}
+                ))
+              )}
+            </div>
+
+            {/* Footer Info */}
+            <div className="p-3 bg-gray-800/50 border-t border-gray-700 text-xs text-gray-400">
+              {activeTab === 'best-match' ? (
+                <p>✓ Best matches are within 5 hours of your search and exactly match your criteria</p>
+              ) : (
+                <p>⏰ These options may have different timing or routing than your search</p>
+              )}
             </div>
           </div>
         </>

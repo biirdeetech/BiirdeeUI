@@ -2,6 +2,7 @@ import React from 'react';
 import { Loader, AlertCircle, Plane } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
+import FlightCardGroup from './FlightCardGroup';
 import Pagination from './Pagination';
 import StopGroupSeparator from './StopGroupSeparator';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
@@ -185,9 +186,39 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   const flights = results.solutionList.solutions;
   let processedFlights = groupFlightsByOutbound(flights);
 
+  // Group similar flights together
+  const groupSimilarFlights = (flightList: (FlightSolution | GroupedFlight)[]) => {
+    const grouped = new Map<string, { primary: FlightSolution | GroupedFlight, similar: (FlightSolution | GroupedFlight)[] }>();
+
+    flightList.forEach(flight => {
+      // Create a signature based on route and timing (within 2 hours)
+      let signature = '';
+      if ('id' in flight) {
+        const firstSlice = flight.slices[0];
+        const departureHour = new Date(firstSlice.departure).getUTCHours();
+        const timeWindow = Math.floor(departureHour / 2); // 2-hour windows
+        signature = `${firstSlice.origin.code}-${firstSlice.destination.code}-${firstSlice.flights.join(',')}-${timeWindow}`;
+      } else {
+        const departureHour = new Date(flight.outboundSlice.departure).getUTCHours();
+        const timeWindow = Math.floor(departureHour / 2);
+        signature = `${flight.outboundSlice.origin.code}-${flight.outboundSlice.destination.code}-${flight.outboundSlice.flights.join(',')}-${timeWindow}`;
+      }
+
+      if (!grouped.has(signature)) {
+        grouped.set(signature, { primary: flight, similar: [] });
+      } else {
+        grouped.get(signature)!.similar.push(flight);
+      }
+    });
+
+    return Array.from(grouped.values());
+  };
+
+  const groupedFlights = groupSimilarFlights(processedFlights);
+
   // Group flights by stop count
   const groupByStops = (flightList: (FlightSolution | GroupedFlight)[]) => {
-    const groups = new Map<number, (FlightSolution | GroupedFlight)[]>();
+    const groups = new Map<number, { flights: (FlightSolution | GroupedFlight)[], cheapestPrice: number }>();
 
     flightList.forEach(flight => {
       // Determine max stops in the flight
@@ -198,15 +229,25 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         maxStops = Math.max(...(flight.outboundSlice.stops?.length ? [flight.outboundSlice.stops.length] : [0]));
       }
 
+      // Get price for comparison
+      const flightPrice = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
+
       if (!groups.has(maxStops)) {
-        groups.set(maxStops, []);
+        groups.set(maxStops, { flights: [], cheapestPrice: flightPrice });
       }
-      groups.get(maxStops)!.push(flight);
+
+      const group = groups.get(maxStops)!;
+      group.flights.push(flight);
+
+      // Track the cheapest price in this group (always the minimum)
+      if (flightPrice < group.cheapestPrice) {
+        group.cheapestPrice = flightPrice;
+      }
     });
 
-    // Sort each group by price
+    // Sort each group by price (internal sorting doesn't affect cheapest tracking)
     groups.forEach(group => {
-      group.sort((a, b) => {
+      group.flights.sort((a, b) => {
         const aFlight = 'id' in a ? a : a.returnOptions[0];
         const bFlight = 'id' in b ? b : b.returnOptions[0];
 
@@ -258,13 +299,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       {/* Flight Cards - Grouped by Stops */}
       <div className="space-y-4">
         {sortedStopCounts.map((stopCount, groupIndex) => {
-          const groupFlights = stopGroups.get(stopCount) || [];
-          const cheapestFlight = groupFlights[0];
-          const cheapestPrice = cheapestFlight && 'id' in cheapestFlight
-            ? cheapestFlight.displayTotal
-            : cheapestFlight?.returnOptions[0]?.displayTotal || 0;
-          const currency = cheapestFlight && 'id' in cheapestFlight
-            ? cheapestFlight.currency
+          const groupData = stopGroups.get(stopCount);
+          if (!groupData) return null;
+
+          const { flights: groupFlights, cheapestPrice } = groupData;
+          const firstFlight = groupFlights[0];
+          const currency = firstFlight && 'id' in firstFlight
+            ? firstFlight.currency
             : 'USD';
 
           return (
@@ -279,16 +320,18 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                 />
               )}
 
-              {/* Flights in this stop group */}
-              {groupFlights.map((flight, index) => (
-                <React.Fragment key={'id' in flight ? flight.id : `grouped-${stopCount}-${index}`}>
-                  {'id' in flight && flight.slices.length >= 3 ? (
-                    <MultiLegFlightCard flight={flight} />
-                  ) : (
-                    <FlightCard flight={flight} />
-                  )}
-                </React.Fragment>
-              ))}
+              {/* Flights in this stop group - with grouping */}
+              {(() => {
+                // Re-group the flights in this stop category
+                const stopGrouped = groupSimilarFlights(groupFlights);
+                return stopGrouped.map((group, index) => (
+                  <FlightCardGroup
+                    key={`flight-group-${stopCount}-${index}`}
+                    primaryFlight={group.primary}
+                    similarFlights={group.similar}
+                  />
+                ));
+              })()}
             </React.Fragment>
           );
         })}
