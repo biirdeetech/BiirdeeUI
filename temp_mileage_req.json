@@ -1,0 +1,33 @@
+{
+  "type": "one-way",
+  "slices": [{
+    "origin": ["BOS"],
+    "dest": ["CDG"],
+    "dates": {
+      "searchDateType": "specific",
+      "departureDate": "2025-11-06",
+      "departureDateType": "depart",
+      "departureDateModifier": "0",
+      "departureDatePreferredTimes": [],
+      "returnDateType": "depart",
+      "returnDateModifier": "0",
+      "returnDatePreferredTimes": []
+    }
+  }],
+  "options": {
+    "cabin": "COACH",
+    "stops": "-1",
+    "extraStops": "0",
+    "allowAirportChanges": "false",
+    "showOnlyAvailable": "false",
+    "pageSize": 2
+  },
+  "pax": { "adults": "1" },
+  "aero": {
+    "airlines": null,
+    "strict_airline_match": false,
+    "time_tolerance": 960,
+    "strict_leg_match": false,
+    "summary": false
+  }
+}
