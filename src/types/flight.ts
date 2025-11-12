@@ -131,6 +131,17 @@ export interface MileageBreakdownFlight {
   exactMatch: boolean;
   carrierMatch: boolean;
   routeMatch: boolean;
+  numberOfStops?: number;
+  duration?: string;
+  aircraft?: {
+    code: string;
+    name: string | null;
+  };
+  cabin?: string;
+  timeComparison?: {
+    differenceMinutes: number;
+    withinTolerance: boolean;
+  };
 }
 
 export interface MileageBreakdown {

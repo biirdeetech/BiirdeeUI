@@ -896,26 +896,40 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                                   </div>
 
                                   {/* Route line with centered plane icon */}
-                                  <div className="flex-1 flex items-center justify-center relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                      <div className="w-full border-t-2 border-gray-600"></div>
-                                    </div>
-                                    <div className="relative bg-gray-900 px-2 flex items-center gap-1.5">
-                                      {altFlight.numberOfStops > 0 ? (
-                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-1.5 py-0.5 text-[9px] text-orange-300">
-                                          {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                  <div className="flex-1 flex flex-col items-center justify-center relative">
+                                    {/* Route line */}
+                                    <div className="w-full flex items-center justify-center relative">
+                                      <div className="absolute inset-0 flex items-center">
+                                        <div className={`w-full border-t-2 ${
+                                          altFlight.numberOfStops && altFlight.numberOfStops > 0
+                                            ? 'border-dashed border-orange-500/40'
+                                            : 'border-gray-600'
+                                        }`}></div>
+                                      </div>
+                                      <div className="relative bg-gray-900 px-2 flex items-center gap-1.5">
+                                        {altFlight.numberOfStops && altFlight.numberOfStops > 0 ? (
+                                          <div className="bg-orange-500/20 border border-orange-500/30 rounded px-1.5 py-0.5 text-[9px] text-orange-300 font-medium">
+                                            {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                          </div>
+                                        ) : (
+                                          <div className="bg-green-500/20 border border-green-500/30 rounded px-1.5 py-0.5 text-[9px] text-green-300 font-medium">
+                                            Nonstop
+                                          </div>
+                                        )}
+                                        <Plane className="h-3 w-3 text-gray-400" />
+                                        <div className="text-[10px] text-gray-400">
+                                          <Clock className="h-2 w-2 inline mr-0.5" />
+                                          {durationHours}h{durationMins}m
                                         </div>
-                                      ) : (
-                                        <div className="bg-green-500/20 border border-green-500/30 rounded px-1.5 py-0.5 text-[9px] text-green-300">
-                                          Nonstop
-                                        </div>
-                                      )}
-                                      <Plane className="h-3 w-3 text-gray-400" />
-                                      <div className="text-[10px] text-gray-400">
-                                        <Clock className="h-2 w-2 inline mr-0.5" />
-                                        {durationHours}h{durationMins}m
                                       </div>
                                     </div>
+
+                                    {/* Aircraft info if available */}
+                                    {altFlight.aircraft?.code && (
+                                      <div className="mt-1 text-[9px] text-gray-500">
+                                        Aircraft: {altFlight.aircraft.code}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Arrival */}
