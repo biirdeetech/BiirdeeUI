@@ -30,6 +30,7 @@ interface FlightLeg {
   id: string;
   origins: string[];
   destinations: string[];
+  originTimezone?: string; // Store timezone of first origin airport
   vias: string[]; // Changed from via to vias (array)
   nonstop: boolean;
   departDate: string;
@@ -532,6 +533,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     validatedLegs.forEach((leg, index) => {
       searchParams.append(`leg${index}_origins`, leg.origins.join(','));
       searchParams.append(`leg${index}_destinations`, leg.destinations.join(','));
+      if (leg.originTimezone) {
+        searchParams.append(`leg${index}_originTimezone`, leg.originTimezone);
+      }
       searchParams.append(`leg${index}_via`, leg.vias.join(','));
       searchParams.append(`leg${index}_nonstop`, leg.nonstop.toString());
       searchParams.append(`leg${index}_departDate`, leg.departDate);
@@ -718,6 +722,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <LocationSearchInputMulti
                     values={leg.origins}
                     onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
+                    onLocationSelect={(location, index) => {
+                      // Store timezone from the first origin airport
+                      if (index === 0 && location.timezone) {
+                        updateLeg(leg.id, 'originTimezone', location.timezone);
+                      }
+                    }}
                     placeholder="Add origin (e.g., SFO)"
                     label="From"
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'origins')}

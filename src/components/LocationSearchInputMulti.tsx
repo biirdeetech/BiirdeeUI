@@ -9,6 +9,7 @@ interface LocationSearchInputMultiProps {
   locationType?: 'CITIES_AND_AIRPORTS' | 'SALES_CITIES';
   label?: string;
   onOpenNearbySearch?: (airportCode: string) => void;
+  onLocationSelect?: (location: Location, index: number) => void; // Callback with full location object
   tagColor?: 'accent' | 'blue' | 'purple';
   constrainBadges?: boolean;
 }
@@ -20,6 +21,7 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
   locationType = 'CITIES_AND_AIRPORTS',
   label,
   onOpenNearbySearch,
+  onLocationSelect,
   tagColor = 'accent',
   constrainBadges = false
 }) => {
@@ -84,7 +86,13 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
 
     // Don't add duplicates
     if (!values.includes(code)) {
-      onChange([...values, code]);
+      const newValues = [...values, code];
+      onChange(newValues);
+
+      // Call the location select callback with index
+      if (onLocationSelect) {
+        onLocationSelect(location, newValues.length - 1);
+      }
     }
 
     setInputValue('');

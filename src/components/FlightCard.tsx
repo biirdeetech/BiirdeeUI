@@ -9,9 +9,33 @@ import FlightSegmentDetails from './FlightSegmentDetails';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
+  originTimezone?: string;
 }
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
+  // Helper function to format times in origin timezone
+  const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
+    const date = new Date(dateStr);
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      ...(originTimezone && { timeZone: originTimezone }),
+      ...options
+    };
+    return date.toLocaleTimeString('en-US', defaultOptions);
+  };
+
+  const formatDateInOriginTZ = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      ...(originTimezone && { timeZone: originTimezone })
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
   // Check if this is a grouped flight (round-trip with multiple return options)
   const isGroupedFlight = 'outboundSlice' in flight;
   const [selectedReturnIndex, setSelectedReturnIndex] = useState(0);
@@ -824,15 +848,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             : altFlight.mileagePrice;
                           const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
 
-                          // Format times in AM/PM
-                          const formatTime = (dateStr: string) => {
-                            return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                          };
-
-                          // Format date
-                          const formatDate = (dateStr: string) => {
-                            return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                          };
+                          // Use component-level formatters that respect origin timezone
+                          const formatTime = formatTimeInOriginTZ;
+                          const formatDate = formatDateInOriginTZ;
 
                           return (
                             <div

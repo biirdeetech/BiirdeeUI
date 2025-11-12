@@ -5,9 +5,10 @@ import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 
 interface MultiLegFlightCardProps {
   flight: FlightSolution;
+  originTimezone?: string;
 }
 
-const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight }) => {
+const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originTimezone }) => {
   const { slices, totalAmount, displayTotal, currency, ext } = flight;
   const firstSlice = slices[0];
   const carrier = firstSlice.segments[0]?.carrier || { code: '', name: '', shortName: '' };

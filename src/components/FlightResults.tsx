@@ -17,6 +17,7 @@ interface FlightResultsProps {
   onPageSizeChange?: (size: number) => void;
   currentPage?: number;
   pageSize?: number;
+  originTimezone?: string;
 }
 
 const groupFlightsByOutbound = (flights: FlightSolution[]): (FlightSolution | GroupedFlight)[] => {
@@ -134,7 +135,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   onPageChange,
   onPageSizeChange,
   currentPage = 1,
-  pageSize = 25
+  pageSize = 25,
+  originTimezone
 }) => {
   console.log('🎯 FlightResults: Rendering with results:', results);
   console.log('🎯 FlightResults: Loading state:', loading);
@@ -369,6 +371,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                     key={`flight-group-${stopCount}-${index}`}
                     primaryFlight={group.primary}
                     similarFlights={group.similar}
+                    originTimezone={originTimezone}
                   />
                 ));
               })()}

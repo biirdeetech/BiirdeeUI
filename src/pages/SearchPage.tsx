@@ -39,6 +39,7 @@ const SearchPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamComplete, setStreamComplete] = useState(false);
+  const [originTimezone, setOriginTimezone] = useState<string | undefined>(undefined);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
@@ -225,7 +226,14 @@ const SearchPage: React.FC = () => {
 
   const extractedParams = extractSearchParams();
 
+  // Extract origin timezone from URL params
+  useEffect(() => {
+    const timezone = searchParams.get('leg0_originTimezone') || searchParams.get('originTimezone');
+    setOriginTimezone(timezone || undefined);
+  }, [searchParams]);
+
   console.log('🔍 SearchPage: Extracted URL parameters:', extractedParams);
+  console.log('🌍 SearchPage: Origin timezone:', originTimezone);
 
   // Initialize filters from URL parameters
   const initializeFilters = (): FlightFilterState => {
@@ -690,6 +698,7 @@ const SearchPage: React.FC = () => {
               onPageSizeChange={handlePageSizeChange}
               currentPage={extractedParams.pageNum || 1}
               pageSize={extractedParams.pageSize || 25}
+              originTimezone={originTimezone}
             />
           </div>
         </div>

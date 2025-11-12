@@ -7,11 +7,13 @@ import { FlightSolution, GroupedFlight } from '../types/flight';
 interface FlightCardGroupProps {
   primaryFlight: FlightSolution | GroupedFlight;
   similarFlights: (FlightSolution | GroupedFlight)[];
+  originTimezone?: string;
 }
 
 const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   primaryFlight,
-  similarFlights
+  similarFlights,
+  originTimezone
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -20,9 +22,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     return (
       <>
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} />
         ) : (
-          <FlightCard flight={primaryFlight} />
+          <FlightCard flight={primaryFlight} originTimezone={originTimezone} />
         )}
       </>
     );
@@ -33,9 +35,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
       {/* Primary Flight Card */}
       <div className="relative">
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} />
         ) : (
-          <FlightCard flight={primaryFlight} />
+          <FlightCard flight={primaryFlight} originTimezone={originTimezone} />
         )}
 
         {/* Expand Button */}
@@ -64,9 +66,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           {similarFlights.map((flight, index) => (
             <div key={'id' in flight ? flight.id : `similar-${index}`}>
               {'id' in flight && flight.slices.length >= 3 ? (
-                <MultiLegFlightCard flight={flight} />
+                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} />
               ) : (
-                <FlightCard flight={flight} />
+                <FlightCard flight={flight} originTimezone={originTimezone} />
               )}
             </div>
           ))}
