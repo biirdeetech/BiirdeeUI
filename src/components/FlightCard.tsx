@@ -23,8 +23,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
 
-  const handleSelectMileageDeal = (deal: MileageDeal) => {
-    setSelectedMileageDeal(deal);
+  const handleSelectMileageDeal = (deal?: MileageDeal) => {
     setShowMileageDealModal(true);
   };
 
@@ -312,7 +311,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
                 <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5 relative">
+                  <button
+                    onClick={() => handleSelectMileageDeal()}
+                    className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 hover:border-orange-400/50 rounded-lg px-3 py-1.5 relative transition-all hover:scale-105 cursor-pointer"
+                    title="View mileage booking options"
+                  >
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-bold text-orange-300">{totalMileage.toLocaleString()}</span>
                       <span className="text-xs text-orange-400">miles</span>
@@ -327,12 +330,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                       </span>
                     </div>
                     {/* Alternative Programs Badge */}
-                    {mileageDeals && mileageDeals.length > 1 && (
+                    {mileageDeals && mileageDeals.length > 0 && (
                       <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-900">
                         {mileageDeals.length}
                       </div>
                     )}
-                  </div>
+                  </button>
                 </div>
               )}
 
@@ -920,7 +923,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
 
       {/* Mileage Deal Modal */}
       <MileageDealModal
-        deal={selectedMileageDeal}
+        deals={mileageDeals || []}
+        flightSlices={slices}
         isOpen={showMileageDealModal}
         onClose={() => {
           setShowMileageDealModal(false);
