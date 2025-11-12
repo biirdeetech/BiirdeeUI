@@ -45,18 +45,13 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           title={isExpanded ? 'Hide similar flights' : 'Show similar flights'}
         >
           <span className="text-xs font-medium text-gray-300">
-            {similarFlights.length} similar
+            Similar ({similarFlights.length})
           </span>
-          <div className="relative">
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent-600 text-[10px] font-bold text-white">
-              {similarFlights.length}
-            </span>
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4 text-gray-300" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-gray-300" />
-            )}
-          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 text-gray-300" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-300" />
+          )}
         </button>
       </div>
 

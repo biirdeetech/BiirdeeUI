@@ -100,7 +100,7 @@ const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({
               >
                 <div className="flex items-center justify-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>More Options</span>
+                  <span>Time Insensitive</span>
                   {timeInsensitiveDeals.length > 0 && (
                     <span className="ml-1 px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded-full font-medium">
                       {timeInsensitiveDeals.length}

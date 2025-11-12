@@ -5,7 +5,6 @@ import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
 import MileageDealsDropdown from './MileageDealsDropdown';
-import MileageDealModal from './MileageDealModal';
 import FlightSegmentDetails from './FlightSegmentDetails';
 
 interface FlightCardProps {
@@ -18,14 +17,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [selectedReturnIndex, setSelectedReturnIndex] = useState(0);
   const [showReturnDropdown, setShowReturnDropdown] = useState(false);
   const [showAddToProposal, setShowAddToProposal] = useState(false);
-  const [selectedMileageDeal, setSelectedMileageDeal] = useState<MileageDeal | null>(null);
-  const [showMileageDealModal, setShowMileageDealModal] = useState(false);
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
 
-  const handleSelectMileageDeal = (deal?: MileageDeal) => {
-    setShowMileageDealModal(true);
-  };
 
   // Get flight data based on type
   const getFlightData = () => {
@@ -311,11 +305,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {/* Mileage Info - Left Side */}
               {totalMileage > 0 && (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleSelectMileageDeal()}
-                    className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 hover:border-orange-400/50 rounded-lg px-3 py-1.5 relative transition-all hover:scale-105 cursor-pointer"
-                    title="View mileage booking options"
-                  >
+                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-sm font-bold text-orange-300">{totalMileage.toLocaleString()}</span>
                       <span className="text-xs text-orange-400">miles</span>
@@ -329,13 +319,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         @ ${(totalMileagePrice / totalMileage).toFixed(3)}/mi
                       </span>
                     </div>
-                    {/* Alternative Programs Badge */}
-                    {mileageDeals && mileageDeals.length > 0 && (
-                      <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-900">
-                        {mileageDeals.length}
-                      </div>
-                    )}
-                  </button>
+                  </div>
                 </div>
               )}
 
@@ -921,16 +905,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
         />
       )}
 
-      {/* Mileage Deal Modal */}
-      <MileageDealModal
-        deals={mileageDeals || []}
-        flightSlices={slices}
-        isOpen={showMileageDealModal}
-        onClose={() => {
-          setShowMileageDealModal(false);
-          setSelectedMileageDeal(null);
-        }}
-      />
     </div>
   );
 };
