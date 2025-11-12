@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight } from 'lucide-react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap } from 'lucide-react';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
@@ -19,6 +19,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
   const [showAddToProposal, setShowAddToProposal] = useState(false);
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
+  const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<number, 'best-match' | 'time-insensitive'>>({});
 
 
   // Get flight data based on type
@@ -677,6 +678,43 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     </div>
                   )}
                 </div>
+
+                {/* Tabs */}
+                <div className="flex border-b border-gray-700/50 bg-gray-800/50 rounded-t-lg overflow-hidden -mx-3 px-3">
+                  <button
+                    onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
+                    className={`flex-1 px-4 py-2.5 text-xs font-medium transition-all relative ${
+                      (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
+                        ? 'text-green-400 bg-gray-800/70'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Zap className="h-3.5 w-3.5" />
+                      <span>Best Matches (within 5hr)</span>
+                    </div>
+                    {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
+                    className={`flex-1 px-4 py-2.5 text-xs font-medium transition-all relative ${
+                      sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
+                        ? 'text-blue-400 bg-gray-800/70'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Time Insensitive (5hr+)</span>
+                    </div>
+                    {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                    )}
+                  </button>
+                </div>
+
                 {slice.mileageBreakdown.map((breakdown, bdIndex) => {
                   // Sort allMatchingFlights by time proximity to original departure
                   const sortedFlights = breakdown.allMatchingFlights ? [...breakdown.allMatchingFlights].sort((a, b) => {
@@ -687,6 +725,20 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     const bDiff = Math.abs(bTime - originalTime);
                     return aDiff - bDiff;
                   }) : [];
+
+                  // Filter flights based on active tab (5 hours = 300 minutes)
+                  const activeTab = sliceAlternativeTabs[sliceIndex] || 'best-match';
+                  const originalTime = new Date(slice.departure).getTime();
+                  const filteredFlights = sortedFlights.filter(altFlight => {
+                    const flightTime = new Date(altFlight.departure.at).getTime();
+                    const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+
+                    if (activeTab === 'best-match') {
+                      return diffMinutes <= 300; // Within 5 hours
+                    } else {
+                      return diffMinutes > 300; // More than 5 hours
+                    }
+                  });
 
                   // Calculate time difference in minutes for color coding
                   const getTimeProximityColor = (departureTime: string) => {
@@ -706,7 +758,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                   };
 
                   return (
-                    sortedFlights.length > 0 && (
+                    filteredFlights.length > 0 && (
                     <div key={bdIndex} className="space-y-1.5">
                       <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
                         <span className="text-gray-500">Leg {bdIndex + 1}:</span>
@@ -715,7 +767,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
                       <div className="space-y-2 pl-2">
-                        {sortedFlights.map((altFlight, altIndex) => {
+                        {filteredFlights.map((altFlight, altIndex) => {
                           const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
 
