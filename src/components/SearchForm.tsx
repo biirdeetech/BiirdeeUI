@@ -65,10 +65,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [legs, setLegs] = useState<FlightLeg[]>([
     {
       id: '1',
-      origins: ['SFO'],
-      destinations: ['CDG'],
+      origins: [],
+      destinations: [],
       vias: [],
-      nonstop: false,
+      nonstop: true,
       departDate: getDefaultDepartDate(),
       cabin: 'BUSINESS',
       bookingClasses: (() => {

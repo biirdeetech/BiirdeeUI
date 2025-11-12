@@ -227,7 +227,7 @@ const SearchPage: React.FC = () => {
   // Initialize filters from URL parameters
   const initializeFilters = (): FlightFilterState => {
     return {
-      nonstopOnly: true, // Default to nonstop flights only
+      nonstopOnly: false, // Default to allow all flights
       businessOnly: false, // Always start with filter off
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],

@@ -63,7 +63,7 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
 
   const clearFilters = () => {
     onFiltersChange({
-      nonstopOnly: true,
+      nonstopOnly: false,
       businessOnly: false,
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],
