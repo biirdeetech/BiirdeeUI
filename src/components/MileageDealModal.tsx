@@ -14,12 +14,27 @@ interface GroupedDeals {
   airlineCode: string;
   primary: MileageDeal;
   alternatives: MileageDeal[];
+  alternativesBestMatch: MileageDeal[];
+  alternativesTimeInsensitive: MileageDeal[];
 }
 
 const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'best-match' | 'more-options'>('best-match');
   const [expandedAirlines, setExpandedAirlines] = useState<Record<string, boolean>>({});
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
+  const [airlineAlternativeTabs, setAirlineAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
+
+  // Calculate time difference in hours from original flight
+  const calculateTimeDifference = (deal: MileageDeal): number => {
+    if (!flightSlices[0]) return Infinity;
+
+    const originalDepartureTime = new Date(flightSlices[0].departure).getTime();
+
+    // Try to parse the departure time from the deal (this may need adjustment based on your data structure)
+    // For now, we'll assume the deal doesn't have departure info and return 0
+    // You may need to add departure time to MileageDeal interface
+    return 0; // Placeholder - will need actual departure time from deal
+  };
 
   // Group deals by airline and find primary/alternatives
   const groupedByAirline = useMemo(() => {
@@ -36,8 +51,42 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     // Convert to grouped structure with primary and alternatives
     const result: GroupedDeals[] = [];
     grouped.forEach((airlineDeals, airlineCode) => {
-      // Sort by value (miles + weighted fees)
+      // Sort by value (miles + weighted fees) then by time difference
       const sorted = airlineDeals.sort((a, b) => {
+        const aValue = a.mileage + (a.mileagePrice * 100);
+        const bValue = b.mileage + (b.mileagePrice * 100);
+        const valueCompare = aValue - bValue;
+
+        if (valueCompare !== 0) return valueCompare;
+
+        // If values equal, sort by time difference
+        const aTimeDiff = calculateTimeDifference(a);
+        const bTimeDiff = calculateTimeDifference(b);
+        return aTimeDiff - bTimeDiff;
+      });
+
+      const primary = sorted[0];
+      const alternatives = sorted.slice(1);
+
+      // Split alternatives into best match (within 5 hours) and time insensitive
+      const alternativesBestMatch = alternatives.filter(deal => {
+        const timeDiff = calculateTimeDifference(deal);
+        return timeDiff <= 5; // Within 5 hours
+      }).sort((a, b) => {
+        // Sort by value first, then by time difference
+        const aValue = a.mileage + (a.mileagePrice * 100);
+        const bValue = b.mileage + (b.mileagePrice * 100);
+        const valueCompare = aValue - bValue;
+
+        if (valueCompare !== 0) return valueCompare;
+
+        return calculateTimeDifference(a) - calculateTimeDifference(b);
+      });
+
+      const alternativesTimeInsensitive = alternatives.filter(deal => {
+        const timeDiff = calculateTimeDifference(deal);
+        return timeDiff > 5; // More than 5 hours
+      }).sort((a, b) => {
         const aValue = a.mileage + (a.mileagePrice * 100);
         const bValue = b.mileage + (b.mileagePrice * 100);
         return aValue - bValue;
@@ -46,8 +95,10 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
       result.push({
         airline: sorted[0].airline,
         airlineCode: airlineCode,
-        primary: sorted[0],
-        alternatives: sorted.slice(1)
+        primary,
+        alternatives,
+        alternativesBestMatch,
+        alternativesTimeInsensitive
       });
     });
 
@@ -57,7 +108,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
       const bValue = b.primary.mileage + (b.primary.mileagePrice * 100);
       return aValue - bValue;
     });
-  }, [deals]);
+  }, [deals, flightSlices]);
 
   // Separate into best matches and more options
   const { bestMatches, moreOptions } = useMemo(() => {
@@ -78,6 +129,17 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
       ...prev,
       [index]: !prev[index]
     }));
+  };
+
+  const setAirlineAlternativeTab = (airlineCode: string, tab: 'best-match' | 'time-insensitive') => {
+    setAirlineAlternativeTabs(prev => ({
+      ...prev,
+      [airlineCode]: tab
+    }));
+  };
+
+  const getAirlineAlternativeTab = (airlineCode: string): 'best-match' | 'time-insensitive' => {
+    return airlineAlternativeTabs[airlineCode] || 'best-match';
   };
 
   const formatDuration = (minutes: number) => {
@@ -272,6 +334,10 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                 {activeGroups.map((group) => {
                   const isExpanded = expandedAirlines[group.airlineCode];
                   const hasAlternatives = group.alternatives.length > 0;
+                  const activeAltTab = getAirlineAlternativeTab(group.airlineCode);
+                  const activeAlternatives = activeAltTab === 'best-match'
+                    ? group.alternativesBestMatch
+                    : group.alternativesTimeInsensitive;
 
                   return (
                     <div
@@ -351,43 +417,99 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                       {/* Alternative Deals */}
                       {hasAlternatives && isExpanded && (
                         <div className="border-t border-gray-700 bg-gray-900/50">
+                          {/* Alternative Tabs */}
+                          <div className="flex border-b border-gray-700/50 bg-gray-900/30">
+                            <button
+                              onClick={() => setAirlineAlternativeTab(group.airlineCode, 'best-match')}
+                              className={`flex-1 px-4 py-2 text-xs font-medium transition-all relative ${
+                                activeAltTab === 'best-match'
+                                  ? 'text-green-400 bg-gray-800/50'
+                                  : 'text-gray-400 hover:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Zap className="h-3 w-3" />
+                                <span>Best Matches</span>
+                                {group.alternativesBestMatch.length > 0 && (
+                                  <span className="ml-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full font-medium border border-green-500/30">
+                                    {group.alternativesBestMatch.length}
+                                  </span>
+                                )}
+                              </div>
+                              {activeAltTab === 'best-match' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setAirlineAlternativeTab(group.airlineCode, 'time-insensitive')}
+                              className={`flex-1 px-4 py-2 text-xs font-medium transition-all relative ${
+                                activeAltTab === 'time-insensitive'
+                                  ? 'text-blue-400 bg-gray-800/50'
+                                  : 'text-gray-400 hover:text-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Clock className="h-3 w-3" />
+                                <span>Time Insensitive</span>
+                                {group.alternativesTimeInsensitive.length > 0 && (
+                                  <span className="ml-1 px-1.5 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded-full font-medium">
+                                    {group.alternativesTimeInsensitive.length}
+                                  </span>
+                                )}
+                              </div>
+                              {activeAltTab === 'time-insensitive' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                              )}
+                            </button>
+                          </div>
+
                           <div className="p-3">
-                            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">
-                              Alternative Options (sorted by value)
-                            </div>
-                            <div className="space-y-2">
-                              {group.alternatives.map((deal, index) => (
-                                <div
-                                  key={index}
-                                  className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex-1">
-                                      <div className="flex flex-wrap gap-1 mb-1">
-                                        {deal.cabins.map((cabin, i) => (
-                                          <span
-                                            key={i}
-                                            className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded"
-                                          >
-                                            {cabin}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="text-lg font-bold text-accent-400">
-                                        {deal.mileage.toLocaleString()}
-                                      </div>
-                                      {deal.mileagePrice > 0 && (
-                                        <div className="text-xs text-gray-400">
-                                          + ${deal.mileagePrice.toFixed(2)}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
+                            {activeAlternatives.length === 0 ? (
+                              <div className="text-center py-6 text-gray-500 text-xs">
+                                No {activeAltTab === 'best-match' ? 'programs within 5 hours' : 'additional programs'}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">
+                                  {activeAltTab === 'best-match'
+                                    ? 'Within 5 hours (sorted by value & timing)'
+                                    : 'More than 5 hours (sorted by value)'}
                                 </div>
-                              ))}
-                            </div>
+                                <div className="space-y-2">
+                                  {activeAlternatives.map((deal, index) => (
+                                    <div
+                                      key={index}
+                                      className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
+                                    >
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div className="flex-1">
+                                          <div className="flex flex-wrap gap-1 mb-1">
+                                            {deal.cabins.map((cabin, i) => (
+                                              <span
+                                                key={i}
+                                                className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded"
+                                              >
+                                                {cabin}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-accent-400">
+                                            {deal.mileage.toLocaleString()}
+                                          </div>
+                                          {deal.mileagePrice > 0 && (
+                                            <div className="text-xs text-gray-400">
+                                              + ${deal.mileagePrice.toFixed(2)}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
