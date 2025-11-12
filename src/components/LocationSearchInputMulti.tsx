@@ -132,9 +132,9 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
       )}
 
       {/* Tags Display - Always reserve space for consistent height */}
-      <div className="min-h-[36px] mb-2">
+      <div className="min-h-[36px] mb-2 overflow-visible">
         {values.length > 0 && (
-          <div className={constrainBadges ? "flex gap-2 overflow-x-auto scrollbar-hide" : "flex flex-wrap gap-2"}>
+          <div className={constrainBadges ? "flex gap-2 overflow-x-auto scrollbar-hide overflow-y-visible" : "flex flex-wrap gap-2"}>
             {values.map((value, idx) => (
               <span
                 key={idx}
@@ -147,10 +147,11 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
                       type="button"
                       onClick={(e) => handleNearbySearch(value, e)}
                       className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                      title="Find nearby airports"
                     >
                       <Locate className="h-3.5 w-3.5" />
                     </button>
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-gray-200 text-xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-50">
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-gray-800 text-gray-100 text-xs font-medium rounded whitespace-nowrap opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 pointer-events-none shadow-xl border border-gray-600 z-[9999]">
                       Find nearby airports
                     </div>
                   </div>
