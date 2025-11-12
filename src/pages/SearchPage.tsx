@@ -8,6 +8,7 @@ import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
 import FlightFilters, { FlightFilterState } from '../components/FlightFilters';
+import StreamingProgress from '../components/StreamingProgress';
 import { useAuth } from '../hooks/useAuth';
 
 const SearchPage: React.FC = () => {
@@ -36,6 +37,8 @@ const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamComplete, setStreamComplete] = useState(false);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
@@ -231,6 +234,7 @@ const SearchPage: React.FC = () => {
       businessOnly: false, // Always start with filter off
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],
+      stopCounts: [], // Will be populated when results arrive
       sortBy: 'price',
       sortOrder: 'asc'
     };
@@ -306,6 +310,8 @@ const SearchPage: React.FC = () => {
           solutionList: prevResults?.solutionList || { solutions: [] }
         }));
         setLoading(false);
+        setIsStreaming(true);
+        setStreamComplete(false);
         setHasSearched(true);
       };
 
@@ -339,6 +345,14 @@ const SearchPage: React.FC = () => {
       console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
       console.log('✅ SearchPage: Metadata - solutionCount:', searchResults.solutionCount, 'pagination:', searchResults.pagination);
 
+      // Mark streaming as complete
+      if (extractedParams.aero) {
+        setIsStreaming(false);
+        setStreamComplete(true);
+        // Clear complete state after 3 seconds
+        setTimeout(() => setStreamComplete(false), 3000);
+      }
+
       // Update metadata for both streaming and non-streaming modes
       const finalResults = extractedParams.aero ? {
         ...searchResults,
@@ -361,6 +375,7 @@ const SearchPage: React.FC = () => {
     } finally {
       isSearching.current = false;
       setLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -375,6 +390,17 @@ const SearchPage: React.FC = () => {
       filteredSolutions = filteredSolutions.filter(flight =>
         flight.slices.every(slice => !slice.stops || slice.stops.length === 0)
       );
+    }
+
+    // Apply stops filter
+    if (filterState.stopCounts.length > 0) {
+      filteredSolutions = filteredSolutions.filter(flight => {
+        // Check if any slice matches the selected stop counts
+        return flight.slices.some(slice => {
+          const stopCount = slice.stops?.length || 0;
+          return filterState.stopCounts.includes(stopCount);
+        });
+      });
     }
     
     // Apply business+ filter
@@ -476,6 +502,18 @@ const SearchPage: React.FC = () => {
         const aDuration = a.slices.reduce((sum, slice) => sum + slice.duration, 0);
         const bDuration = b.slices.reduce((sum, slice) => sum + slice.duration, 0);
         comparison = aDuration - bDuration;
+      } else if (filterState.sortBy === 'miles') {
+        // Sort by mileage (for aero searches)
+        const aMileage = a.totalMileage || Infinity;
+        const bMileage = b.totalMileage || Infinity;
+        comparison = aMileage - bMileage;
+
+        // If mileage is equal, compare fees
+        if (comparison === 0) {
+          const aMileagePrice = a.totalMileagePrice || 0;
+          const bMileagePrice = b.totalMileagePrice || 0;
+          comparison = aMileagePrice - bMileagePrice;
+        }
       } else if (filterState.sortBy === 'value') {
         // Comprehensive value scoring
         const getValueScore = (flight: any) => {
@@ -531,9 +569,30 @@ const SearchPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Calculate available stops from results
+  const calculateAvailableStops = (searchResponse: SearchResponse): number[] => {
+    if (!searchResponse.solutionList?.solutions) return [];
+
+    const stopsSet = new Set<number>();
+    searchResponse.solutionList.solutions.forEach(flight => {
+      flight.slices.forEach(slice => {
+        const stopCount = slice.stops?.length || 0;
+        stopsSet.add(stopCount);
+      });
+    });
+
+    return Array.from(stopsSet).sort((a, b) => a - b);
+  };
+
   // Apply filters whenever results or filters change
   useEffect(() => {
     if (results) {
+      // Initialize stopCounts filter if empty
+      if (filters.stopCounts.length === 0) {
+        const availableStops = calculateAvailableStops(results);
+        setFilters(prev => ({ ...prev, stopCounts: availableStops }));
+      }
+
       const filtered = applyFilters(results, filters);
       setFilteredResults(filtered);
     }
@@ -603,6 +662,18 @@ const SearchPage: React.FC = () => {
               onFiltersChange={handleFiltersChange}
               resultCount={filteredResults?.solutionList?.solutions?.length || 0}
               disableBusinessFilter={isBusinessSearch}
+              availableStops={results ? calculateAvailableStops(results) : []}
+              isAeroEnabled={extractedParams.aero}
+            />
+          )}
+
+          {/* Streaming Progress Indicator */}
+          {(isStreaming || streamComplete) && results && (
+            <StreamingProgress
+              isStreaming={isStreaming}
+              currentCount={results?.solutionList?.solutions?.length || 0}
+              totalCount={results?.solutionCount || 0}
+              isComplete={streamComplete}
             />
           )}
           

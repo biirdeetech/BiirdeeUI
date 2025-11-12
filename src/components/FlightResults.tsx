@@ -3,6 +3,7 @@ import { Loader, AlertCircle, Plane } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
 import Pagination from './Pagination';
+import StopGroupSeparator from './StopGroupSeparator';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 
 interface FlightResultsProps {
@@ -184,30 +185,53 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   const flights = results.solutionList.solutions;
   let processedFlights = groupFlightsByOutbound(flights);
 
-  // Sort by best value: mileage price (if available), then cash price
-  processedFlights = processedFlights.sort((a, b) => {
-    const aFlight = 'id' in a ? a : a.returnOptions[0];
-    const bFlight = 'id' in b ? b : b.returnOptions[0];
+  // Group flights by stop count
+  const groupByStops = (flightList: (FlightSolution | GroupedFlight)[]) => {
+    const groups = new Map<number, (FlightSolution | GroupedFlight)[]>();
 
-    const aMileageValue = (aFlight.totalMileage || 0) > 0
-      ? ((aFlight.totalMileage || 0) * 0.015) + (aFlight.totalMileagePrice || 0)
-      : Infinity;
-    const bMileageValue = (bFlight.totalMileage || 0) > 0
-      ? ((bFlight.totalMileage || 0) * 0.015) + (bFlight.totalMileagePrice || 0)
-      : Infinity;
+    flightList.forEach(flight => {
+      // Determine max stops in the flight
+      let maxStops = 0;
+      if ('id' in flight) {
+        maxStops = Math.max(...flight.slices.map(slice => slice.stops?.length || 0));
+      } else {
+        maxStops = Math.max(...(flight.outboundSlice.stops?.length ? [flight.outboundSlice.stops.length] : [0]));
+      }
 
-    // If both have mileage, sort by mileage value
-    if (aMileageValue !== Infinity && bMileageValue !== Infinity) {
-      return aMileageValue - bMileageValue;
-    }
+      if (!groups.has(maxStops)) {
+        groups.set(maxStops, []);
+      }
+      groups.get(maxStops)!.push(flight);
+    });
 
-    // If only one has mileage, prefer the one with mileage
-    if (aMileageValue !== Infinity) return -1;
-    if (bMileageValue !== Infinity) return 1;
+    // Sort each group by price
+    groups.forEach(group => {
+      group.sort((a, b) => {
+        const aFlight = 'id' in a ? a : a.returnOptions[0];
+        const bFlight = 'id' in b ? b : b.returnOptions[0];
 
-    // Otherwise sort by cash price
-    return (aFlight.totalAmount || 0) - (bFlight.totalAmount || 0);
-  });
+        const aMileageValue = (aFlight.totalMileage || 0) > 0
+          ? ((aFlight.totalMileage || 0) * 0.015) + (aFlight.totalMileagePrice || 0)
+          : Infinity;
+        const bMileageValue = (bFlight.totalMileage || 0) > 0
+          ? ((bFlight.totalMileage || 0) * 0.015) + (bFlight.totalMileagePrice || 0)
+          : Infinity;
+
+        if (aMileageValue !== Infinity && bMileageValue !== Infinity) {
+          return aMileageValue - bMileageValue;
+        }
+        if (aMileageValue !== Infinity) return -1;
+        if (bMileageValue !== Infinity) return 1;
+
+        return (aFlight.totalAmount || 0) - (bFlight.totalAmount || 0);
+      });
+    });
+
+    return groups;
+  };
+
+  const stopGroups = groupByStops(processedFlights);
+  const sortedStopCounts = Array.from(stopGroups.keys()).sort((a, b) => a - b);
 
   return (
     <div className="space-y-6">
@@ -231,17 +255,43 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         )}
       </div>
 
-      {/* Flight Cards */}
+      {/* Flight Cards - Grouped by Stops */}
       <div className="space-y-4">
-        {processedFlights.map((flight, index) => (
-          <React.Fragment key={'id' in flight ? flight.id : `grouped-${index}`}>
-            {'id' in flight && flight.slices.length >= 3 ? (
-              <MultiLegFlightCard flight={flight} />
-            ) : (
-              <FlightCard flight={flight} />
-            )}
-          </React.Fragment>
-        ))}
+        {sortedStopCounts.map((stopCount, groupIndex) => {
+          const groupFlights = stopGroups.get(stopCount) || [];
+          const cheapestFlight = groupFlights[0];
+          const cheapestPrice = cheapestFlight && 'id' in cheapestFlight
+            ? cheapestFlight.displayTotal
+            : cheapestFlight?.returnOptions[0]?.displayTotal || 0;
+          const currency = cheapestFlight && 'id' in cheapestFlight
+            ? cheapestFlight.currency
+            : 'USD';
+
+          return (
+            <React.Fragment key={`stop-group-${stopCount}`}>
+              {/* Stop Group Separator */}
+              {groupFlights.length > 0 && (
+                <StopGroupSeparator
+                  stopCount={stopCount}
+                  flightCount={groupFlights.length}
+                  lowestPrice={cheapestPrice}
+                  currency={currency}
+                />
+              )}
+
+              {/* Flights in this stop group */}
+              {groupFlights.map((flight, index) => (
+                <React.Fragment key={'id' in flight ? flight.id : `grouped-${stopCount}-${index}`}>
+                  {'id' in flight && flight.slices.length >= 3 ? (
+                    <MultiLegFlightCard flight={flight} />
+                  ) : (
+                    <FlightCard flight={flight} />
+                  )}
+                </React.Fragment>
+              ))}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Pagination */}

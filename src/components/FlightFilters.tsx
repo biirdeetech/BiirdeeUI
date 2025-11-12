@@ -6,7 +6,8 @@ export interface FlightFilterState {
   businessOnly: boolean;
   searchQuery: string;
   timeOfDay: string[]; // array of active times: 'morning', 'afternoon', 'night'
-  sortBy: 'price' | 'duration';
+  stopCounts: number[]; // array of selected stop counts: 0, 1, 2, 3+
+  sortBy: 'price' | 'duration' | 'miles';
   sortOrder: 'asc' | 'desc';
 }
 
@@ -15,13 +16,17 @@ interface FlightFiltersProps {
   onFiltersChange: (filters: FlightFilterState) => void;
   resultCount: number;
   disableBusinessFilter?: boolean;
+  availableStops?: number[]; // Stops available in current results
+  isAeroEnabled?: boolean; // Whether aero is enabled for miles sorting
 }
 
 const FlightFilters: React.FC<FlightFiltersProps> = ({
   filters,
   onFiltersChange,
   resultCount,
-  disableBusinessFilter = false
+  disableBusinessFilter = false,
+  availableStops = [],
+  isAeroEnabled = false
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -61,12 +66,25 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
     return filters.timeOfDay.includes(time);
   };
 
+  const toggleStopCount = (stopCount: number) => {
+    const currentStops = filters.stopCounts;
+    if (currentStops.includes(stopCount)) {
+      // Remove this stop count
+      const newStops = currentStops.filter(s => s !== stopCount);
+      updateFilter('stopCounts', newStops.length === 0 ? availableStops : newStops);
+    } else {
+      // Add this stop count
+      updateFilter('stopCounts', [...currentStops, stopCount].sort((a, b) => a - b));
+    }
+  };
+
   const clearFilters = () => {
     onFiltersChange({
       nonstopOnly: false,
       businessOnly: false,
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],
+      stopCounts: availableStops,
       sortBy: 'price',
       sortOrder: 'asc'
     });
@@ -170,10 +188,34 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
             </div>
           </div>
 
+          {/* Stops Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-300">Stops:</span>
+            <select
+              multiple={false}
+              value={filters.stopCounts.length === availableStops.length ? 'all' : filters.stopCounts.join(',')}
+              onChange={(e) => {
+                if (e.target.value === 'all') {
+                  updateFilter('stopCounts', availableStops);
+                } else {
+                  const selected = e.target.value.split(',').map(Number).filter(n => !isNaN(n));
+                  updateFilter('stopCounts', selected);
+                }
+              }}
+              className="bg-gray-800 border border-gray-700 rounded px-2 lg:px-3 py-1 lg:py-2 text-gray-100 focus:border-accent-500 text-xs lg:text-sm min-w-[100px]"
+            >
+              <option value="all">All stops</option>
+              {availableStops.includes(0) && <option value="0">Nonstop</option>}
+              {availableStops.includes(1) && <option value="1">1 stop</option>}
+              {availableStops.includes(2) && <option value="2">2 stops</option>}
+              {availableStops.filter(s => s >= 3).length > 0 && <option value={availableStops.filter(s => s >= 3).join(',')}>3+ stops</option>}
+            </select>
+          </div>
+
           {/* Sort Controls */}
           <div className="flex items-center gap-2 lg:gap-4 justify-end">
             <span className="text-sm font-medium text-gray-300">Sort by:</span>
-            
+
             <div className="flex items-center gap-1 lg:gap-2">
               <select
                 value={filters.sortBy}
@@ -182,6 +224,7 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
               >
                 <option value="price">Price</option>
                 <option value="duration">Duration</option>
+                {isAeroEnabled && <option value="miles">Miles</option>}
               </select>
               
               <button
