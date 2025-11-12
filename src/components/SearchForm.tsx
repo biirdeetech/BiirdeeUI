@@ -685,7 +685,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         {/* Flight Legs */}
         <div className="space-y-4">
           {legs.map((leg, index) => (
-            <div key={leg.id} className={`bg-gray-850/50 backdrop-blur-sm rounded-xl ${compact ? 'p-3' : 'p-5'} border border-gray-700 hover:border-gray-600 transition-all duration-200`}>
+            <div key={leg.id} className={`bg-gray-850/50 backdrop-blur-sm rounded-xl ${compact ? 'p-3' : 'p-5'} border border-gray-700 hover:border-gray-600 transition-all duration-200 overflow-visible`}>
               <div className="flex items-center gap-3 mb-4">
                 <span className={`bg-gradient-to-r from-accent-600 to-accent-700 text-white ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-lg font-medium shadow-lg`}>
                   Leg {index + 1}
@@ -713,8 +713,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               </div>
               
               {/* Origins and Destinations Row */}
-              <div className="flex gap-3 items-start">
-                <div className="flex-1">
+              <div className="flex gap-3 items-start overflow-visible">
+                <div className="flex-1 overflow-visible">
                   <LocationSearchInputMulti
                     values={leg.origins}
                     onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
@@ -727,7 +727,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 </div>
 
                 {/* Swap Button with Via/Layover */}
-                <div className="relative self-end mb-[2px]">
+                <div className="relative self-end mb-[2px] overflow-visible">
                   {/* Via Badge - appears on top of button */}
                   {leg.vias.length > 0 && (
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-1 z-20">
@@ -814,7 +814,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </div>
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 overflow-visible">
                   <LocationSearchInputMulti
                     values={leg.destinations}
                     onChange={(destinations) => updateLeg(leg.id, 'destinations', destinations)}
