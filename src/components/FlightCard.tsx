@@ -740,15 +740,43 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                     }
                   });
 
+                  // Group flights by flight number
+                  const groupedFlights = filteredFlights.reduce((acc, flight) => {
+                    const key = flight.flightNumber;
+                    if (!acc[key]) {
+                      acc[key] = [];
+                    }
+                    acc[key].push(flight);
+                    return acc;
+                  }, {} as Record<string, typeof filteredFlights>);
+
+                  // Convert to array and sort each group by time, then by mileage value
+                  const flightGroups = Object.entries(groupedFlights).map(([flightNumber, flights]) => {
+                    const sorted = flights.sort((a, b) => {
+                      const aTime = new Date(a.departure.at).getTime();
+                      const bTime = new Date(b.departure.at).getTime();
+                      const timeDiff = aTime - bTime;
+                      if (timeDiff !== 0) return timeDiff;
+
+                      // If same time, sort by mileage value
+                      const aPrice = typeof a.mileagePrice === 'string' ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, '')) : a.mileagePrice;
+                      const bPrice = typeof b.mileagePrice === 'string' ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, '')) : b.mileagePrice;
+                      const aValue = a.mileage + (aPrice * 100);
+                      const bValue = b.mileage + (bPrice * 100);
+                      return aValue - bValue;
+                    });
+                    return { flightNumber, flights: sorted };
+                  });
+
                   // Calculate time difference in minutes for color coding
                   const getTimeProximityColor = (departureTime: string) => {
                     const flightTime = new Date(departureTime).getTime();
                     const originalTime = new Date(slice.departure).getTime();
                     const diffMinutes = Math.abs(flightTime - originalTime) / (1000 * 60);
 
-                    if (diffMinutes <= 120) {
-                      // Within 120 minutes - greenish, fade based on distance
-                      const opacity = Math.max(0.2, 1 - (diffMinutes / 120) * 0.8);
+                    if (diffMinutes <= 300) {
+                      // Within 300 minutes (5 hours) - greenish, fade based on distance
+                      const opacity = Math.max(0.15, 1 - (diffMinutes / 300) * 0.85);
                       return {
                         borderColor: `rgba(34, 197, 94, ${opacity})`,
                         bgColor: `rgba(34, 197, 94, ${opacity * 0.15})`
@@ -758,7 +786,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                   };
 
                   return (
-                    filteredFlights.length > 0 && (
+                    flightGroups.length > 0 && (
                     <div key={bdIndex} className="space-y-1.5">
                       <div className="text-xs text-gray-400 font-medium flex items-center gap-2">
                         <span className="text-gray-500">Leg {bdIndex + 1}:</span>
@@ -766,8 +794,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                         <span className="text-gray-600">•</span>
                         <span className="font-mono text-[10px]">{breakdown.origin} → {breakdown.destination}</span>
                       </div>
-                      <div className="space-y-2 pl-2">
-                        {filteredFlights.map((altFlight, altIndex) => {
+                      <div className="space-y-3 pl-2">
+                        {flightGroups.map((group, groupIndex) => (
+                          <div key={groupIndex} className="space-y-2">
+                            {group.flights.map((altFlight, altIndex) => {
                           const proximityColors = getTimeProximityColor(altFlight.departure.at);
                           const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
 
@@ -937,6 +967,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
                             </div>
                           );
                         })}
+                          </div>
+                        ))}
                       </div>
                     </div>
                     )
