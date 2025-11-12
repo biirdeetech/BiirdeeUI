@@ -673,7 +673,7 @@ const SearchPage: React.FC = () => {
             <StreamingProgress
               isStreaming={isStreaming}
               currentCount={results?.solutionList?.solutions?.length || 0}
-              totalCount={results?.solutionCount || 0}
+              totalCount={extractedParams.pageSize || 25}
               isComplete={streamComplete}
             />
           )}
