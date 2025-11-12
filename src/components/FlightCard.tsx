@@ -114,43 +114,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
     return uniqueCarriers.size;
   };
 
+  // Use timezone-aware formatting for main flight display
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
-    try {
-      // Extract time portion directly from ISO string (e.g., "2025-10-05T14:30:00+03:00")
-      const timeMatch = dateTime.match(/T(\d{2}):(\d{2})/);
-      if (timeMatch) {
-        const hours = parseInt(timeMatch[1]);
-        const minutes = parseInt(timeMatch[2]);
-
-        // Convert to 12-hour format
-        const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const minutesStr = minutes.toString().padStart(2, '0');
-
-        return `${hour12}:${minutesStr} ${ampm}`;
-      }
-      return 'N/A';
-    } catch {
-      return 'N/A';
-    }
-  };
-
-  const formatTimeOld = (dateTime: string) => {
-    const date = new Date(dateTime);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    return formatTimeInOriginTZ(dateTime);
   };
 
   const formatDate = (dateTime: string) => {
-    const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    if (!dateTime) return 'N/A';
+    return formatDateInOriginTZ(dateTime);
   };
 
   const getDayDifference = (departureDateTime: string, arrivalDateTime: string) => {
@@ -360,7 +332,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                 </div>
                 {totalMileage > 0 && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage Value: ${((totalMileage * 0.015) + totalMileagePrice).toFixed(2)}
+                    Mileage Value: ${((totalMileage * 0.15) + totalMileagePrice).toFixed(2)}
                   </div>
                 )}
               </div>
@@ -897,7 +869,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                     </button>
                                   </div>
                                   <div className="text-[10px] text-gray-400">
-                                    Mileage Value: ${((altFlight.mileage * 0.015) + priceNum).toFixed(2)}
+                                    Mileage Value: ${((altFlight.mileage * 0.15) + priceNum).toFixed(2)}
                                   </div>
                                 </div>
                               </div>

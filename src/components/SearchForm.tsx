@@ -228,11 +228,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
-    console.log('updateLeg called:', { id, field, value });
     setLegs(legs.map(leg => {
       if (leg.id === id) {
         const updated = { ...leg, [field]: value };
-        console.log('Updating leg:', { old: leg[field], new: value });
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
           // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
@@ -723,10 +721,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 <div className="flex-1 overflow-visible">
                   <LocationSearchInputMulti
                     values={leg.origins}
-                    onChange={(origins) => {
-                      console.log('Origins onChange called with:', origins);
-                      updateLeg(leg.id, 'origins', origins);
-                    }}
+                    onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
                     placeholder="Add origin (e.g., SFO)"
                     label="From"
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'origins')}
