@@ -227,7 +227,7 @@ const SearchPage: React.FC = () => {
   // Initialize filters from URL parameters
   const initializeFilters = (): FlightFilterState => {
     return {
-      nonstopOnly: false, // Always start with filter off
+      nonstopOnly: true, // Default to nonstop flights only
       businessOnly: false, // Always start with filter off
       searchQuery: '',
       timeOfDay: ['morning', 'afternoon', 'night'],
@@ -454,15 +454,50 @@ const SearchPage: React.FC = () => {
     // Apply sorting
     filteredSolutions.sort((a, b) => {
       let comparison = 0;
-      
+
       if (filterState.sortBy === 'price') {
+        // First, compare cash price
         comparison = a.displayTotal - b.displayTotal;
+
+        // If prices are equal, compare mileage (if available)
+        if (comparison === 0) {
+          const aMileage = a.totalMileage || Infinity;
+          const bMileage = b.totalMileage || Infinity;
+          comparison = aMileage - bMileage;
+
+          // If mileage is equal, compare taxes/fees
+          if (comparison === 0) {
+            const aMileagePrice = a.totalMileagePrice || 0;
+            const bMileagePrice = b.totalMileagePrice || 0;
+            comparison = aMileagePrice - bMileagePrice;
+          }
+        }
       } else if (filterState.sortBy === 'duration') {
         const aDuration = a.slices.reduce((sum, slice) => sum + slice.duration, 0);
         const bDuration = b.slices.reduce((sum, slice) => sum + slice.duration, 0);
         comparison = aDuration - bDuration;
+      } else if (filterState.sortBy === 'value') {
+        // Comprehensive value scoring
+        const getValueScore = (flight: any) => {
+          const price = flight.displayTotal;
+          const duration = flight.slices.reduce((sum: number, slice: any) => sum + slice.duration, 0);
+          const pricePerMile = flight.pricePerMile || 0;
+          const mileage = flight.totalMileage || Infinity;
+          const mileagePrice = flight.totalMileagePrice || 0;
+
+          // Lower is better for all these metrics
+          // Normalize and weight: 50% price, 20% duration, 20% mileage, 10% fees
+          const priceScore = price / 1000; // Normalize to reasonable range
+          const durationScore = duration / 60; // Convert to hours
+          const mileageScore = mileage === Infinity ? 1000 : mileage / 10000;
+          const feeScore = mileagePrice / 100;
+
+          return (priceScore * 0.5) + (durationScore * 0.2) + (mileageScore * 0.2) + (feeScore * 0.1);
+        };
+
+        comparison = getValueScore(a) - getValueScore(b);
       }
-      
+
       return filterState.sortOrder === 'desc' ? -comparison : comparison;
     });
     

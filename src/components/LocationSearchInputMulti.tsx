@@ -142,18 +142,19 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
               >
                 {value}
                 {onOpenNearbySearch && (
-                  <button
-                    type="button"
-                    onClick={(e) => handleNearbySearch(value, e)}
-                    className="text-current opacity-70 hover:opacity-100 transition-opacity group/nearby relative"
-                    title="Find nearby airports"
-                  >
-                    <Locate className="h-3.5 w-3.5" />
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-gray-900 text-gray-200 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover/nearby:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-[9999]">
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      onClick={(e) => handleNearbySearch(value, e)}
+                      className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                    >
+                      <Locate className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-gray-900 text-gray-200 text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg border border-gray-700 z-[9999]">
                       Find nearby airports
                       <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-700"></div>
                     </div>
-                  </button>
+                  </div>
                 )}
                 <button
                   type="button"
