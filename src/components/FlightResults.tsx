@@ -186,32 +186,72 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   const flights = results.solutionList.solutions;
   let processedFlights = groupFlightsByOutbound(flights);
 
-  // Group similar flights together
+  // Group similar flights together by airline + route
   const groupSimilarFlights = (flightList: (FlightSolution | GroupedFlight)[]) => {
-    const grouped = new Map<string, { primary: FlightSolution | GroupedFlight, similar: (FlightSolution | GroupedFlight)[] }>();
+    const grouped = new Map<string, (FlightSolution | GroupedFlight)[]>();
 
     flightList.forEach(flight => {
-      // Create a signature based on route and timing (within 2 hours)
+      // Create a signature based on airline and route (origin-destination)
       let signature = '';
       if ('id' in flight) {
         const firstSlice = flight.slices[0];
-        const departureHour = new Date(firstSlice.departure).getUTCHours();
-        const timeWindow = Math.floor(departureHour / 2); // 2-hour windows
-        signature = `${firstSlice.origin.code}-${firstSlice.destination.code}-${firstSlice.flights.join(',')}-${timeWindow}`;
+        const lastSlice = flight.slices[flight.slices.length - 1];
+        // Get primary airline from first segment
+        const airline = firstSlice.segments[0]?.carrier.code || 'UNKNOWN';
+        signature = `${airline}-${firstSlice.origin.code}-${lastSlice.destination.code}`;
       } else {
-        const departureHour = new Date(flight.outboundSlice.departure).getUTCHours();
-        const timeWindow = Math.floor(departureHour / 2);
-        signature = `${flight.outboundSlice.origin.code}-${flight.outboundSlice.destination.code}-${flight.outboundSlice.flights.join(',')}-${timeWindow}`;
+        const airline = flight.outboundSlice.segments[0]?.carrier.code || 'UNKNOWN';
+        const returnDest = flight.returnOptions[0]?.returnSlice?.destination.code || flight.outboundSlice.origin.code;
+        signature = `${airline}-${flight.outboundSlice.origin.code}-${returnDest}`;
       }
 
       if (!grouped.has(signature)) {
-        grouped.set(signature, { primary: flight, similar: [] });
-      } else {
-        grouped.get(signature)!.similar.push(flight);
+        grouped.set(signature, []);
       }
+      grouped.get(signature)!.push(flight);
     });
 
-    return Array.from(grouped.values());
+    // Convert to primary/similar structure and sort within groups
+    return Array.from(grouped.values()).map(group => {
+      // Sort group by best value: mileage deals first, then by price, then by duration
+      const sorted = group.sort((a, b) => {
+        const aFlight = 'id' in a ? a : a.returnOptions[0];
+        const bFlight = 'id' in b ? b : b.returnOptions[0];
+
+        // Prioritize mileage deals
+        const aMileageValue = (aFlight.totalMileage || 0) > 0
+          ? ((aFlight.totalMileage || 0) * 0.015) + (aFlight.totalMileagePrice || 0)
+          : Infinity;
+        const bMileageValue = (bFlight.totalMileage || 0) > 0
+          ? ((bFlight.totalMileage || 0) * 0.015) + (bFlight.totalMileagePrice || 0)
+          : Infinity;
+
+        if (aMileageValue !== Infinity && bMileageValue !== Infinity) {
+          return aMileageValue - bMileageValue;
+        }
+        if (aMileageValue !== Infinity) return -1;
+        if (bMileageValue !== Infinity) return 1;
+
+        // Compare by cash price
+        const priceCompare = (aFlight.totalAmount || 0) - (bFlight.totalAmount || 0);
+        if (priceCompare !== 0) return priceCompare;
+
+        // If prices equal, compare by duration (shorter is better)
+        const aDuration = 'id' in a
+          ? a.slices.reduce((sum, slice) => sum + slice.duration, 0)
+          : (a.outboundSlice.duration + (a.returnOptions[0]?.returnSlice?.duration || 0));
+        const bDuration = 'id' in b
+          ? b.slices.reduce((sum, slice) => sum + slice.duration, 0)
+          : (b.outboundSlice.duration + (b.returnOptions[0]?.returnSlice?.duration || 0));
+
+        return aDuration - bDuration;
+      });
+
+      return {
+        primary: sorted[0],
+        similar: sorted.slice(1)
+      };
+    });
   };
 
   const groupedFlights = groupSimilarFlights(processedFlights);
