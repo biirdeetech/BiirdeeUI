@@ -228,9 +228,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
+    console.log('updateLeg called:', { id, field, value });
     setLegs(legs.map(leg => {
       if (leg.id === id) {
         const updated = { ...leg, [field]: value };
+        console.log('Updating leg:', { old: leg[field], new: value });
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
           // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
@@ -721,15 +723,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 <div className="flex-1 overflow-visible">
                   <LocationSearchInputMulti
                     values={leg.origins}
-                    onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
-                    onLocationSelect={(location, index) => {
-                      // Store timezone from the first origin airport (after onChange has been called)
-                      if (index === 0 && location.timezone) {
-                        // This runs after onChange, so we just update the timezone
-                        setTimeout(() => {
-                          updateLeg(leg.id, 'originTimezone', location.timezone);
-                        }, 0);
-                      }
+                    onChange={(origins) => {
+                      console.log('Origins onChange called with:', origins);
+                      updateLeg(leg.id, 'origins', origins);
                     }}
                     placeholder="Add origin (e.g., SFO)"
                     label="From"
