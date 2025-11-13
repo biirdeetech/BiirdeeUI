@@ -874,19 +874,32 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                       {/* Flight alternatives for this program */}
                       <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
                         {(() => {
-                          const activeTab = sliceAlternativeTabs[`${sliceIndex}-${progIndex}`] || 'best-match';
+                          const tabKey = `${sliceIndex}-${progIndex}`;
+                          let activeTab = sliceAlternativeTabs[tabKey] || 'best-match';
                           const originalTime = new Date(slice.departure).getTime();
 
-                          const filteredFlights = sortedFlights.filter(altFlight => {
+                          const bestMatchFlights = sortedFlights.filter(altFlight => {
                             const flightTime = new Date(altFlight.departure.at).getTime();
                             const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
-
-                            if (activeTab === 'best-match') {
-                              return diffMinutes <= 300;
-                            } else {
-                              return diffMinutes > 300;
-                            }
+                            return diffMinutes <= 300;
                           });
+
+                          const timeInsensitiveFlights = sortedFlights.filter(altFlight => {
+                            const flightTime = new Date(altFlight.departure.at).getTime();
+                            const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+                            return diffMinutes > 300;
+                          });
+
+                          // Auto-switch to tab with records if current tab is empty
+                          if (activeTab === 'best-match' && bestMatchFlights.length === 0 && timeInsensitiveFlights.length > 0) {
+                            activeTab = 'time-insensitive';
+                            setTimeout(() => setSliceAlternativeTabs({...sliceAlternativeTabs, [tabKey]: 'time-insensitive'}), 0);
+                          } else if (activeTab === 'time-insensitive' && timeInsensitiveFlights.length === 0 && bestMatchFlights.length > 0) {
+                            activeTab = 'best-match';
+                            setTimeout(() => setSliceAlternativeTabs({...sliceAlternativeTabs, [tabKey]: 'best-match'}), 0);
+                          }
+
+                          const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
 
                           if (filteredFlights.length === 0) {
                             return (
@@ -896,7 +909,31 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                             );
                           }
 
-                          return filteredFlights.slice(0, 5).map((altFlight, altIndex) => {
+                          // Merge duplicate flights with same times but different flight numbers
+                          const mergedFlights: any[] = [];
+                          const flightMap = new Map<string, any>();
+
+                          filteredFlights.forEach(flight => {
+                            const depTime = new Date(flight.departure.at).getTime();
+                            const arrTime = new Date(flight.arrival.at).getTime();
+                            const key = `${depTime}-${arrTime}-${flight.mileage}-${flight.mileagePrice}`;
+
+                            if (flightMap.has(key)) {
+                              const existing = flightMap.get(key);
+                              if (!existing.flightNumbers) {
+                                existing.flightNumbers = [existing.flightNumber];
+                              }
+                              if (!existing.flightNumbers.includes(flight.flightNumber)) {
+                                existing.flightNumbers.push(flight.flightNumber);
+                              }
+                            } else {
+                              flightMap.set(key, { ...flight });
+                            }
+                          });
+
+                          mergedFlights.push(...Array.from(flightMap.values()));
+
+                          return mergedFlights.slice(0, 5).map((altFlight, altIndex) => {
                   // Calculate time difference
                   const flightTime = new Date(altFlight.departure.at).getTime();
                   const originalTime = new Date(slice.departure).getTime();
@@ -906,19 +943,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
                   // Check if within tolerance
                   const isWithinTolerance = Math.abs(diffMinutes) <= 960 && altFlight.timeComparison?.withinTolerance;
-
-                  // Calculate proximity colors
-                  const proximityColors = (() => {
-                    const absDiffMinutes = Math.abs(diffMinutes);
-                    if (absDiffMinutes <= 300) {
-                      const opacity = Math.max(0.15, 1 - (absDiffMinutes / 300) * 0.85);
-                      return {
-                        borderColor: `rgba(34, 197, 94, ${opacity})`,
-                        bgColor: `rgba(34, 197, 94, ${opacity * 0.15})`
-                      };
-                    }
-                    return null;
-                  })();
 
                   const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
 
@@ -942,11 +966,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   return (
                             <div
                               key={altIndex}
-                              className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border transition-all duration-200 overflow-hidden"
-                              style={proximityColors && isWithinTolerance ? {
-                                borderColor: proximityColors.borderColor,
-                                backgroundColor: proximityColors.bgColor
-                              } : { borderColor: 'rgb(55, 65, 81)' }}
+                              className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700 transition-all duration-200 overflow-hidden"
                             >
                               {/* Header with carrier and mileage */}
                               <div className="flex items-center justify-between px-3 py-2 bg-gray-900/30 border-b border-gray-700/50">
@@ -958,7 +978,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
                                   <div>
-                                    <div className="text-sm font-semibold text-white">{altFlight.flightNumber}</div>
+                                    <div className="text-sm font-semibold text-white">
+                                      {altFlight.flightNumbers ? altFlight.flightNumbers.join(', ') : altFlight.flightNumber}
+                                    </div>
                                     <div className="text-xs text-gray-400">{carrierName}</div>
                                   </div>
                                 </div>
