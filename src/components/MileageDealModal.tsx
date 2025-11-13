@@ -114,8 +114,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   arrival: undefined, // Not available in individual segment data
                   flightNumber: flight.flightNumber,
                   duration: undefined,
-                  carrier: flight.operatingCarrier || flight.carrierCode,
-                  aircraft: flight.aircraft?.code,
+                  operatingCarrier: flight.operatingCarrier || flight.carrierCode,
+                  aircraft: flight.aircraft,
                   cabin: flight.cabin
                 });
 
@@ -128,8 +128,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     arrival: undefined,
                     flightNumber: flight.flightNumber,
                     duration: undefined,
-                    carrier: flight.operatingCarrier || flight.carrierCode,
-                    aircraft: flight.aircraft?.code,
+                    operatingCarrier: flight.operatingCarrier || flight.carrierCode,
+                    aircraft: flight.aircraft,
                     cabin: flight.cabin
                   });
                 }
@@ -142,8 +142,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
                   flightNumber: flight.flightNumber,
                   duration: undefined,
-                  carrier: flight.operatingCarrier || flight.carrierCode,
-                  aircraft: flight.aircraft?.code,
+                  operatingCarrier: flight.operatingCarrier || flight.carrierCode,
+                  aircraft: flight.aircraft,
                   cabin: flight.cabin
                 });
 
@@ -170,8 +170,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
                     flightNumber: flight.flightNumber,
                     duration: flight.duration ? parseDuration(flight.duration) : undefined,
-                    carrier: flight.operatingCarrier || flight.carrierCode,
-                    aircraft: flight.aircraft?.code,
+                    operatingCarrier: flight.operatingCarrier || flight.carrierCode,
+                    aircraft: flight.aircraft,
                     cabin: flight.cabin
                   }],
                   stops: [],
@@ -468,17 +468,15 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                               <div className="bg-gray-800/30 rounded border border-gray-700/50 p-2.5">
                                 <div className="flex items-center justify-between gap-2 mb-2">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-semibold text-blue-300">
-                                      {segment.flightNumber || slice.flights?.[segIndex] || slice.flights?.[0] || ''}
-                                    </span>
-                                    {segment.carrier && (
+                                    <span className="text-xs font-semibold text-blue-300">{segment.flightNumber || 'N/A'}</span>
+                                    {segment.operatingCarrier && (
                                       <span className="text-[10px] text-gray-400">
-                                        {typeof segment.carrier === 'string' ? segment.carrier : segment.carrier.code}
+                                        {segment.operatingCarrier}
                                       </span>
                                     )}
-                                    {segment.aircraft && (
+                                    {segment.aircraft?.code && (
                                       <span className="text-[9px] bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded">
-                                        {typeof segment.aircraft === 'string' ? segment.aircraft : segment.aircraft.code}
+                                        {segment.aircraft.code}
                                       </span>
                                     )}
                                     {segment.cabin && (
@@ -499,7 +497,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                   {/* Departure Info */}
                                   <div className="flex-1">
                                     <div className="text-sm font-bold text-white">
-                                      {segment.departure?.time || (segment.departure?.at ? formatTime(segment.departure.at) : '')}
+                                      {segment.departure?.time || (segment.departure?.at ? formatTime(segment.departure.at) : '--:--')}
                                     </div>
                                     <div className="text-[10px] text-gray-400 font-mono font-semibold">
                                       {segment.departure?.iataCode || segment.origin}
@@ -521,7 +519,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                   {/* Arrival Info */}
                                   <div className="flex-1 text-right">
                                     <div className="text-sm font-bold text-white">
-                                      {segment.arrival?.time || (segment.arrival?.at ? formatTime(segment.arrival.at) : '')}
+                                      {segment.arrival?.time || (segment.arrival?.at ? formatTime(segment.arrival.at) : '--:--')}
                                     </div>
                                     <div className="text-[10px] text-gray-400 font-mono font-semibold">
                                       {segment.arrival?.iataCode || segment.destination}
