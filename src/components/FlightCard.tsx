@@ -797,29 +797,48 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                 </div>
 
                 {/* Segment Breakdown for multi-segment flights */}
-                {slice.mileageBreakdown && slice.mileageBreakdown.length > 1 && (
+                {slice.mileageBreakdown && slice.mileageBreakdown.length > 0 && (
                   <div className="mb-4 p-3 bg-gray-800/30 rounded border border-gray-700/50">
-                    <div className="text-xs font-medium text-gray-300 mb-2">Flight Segments:</div>
+                    <div className="text-xs font-medium text-gray-300 mb-2">
+                      Flight Segments: {slice.origin.code} → {slice.destination.code}
+                      {slice.stops && slice.stops.length > 0 && (
+                        <span className="text-gray-500 ml-2">via {slice.stops.map(s => s.code).join(', ')}</span>
+                      )}
+                    </div>
                     <div className="space-y-2">
-                      {slice.mileageBreakdown.map((segment: any, segIdx: number) => (
-                        <div key={segIdx} className="flex items-center gap-3 text-[11px]">
-                          <div className="flex items-center gap-2 flex-1">
-                            <div className="font-mono text-blue-300 font-semibold">{segment.flightNumber || 'N/A'}</div>
-                            <div className="text-gray-400">
-                              <span className="font-mono font-semibold text-gray-300">{segment.origin}</span>
-                              <span className="mx-1">→</span>
-                              <span className="font-mono font-semibold text-gray-300">{segment.destination}</span>
+                      {slice.mileageBreakdown.map((segment: any, segIdx: number) => {
+                        const hasMatches = segment.allMatchingFlights && segment.allMatchingFlights.length > 0;
+                        const matchingCount = segment.matchingFlightsCount || segment.allMatchingFlights?.length || 0;
+
+                        return (
+                          <div key={segIdx} className="flex items-center gap-3 text-[11px] bg-gray-900/30 p-2 rounded">
+                            <div className="flex items-center gap-2 flex-1">
+                              <div className="font-mono text-blue-300 font-semibold">{segment.flightNumber || 'N/A'}</div>
+                              <div className="text-gray-400">
+                                <span className="font-mono font-semibold text-gray-300">{segment.origin}</span>
+                                <span className="mx-1">→</span>
+                                <span className="font-mono font-semibold text-gray-300">{segment.destination}</span>
+                              </div>
+                              <div className="text-gray-500">{segment.carrier}</div>
                             </div>
-                            <div className="text-gray-500">{segment.carrier}</div>
+                            <div className="text-right">
+                              {segment.matched && segment.mileage ? (
+                                <>
+                                  <div className="text-orange-300 font-semibold">{segment.mileage.toLocaleString()} mi</div>
+                                  {matchingCount > 0 && (
+                                    <div className="text-[9px] text-green-400">{matchingCount} program{matchingCount !== 1 ? 's' : ''}</div>
+                                  )}
+                                  {segment.exactMatch && (
+                                    <div className="text-[9px] text-green-500 font-semibold">Exact Match</div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="text-gray-500 text-[10px]">No matches</div>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-orange-300 font-semibold">{segment.mileage?.toLocaleString() || 'N/A'} mi</div>
-                            {segment.matchingFlightsCount > 0 && (
-                              <div className="text-[9px] text-green-400">{segment.matchingFlightsCount} match{segment.matchingFlightsCount !== 1 ? 'es' : ''}</div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
