@@ -68,7 +68,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     return Array.from(consolidated.values());
   };
 
-  // Enrich deals with segment information from flight slices
+  // Enrich deals with segment information from flight slices and mileageBreakdown
   const enrichDealsWithSegments = (dealsList: MileageDeal[]): MileageDeal[] => {
     return dealsList.map(deal => {
       // If deal already has segments, return as is
@@ -76,10 +76,112 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
         return deal;
       }
 
-      // Try to enrich from flight slices
+      // Try to enrich from flight slices mileageBreakdown
       if (flightSlices && flightSlices.length > 0) {
         const slice = flightSlices[0]; // Use first slice for now
 
+        // Check if this slice has mileageBreakdown with allMatchingFlights
+        if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
+          // Find matching flights for this deal's airline
+          const breakdown = slice.mileageBreakdown.find(mb =>
+            mb.carrier === deal.airlineCode ||
+            (mb.allMatchingFlights && mb.allMatchingFlights.some((f: any) =>
+              f.carrierCode === deal.airlineCode || f.operatingCarrier === deal.airlineCode
+            ))
+          );
+
+          if (breakdown && breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0) {
+            // Get the matching flights for this airline
+            const matchingFlights = breakdown.allMatchingFlights.filter((f: any) =>
+              f.carrierCode === deal.airlineCode || f.operatingCarrier === deal.airlineCode
+            );
+
+            if (matchingFlights.length > 0) {
+              // Use the first matching flight to extract segment data
+              const flight = matchingFlights[0];
+
+              // If it's a multi-stop flight, we need to create segments
+              if (flight.numberOfStops > 0 && flight.stops && flight.stops.length > 0) {
+                // For multi-stop flights, create segments based on stops
+                // Note: We don't have individual segment times, so we'll show simplified version
+                const segments = [];
+
+                // First segment
+                segments.push({
+                  origin: flight.departure.iataCode,
+                  destination: flight.stops[0].code || flight.stops[0].iataCode,
+                  departure: flight.departure.at,
+                  arrival: undefined, // Not available in individual segment data
+                  flightNumber: flight.flightNumber,
+                  duration: undefined,
+                  carrier: flight.operatingCarrier || flight.carrierCode,
+                  aircraft: flight.aircraft?.code
+                });
+
+                // Middle segments (if multiple stops)
+                for (let i = 0; i < flight.stops.length - 1; i++) {
+                  segments.push({
+                    origin: flight.stops[i].code || flight.stops[i].iataCode,
+                    destination: flight.stops[i + 1].code || flight.stops[i + 1].iataCode,
+                    departure: undefined,
+                    arrival: undefined,
+                    flightNumber: flight.flightNumber,
+                    duration: undefined,
+                    carrier: flight.operatingCarrier || flight.carrierCode,
+                    aircraft: flight.aircraft?.code
+                  });
+                }
+
+                // Last segment
+                segments.push({
+                  origin: flight.stops[flight.stops.length - 1].code || flight.stops[flight.stops.length - 1].iataCode,
+                  destination: flight.arrival.iataCode,
+                  departure: undefined,
+                  arrival: flight.arrival.at,
+                  flightNumber: flight.flightNumber,
+                  duration: undefined,
+                  carrier: flight.operatingCarrier || flight.carrierCode,
+                  aircraft: flight.aircraft?.code
+                });
+
+                return {
+                  ...deal,
+                  segments,
+                  stops: flight.stops.map((s: any) => ({
+                    code: s.code || s.iataCode,
+                    duration: undefined // Layover duration not provided
+                  })),
+                  departure: flight.departure.at,
+                  arrival: flight.arrival.at,
+                  duration: flight.duration ? parseDuration(flight.duration) : undefined,
+                  flightNumber: flight.flightNumber
+                };
+              } else {
+                // Nonstop flight - single segment
+                return {
+                  ...deal,
+                  segments: [{
+                    origin: flight.departure.iataCode,
+                    destination: flight.arrival.iataCode,
+                    departure: flight.departure.at,
+                    arrival: flight.arrival.at,
+                    flightNumber: flight.flightNumber,
+                    duration: flight.duration ? parseDuration(flight.duration) : undefined,
+                    carrier: flight.operatingCarrier || flight.carrierCode,
+                    aircraft: flight.aircraft?.code
+                  }],
+                  stops: [],
+                  departure: flight.departure.at,
+                  arrival: flight.arrival.at,
+                  duration: flight.duration ? parseDuration(flight.duration) : undefined,
+                  flightNumber: flight.flightNumber
+                };
+              }
+            }
+          }
+        }
+
+        // Fallback: Try to enrich from basic slice segments
         if (slice.segments && slice.segments.length > 0) {
           // Extract segment information
           const segments = slice.segments.map((seg, idx) => ({
@@ -90,7 +192,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
             flightNumber: seg.flightNumber || slice.flights[idx],
             duration: seg.duration,
             carrier: seg.carrier.code,
-            aircraft: undefined // Not available in segment data
+            aircraft: undefined
           }));
 
           return {
@@ -106,6 +208,15 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
 
       return deal;
     });
+  };
+
+  // Helper to parse ISO 8601 duration (e.g., "PT6H59M") to minutes
+  const parseDuration = (duration: string): number => {
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!match) return 0;
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    return hours * 60 + minutes;
   };
 
   // Group deals by airline and find primary/alternatives
