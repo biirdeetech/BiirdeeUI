@@ -664,7 +664,7 @@ const SearchPage: React.FC = () => {
             sidebarCollapsed ? 'lg:w-0 lg:border-r-0 lg:-translate-x-full' : 'lg:w-[350px] lg:translate-x-0 lg:shadow-2xl'
           } lg:z-50`}
         >
-          <div className={`p-4 lg:p-6 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+          <div className={`p-6 lg:p-8 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             {/* Back to Search Button */}
             <div className="mb-4">
               <button
