@@ -122,6 +122,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   // Use a ref to track the last URL we initialized from to avoid infinite loops
   const lastInitializedUrl = useRef<string>('');
 
+  // Debug: Log when legs state changes
+  useEffect(() => {
+    console.log('✅ SearchForm: legs state updated:', JSON.parse(JSON.stringify(legs)));
+  }, [legs]);
+
   useEffect(() => {
     if (compact && searchParams.get('origin')) {
       const currentUrl = searchParams.toString();
@@ -228,9 +233,13 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
+    console.log('🔄 SearchForm.updateLeg called:', { id, field, value });
+    console.log('🔄 Current legs before update:', JSON.parse(JSON.stringify(legs)));
+
     setLegs(legs.map(leg => {
       if (leg.id === id) {
         const updated = { ...leg, [field]: value };
+        console.log('🔄 Updated leg:', JSON.parse(JSON.stringify(updated)));
         // Auto-update booking classes when cabin changes
         if (field === 'cabin') {
           // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)

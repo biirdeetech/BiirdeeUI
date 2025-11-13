@@ -25,6 +25,8 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
   tagColor = 'accent',
   constrainBadges = false
 }) => {
+  console.log('🎨 LocationSearchInputMulti: Rendering with values:', values);
+
   const [inputValue, setInputValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
