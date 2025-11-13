@@ -4,16 +4,21 @@ import { FlightSlice } from '../types/flight';
 
 interface FlightSegmentDetailsProps {
   slice: FlightSlice;
+  originTimezone?: string;
 }
 
-const FlightSegmentDetails: React.FC<FlightSegmentDetailsProps> = ({ slice }) => {
+const FlightSegmentDetails: React.FC<FlightSegmentDetailsProps> = ({ slice, originTimezone }) => {
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
-      const time = dateTime.split('T')[1]?.split(/[+-]/)[0];
-      if (!time) return dateTime;
-      const [hours, minutes] = time.split(':');
-      return `${hours}:${minutes}`;
+      const date = new Date(dateTime);
+      const options: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        ...(originTimezone && { timeZone: originTimezone })
+      };
+      return date.toLocaleTimeString('en-US', options);
     } catch {
       return dateTime;
     }
@@ -29,7 +34,12 @@ const FlightSegmentDetails: React.FC<FlightSegmentDetailsProps> = ({ slice }) =>
     if (!dateTime) return '';
     try {
       const date = new Date(dateTime);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const options: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric',
+        ...(originTimezone && { timeZone: originTimezone })
+      };
+      return date.toLocaleDateString('en-US', options);
     } catch {
       return '';
     }

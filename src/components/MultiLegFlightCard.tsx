@@ -41,20 +41,14 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
-      // Extract time portion directly from ISO string (e.g., "2025-10-05T14:30:00+03:00")
-      const timeMatch = dateTime.match(/T(\d{2}):(\d{2})/);
-      if (timeMatch) {
-        const hours = parseInt(timeMatch[1]);
-        const minutes = parseInt(timeMatch[2]);
-
-        // Convert to 12-hour format
-        const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const minutesStr = minutes.toString().padStart(2, '0');
-        
-        return `${hour12}:${minutesStr} ${ampm}`;
-      }
-      return 'N/A';
+      const date = new Date(dateTime);
+      const options: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        ...(originTimezone && { timeZone: originTimezone })
+      };
+      return date.toLocaleTimeString('en-US', options);
     } catch {
       return 'N/A';
     }
@@ -62,10 +56,12 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
 
   const formatDate = (dateTime: string) => {
     const date = new Date(dateTime);
-    return date.toLocaleDateString('en-US', {
+    const options: Intl.DateTimeFormatOptions = {
       month: 'short',
-      day: 'numeric'
-    });
+      day: 'numeric',
+      ...(originTimezone && { timeZone: originTimezone })
+    };
+    return date.toLocaleDateString('en-US', options);
   };
 
   const getDayDifference = (departureDateTime: string, arrivalDateTime: string) => {

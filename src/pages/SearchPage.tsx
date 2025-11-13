@@ -430,8 +430,20 @@ const SearchPage: React.FC = () => {
       filteredSolutions = filteredSolutions.filter(flight => {
         return flight.slices.some(slice => {
           const departureTime = new Date(slice.departure);
-          const hour = departureTime.getUTCHours();
-          
+
+          // Get hour in origin timezone if available, otherwise use UTC
+          let hour: number;
+          if (originTimezone) {
+            const hourStr = departureTime.toLocaleString('en-US', {
+              hour: 'numeric',
+              hour12: false,
+              timeZone: originTimezone
+            });
+            hour = parseInt(hourStr);
+          } else {
+            hour = departureTime.getUTCHours();
+          }
+
           return filterState.timeOfDay.some(time => {
             switch (time) {
               case 'morning':
