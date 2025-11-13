@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Plane, Award, DollarSign, Clock, Zap, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { MileageDeal, FlightSlice } from '../types/flight';
+import { MileageDealCard } from './MileageDealCard';
 
 interface MileageDealModalProps {
   deals: MileageDeal[];
@@ -194,90 +195,46 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     return hours * 60 + minutes;
   };
 
-  // Group deals by airline and find primary/alternatives
-  const groupedByAirline = useMemo(() => {
+  // Process deals - each flight is displayed as its own standalone entry
+  const processedDeals = useMemo(() => {
     // First enrich deals with segment information
     const enrichedDeals = enrichDealsWithSegments(deals);
 
-    // Don't consolidate - display each flight separately
-    // Cast to ConsolidatedDeal for type compatibility (each deal is its own entry)
+    // Each deal becomes its own standalone entry
     const dealsWithType: ConsolidatedDeal[] = enrichedDeals.map(deal => ({
       ...deal,
       flightNumbers: [deal.flightNumber],
       variantCount: 1
     }));
 
-    const grouped = new Map<string, ConsolidatedDeal[]>();
+    // Sort by value (miles + weighted fees) then by match type
+    const sorted = dealsWithType.sort((a, b) => {
+      // Full matches first
+      if (a.matchType === 'full' && b.matchType !== 'full') return -1;
+      if (a.matchType !== 'full' && b.matchType === 'full') return 1;
 
-    dealsWithType.forEach(deal => {
-      const key = deal.airlineCode;
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
-      }
-      grouped.get(key)!.push(deal);
+      // Then sort by value
+      const aValue = a.mileage + (a.mileagePrice * 100);
+      const bValue = b.mileage + (b.mileagePrice * 100);
+      const valueCompare = aValue - bValue;
+
+      if (valueCompare !== 0) return valueCompare;
+
+      // If values equal, sort by time difference
+      const aTimeDiff = calculateTimeDifference(a);
+      const bTimeDiff = calculateTimeDifference(b);
+      return aTimeDiff - bTimeDiff;
     });
 
-    // Convert to grouped structure with primary and alternatives
-    const result: GroupedDeals[] = [];
-    grouped.forEach((airlineDeals, airlineCode) => {
-      // Sort by value (miles + weighted fees) then by time difference
-      const sorted = airlineDeals.sort((a, b) => {
-        const aValue = a.mileage + (a.mileagePrice * 100);
-        const bValue = b.mileage + (b.mileagePrice * 100);
-        const valueCompare = aValue - bValue;
-
-        if (valueCompare !== 0) return valueCompare;
-
-        // If values equal, sort by time difference
-        const aTimeDiff = calculateTimeDifference(a);
-        const bTimeDiff = calculateTimeDifference(b);
-        return aTimeDiff - bTimeDiff;
-      });
-
-      const primary = sorted[0];
-      const alternatives = sorted.slice(1);
-
-      // Split alternatives into best match (within 5 hours) and time insensitive
-      // For now, since we don't have actual time data, put all in best matches
-      // TODO: Update when time difference data is available
-      const alternativesBestMatch = alternatives.slice().sort((a, b) => {
-        // Sort by value first, then by time difference
-        const aValue = a.mileage + (a.mileagePrice * 100);
-        const bValue = b.mileage + (b.mileagePrice * 100);
-        const valueCompare = aValue - bValue;
-
-        if (valueCompare !== 0) return valueCompare;
-
-        return calculateTimeDifference(a) - calculateTimeDifference(b);
-      });
-
-      const alternativesTimeInsensitive: MileageDeal[] = [];
-      // Will be populated when time difference calculation is implemented
-
-      result.push({
-        airline: sorted[0].airline,
-        airlineCode: airlineCode,
-        primary,
-        alternatives,
-        alternativesBestMatch,
-        alternativesTimeInsensitive
-      });
-    });
-
-    // Sort groups by primary deal value
-    return result.sort((a, b) => {
-      const aValue = a.primary.mileage + (a.primary.mileagePrice * 100);
-      const bValue = b.primary.mileage + (b.primary.mileagePrice * 100);
-      return aValue - bValue;
-    });
+    return sorted;
   }, [deals, flightSlices]);
 
   // Separate into best matches and more options
   const { bestMatches, moreOptions } = useMemo(() => {
-    const best = groupedByAirline.filter(g => g.primary.matchType === 'full');
-    const more = groupedByAirline.filter(g => g.primary.matchType === 'partial');
+    const best = processedDeals.filter(d => d.matchType === 'full');
+    const more = processedDeals.filter(d => d.matchType === 'partial');
     return { bestMatches: best, moreOptions: more };
-  }, [groupedByAirline]);
+  }, [processedDeals]);
 
   const toggleAirline = (airlineCode: string) => {
     setExpandedAirlines(prev => ({
@@ -329,7 +286,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
 
   if (!isOpen || !deals || deals.length === 0) return null;
 
-  const activeGroups = activeTab === 'best-match' ? bestMatches : moreOptions;
+  const activeDeals = activeTab === 'best-match' ? bestMatches : moreOptions;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -598,383 +555,17 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
             </button>
           </div>
 
-          {/* Grouped Deals List */}
+          {/* Deals List */}
           <div className="p-6">
-            {activeGroups.length === 0 ? (
+            {activeDeals.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
                 No {activeTab === 'best-match' ? 'best match' : 'additional'} options available
               </div>
             ) : (
               <div className="space-y-3">
-                {activeGroups.map((group) => {
-                  const isExpanded = expandedAirlines[group.airlineCode];
-                  const hasAlternatives = group.alternatives.length > 0;
-                  const activeAltTab = getAirlineAlternativeTab(group.airlineCode);
-                  const activeAlternatives = activeAltTab === 'best-match'
-                    ? group.alternativesBestMatch
-                    : group.alternativesTimeInsensitive;
-
-                  return (
-                    <div
-                      key={group.airlineCode}
-                      className={`border rounded-lg overflow-hidden transition-all ${
-                        group.primary.matchType === 'full'
-                          ? 'border-green-500/30 bg-green-500/5'
-                          : 'border-gray-700 bg-gray-800/30'
-                      }`}
-                    >
-                      {/* Primary Deal */}
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-4 mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="p-2 bg-accent-500/10 rounded-lg">
-                                <Plane className="h-5 w-5 text-accent-400" />
-                              </div>
-                              <div>
-                                <div className="text-lg font-bold text-white">{group.airline}</div>
-                                <div className="text-xs text-gray-500">Code: {group.airlineCode}</div>
-                              </div>
-                              {group.primary.matchType === 'full' && (
-                                <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
-                                  Full Match
-                                </span>
-                              )}
-                              {group.primary.matchType === 'partial' && (
-                                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
-                                  Partial Match
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {group.primary.cabins.map((cabin, i) => (
-                                <span
-                                  key={i}
-                                  className="px-3 py-1 bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg"
-                                >
-                                  {cabin}
-                                </span>
-                              ))}
-                            </div>
-
-                            {/* Flight Numbers Display */}
-                            <div className="text-sm text-gray-400">
-                              {(group.primary as ConsolidatedDeal).flightNumbers ? (
-                                <>
-                                  <span className="text-gray-500">Flights: </span>
-                                  <span className="text-white font-medium">
-                                    {(group.primary as ConsolidatedDeal).flightNumbers.join(', ')}
-                                  </span>
-                                  {(group.primary as ConsolidatedDeal).variantCount > 1 && (
-                                    <span className="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/30">
-                                      {(group.primary as ConsolidatedDeal).variantCount} variants
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-gray-500">Flight: </span>
-                                  <span className="text-white font-medium">{group.primary.flightNumber}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-2xl font-bold text-accent-400">
-                              {group.primary.mileage.toLocaleString()}
-                            </div>
-                            <div className="text-sm text-gray-400">miles</div>
-                            {group.primary.mileagePrice > 0 && (
-                              <div className="flex items-center justify-end gap-1 mt-1 text-gray-300">
-                                <DollarSign className="h-3 w-3" />
-                                <span className="text-sm">+ ${group.primary.mileagePrice.toFixed(2)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Flight Timeline - Show stops/segments if available */}
-                        {group.primary.segments && group.primary.segments.length > 0 && (
-                          <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
-                            <div className="space-y-2">
-                              {group.primary.segments.map((segment, segIdx) => {
-                                const nextSegment = group.primary.segments![segIdx + 1];
-                                let layoverDuration = 0;
-
-                                if (nextSegment) {
-                                  const arrivalTime = segment.arrival?.at || segment.arrival;
-                                  const departureTime = nextSegment.departure?.at || nextSegment.departure;
-                                  if (arrivalTime && departureTime) {
-                                    const arrTime = new Date(arrivalTime).getTime();
-                                    const depTime = new Date(departureTime).getTime();
-                                    layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
-                                  }
-                                }
-
-                                return (
-                                  <div key={segIdx}>
-                                    {/* Segment */}
-                                    <div className="flex items-center gap-2 text-sm">
-                                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                                        <span className="text-xs font-semibold text-blue-300">{segment.flightNumber}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-1">
-                                        <span className="font-mono text-white">{segment.origin}</span>
-                                        <div className="flex-1 flex items-center">
-                                          <div className="flex-1 border-t border-gray-600"></div>
-                                          <Plane className="h-3 w-3 text-gray-500 mx-1" />
-                                          <div className="flex-1 border-t border-gray-600"></div>
-                                        </div>
-                                        <span className="font-mono text-white">{segment.destination}</span>
-                                      </div>
-                                      {segment.duration && (
-                                        <span className="text-xs text-gray-500">{formatDuration(segment.duration)}</span>
-                                      )}
-                                    </div>
-
-                                    {/* Layover */}
-                                    {nextSegment && layoverDuration > 0 && (
-                                      <div className="flex items-center justify-center py-1.5">
-                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2.5 py-1 text-xs">
-                                          <span className="text-orange-300 flex items-center gap-1.5">
-                                            <MapPin className="h-3 w-3" />
-                                            <span>Layover at {segment.destination}</span>
-                                            <span className="text-orange-400">•</span>
-                                            <Clock className="h-3 w-3" />
-                                            <span>{formatDuration(layoverDuration)}</span>
-                                          </span>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {group.primary.duration && (
-                              <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 flex items-center justify-between">
-                                <span>Total Travel Time:</span>
-                                <span className="text-white font-medium">{formatDuration(group.primary.duration)}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {/* Show stops summary if segments not available but stops are */}
-                        {(!group.primary.segments || group.primary.segments.length === 0) && group.primary.stops && group.primary.stops.length > 0 && (
-                          <div className="text-xs text-gray-400">
-                            <span className="text-orange-400">{group.primary.stops.length} stop{group.primary.stops.length > 1 ? 's' : ''}</span>
-                            <span className="ml-1">({group.primary.stops.map(s => s.code).join(', ')})</span>
-                          </div>
-                        )}
-
-                        {/* Expand Button for Alternatives */}
-                        {hasAlternatives && (
-                          <button
-                            onClick={() => toggleAirline(group.airlineCode)}
-                            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg transition-all text-sm text-gray-300"
-                          >
-                            <span>{group.alternatives.length} alternative option{group.alternatives.length > 1 ? 's' : ''}</span>
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Alternative Deals */}
-                      {hasAlternatives && isExpanded && (
-                        <div className="border-t border-gray-700 bg-gray-900/50">
-                          {/* Alternative Tabs */}
-                          <div className="flex border-b border-gray-700/50 bg-gray-900/30">
-                            <button
-                              onClick={() => setAirlineAlternativeTab(group.airlineCode, 'best-match')}
-                              className={`flex-1 px-4 py-2 text-xs font-medium transition-all relative ${
-                                activeAltTab === 'best-match'
-                                  ? 'text-green-400 bg-gray-800/50'
-                                  : 'text-gray-400 hover:text-gray-300'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center gap-1.5">
-                                <Zap className="h-3 w-3" />
-                                <span>Best Matches</span>
-                                {group.alternativesBestMatch.length > 0 && (
-                                  <span className="ml-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full font-medium border border-green-500/30">
-                                    {group.alternativesBestMatch.length}
-                                  </span>
-                                )}
-                              </div>
-                              {activeAltTab === 'best-match' && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => setAirlineAlternativeTab(group.airlineCode, 'time-insensitive')}
-                              className={`flex-1 px-4 py-2 text-xs font-medium transition-all relative ${
-                                activeAltTab === 'time-insensitive'
-                                  ? 'text-blue-400 bg-gray-800/50'
-                                  : 'text-gray-400 hover:text-gray-300'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center gap-1.5">
-                                <Clock className="h-3 w-3" />
-                                <span>Time Insensitive</span>
-                                {group.alternativesTimeInsensitive.length > 0 && (
-                                  <span className="ml-1 px-1.5 py-0.5 bg-gray-700 text-gray-300 text-[10px] rounded-full font-medium">
-                                    {group.alternativesTimeInsensitive.length}
-                                  </span>
-                                )}
-                              </div>
-                              {activeAltTab === 'time-insensitive' && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                              )}
-                            </button>
-                          </div>
-
-                          <div className="p-3">
-                            {activeAlternatives.length === 0 ? (
-                              <div className="text-center py-6 text-gray-500 text-xs">
-                                No {activeAltTab === 'best-match' ? 'programs within 5 hours' : 'additional programs'}
-                              </div>
-                            ) : (
-                              <>
-                                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">
-                                  {activeAltTab === 'best-match'
-                                    ? 'Within 5 hours (sorted by value & timing)'
-                                    : 'More than 5 hours (sorted by value)'}
-                                </div>
-                                <div className="space-y-2">
-                                  {activeAlternatives.map((deal, index) => {
-                                    const consolidatedDeal = deal as ConsolidatedDeal;
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
-                                      >
-                                        <div className="flex items-center justify-between gap-3 mb-2">
-                                          <div className="flex-1">
-                                            <div className="flex flex-wrap gap-1 mb-1">
-                                              {deal.cabins.map((cabin, i) => (
-                                                <span
-                                                  key={i}
-                                                  className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded"
-                                                >
-                                                  {cabin}
-                                                </span>
-                                              ))}
-                                            </div>
-                                            <div className="text-xs text-gray-400 mt-1">
-                                              {consolidatedDeal.flightNumbers ? (
-                                                <>
-                                                  <span className="text-gray-500">Flights: </span>
-                                                  <span className="text-white">
-                                                    {consolidatedDeal.flightNumbers.join(', ')}
-                                                  </span>
-                                                  {consolidatedDeal.variantCount > 1 && (
-                                                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded-full border border-blue-500/30">
-                                                      {consolidatedDeal.variantCount}
-                                                    </span>
-                                                  )}
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <span className="text-gray-500">Flight: </span>
-                                                  <span className="text-white">{deal.flightNumber}</span>
-                                                </>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="text-lg font-bold text-accent-400">
-                                              {deal.mileage.toLocaleString()}
-                                            </div>
-                                            {deal.mileagePrice > 0 && (
-                                              <div className="text-xs text-gray-400">
-                                                + ${deal.mileagePrice.toFixed(2)}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-
-                                        {/* Segment details for alternative deals */}
-                                        {deal.segments && deal.segments.length > 0 && (
-                                          <div className="mt-2 pt-2 border-t border-gray-700/50">
-                                            <div className="space-y-1.5">
-                                              {deal.segments.map((segment, segIdx) => {
-                                                const nextSegment = deal.segments![segIdx + 1];
-                                                let layoverDuration = 0;
-
-                                                if (nextSegment) {
-                                                  const arrivalTime = segment.arrival?.at || segment.arrival;
-                                                  const departureTime = nextSegment.departure?.at || nextSegment.departure;
-                                                  if (arrivalTime && departureTime) {
-                                                    const arrTime = new Date(arrivalTime).getTime();
-                                                    const depTime = new Date(departureTime).getTime();
-                                                    layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
-                                                  }
-                                                }
-
-                                                return (
-                                                  <div key={segIdx}>
-                                                    <div className="flex items-center gap-1.5 text-xs">
-                                                      <span className="text-blue-300 font-semibold">{segment.flightNumber}</span>
-                                                      <span className="font-mono text-gray-300">{segment.departure?.iataCode || segment.origin}</span>
-                                                      <div className="flex-1 flex items-center">
-                                                        <div className="flex-1 border-t border-gray-600"></div>
-                                                        <Plane className="h-2.5 w-2.5 text-gray-500 mx-0.5" />
-                                                        <div className="flex-1 border-t border-gray-600"></div>
-                                                      </div>
-                                                      <span className="font-mono text-gray-300">{segment.arrival?.iataCode || segment.destination}</span>
-                                                      {segment.duration && (
-                                                        <span className="text-gray-500 text-[10px]">{formatDuration(segment.duration)}</span>
-                                                      )}
-                                                    </div>
-                                                    {nextSegment && layoverDuration > 0 && (
-                                                      <div className="flex items-center justify-center py-1">
-                                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2 py-0.5 text-[10px] text-orange-300 flex items-center gap-1">
-                                                          <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                                          Layover at {segment.arrival?.iataCode || segment.destination}
-                                                          {layoverDuration > 0 && (
-                                                            <span className="ml-1.5 text-orange-400">
-                                                              • {Math.floor(layoverDuration / 60)}h {layoverDuration % 60}m
-                                                            </span>
-                                                          )}
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                            {deal.duration && (
-                                              <div className="mt-1.5 pt-1.5 border-t border-gray-700/50 text-[10px] text-gray-400 flex items-center justify-between">
-                                                <span>Total:</span>
-                                                <span className="text-white">{formatDuration(deal.duration)}</span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                        {/* Show stops summary if segments not available */}
-                                        {(!deal.segments || deal.segments.length === 0) && deal.stops && deal.stops.length > 0 && (
-                                          <div className="mt-2 text-[10px] text-gray-400">
-                                            <span className="text-orange-400">{deal.stops.length} stop{deal.stops.length > 1 ? 's' : ''}</span>
-                                            <span className="ml-1">({deal.stops.map(s => s.code).join(', ')})</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {activeDeals.map((deal, index) => (
+                  <MileageDealCard key={index} deal={deal} formatDuration={formatDuration} />
+                ))}
               </div>
             )}
           </div>
