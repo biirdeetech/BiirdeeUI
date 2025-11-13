@@ -683,7 +683,7 @@ const SearchPage: React.FC = () => {
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className={`hidden lg:block fixed top-[150px] z-[60] bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
-            sidebarCollapsed ? 'left-0' : 'left-[350px]'
+            sidebarCollapsed ? 'left-0 top-[20px]' : 'left-[350px]'
           }`}
           title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
         >
