@@ -148,8 +148,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
     const result: GroupedMileageProgram[] = [];
 
     programMap.forEach((flights, carrierCode) => {
-      // Sort all flights for this carrier by value (cheapest first)
-      const sortedFlights = flights.sort((a: any, b: any) => {
+      // Deduplicate codeshare flights (same route, departure, arrival, mileage)
+      const uniqueFlights = new Map<string, any>();
+      flights.forEach((flight: any) => {
+        const key = `${flight.departure?.iataCode}-${flight.arrival?.iataCode}-${flight.departure?.at}-${flight.arrival?.at}-${flight.mileage}`;
+        if (!uniqueFlights.has(key) ||
+            (flight.flightNumber && uniqueFlights.get(key)?.flightNumber > flight.flightNumber)) {
+          uniqueFlights.set(key, flight);
+        }
+      });
+
+      // Sort all unique flights for this carrier by value (cheapest first)
+      const sortedFlights = Array.from(uniqueFlights.values()).sort((a: any, b: any) => {
         const aPrice = typeof a.mileagePrice === 'string'
           ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
           : (a.mileagePrice || 0);

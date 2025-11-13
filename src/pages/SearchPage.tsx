@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { FlightSearchParams, FlightSliceParams, SearchResponse } from '../types/flight';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
 import SearchForm from '../components/SearchForm';
@@ -40,6 +40,7 @@ const SearchPage: React.FC = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamComplete, setStreamComplete] = useState(false);
   const [originTimezone, setOriginTimezone] = useState<string | undefined>(undefined);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
@@ -658,8 +659,12 @@ const SearchPage: React.FC = () => {
 
       <div className="lg:flex lg:overflow-hidden">
         {/* Mobile/Tablet: Full width top section, Desktop: Fixed Left Sidebar */}
-        <div className="w-full lg:w-80 bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto z-40">
-          <div className="p-4 lg:p-6">
+        <div
+          className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto z-40 transition-all duration-300 ${
+            sidebarCollapsed ? 'lg:w-0 lg:border-r-0' : 'lg:w-80'
+          }`}
+        >
+          <div className={`p-4 lg:p-6 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             {/* Back to Search Button */}
             <div className="mb-4">
               <button
@@ -674,8 +679,25 @@ const SearchPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Sidebar Toggle Button - Desktop Only */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className={`hidden lg:block fixed top-20 z-50 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
+            sidebarCollapsed ? 'left-0' : 'left-80'
+          }`}
+          title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          ) : (
+            <ChevronLeft className="h-5 w-5 text-gray-400" />
+          )}
+        </button>
+
         {/* Main Content - Flight Results */}
-        <div className="flex-1 lg:ml-80 lg:overflow-y-auto">
+        <div className={`flex-1 lg:overflow-y-auto transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-80'
+        }`}>
           {/* Flight Filters - Sticky on desktop, normal flow on mobile */}
           {(results || loading || error) && (
             <FlightFilters
