@@ -68,10 +68,53 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     return Array.from(consolidated.values());
   };
 
+  // Enrich deals with segment information from flight slices
+  const enrichDealsWithSegments = (dealsList: MileageDeal[]): MileageDeal[] => {
+    return dealsList.map(deal => {
+      // If deal already has segments, return as is
+      if (deal.segments && deal.segments.length > 0) {
+        return deal;
+      }
+
+      // Try to enrich from flight slices
+      if (flightSlices && flightSlices.length > 0) {
+        const slice = flightSlices[0]; // Use first slice for now
+
+        if (slice.segments && slice.segments.length > 0) {
+          // Extract segment information
+          const segments = slice.segments.map((seg, idx) => ({
+            origin: seg.origin?.code || slice.origin.code,
+            destination: seg.destination?.code || slice.destination.code,
+            departure: seg.departure,
+            arrival: seg.arrival,
+            flightNumber: seg.flightNumber || slice.flights[idx],
+            duration: seg.duration,
+            carrier: seg.carrier.code,
+            aircraft: undefined // Not available in segment data
+          }));
+
+          return {
+            ...deal,
+            segments,
+            stops: slice.stops,
+            departure: slice.departure,
+            arrival: slice.arrival,
+            duration: slice.duration
+          };
+        }
+      }
+
+      return deal;
+    });
+  };
+
   // Group deals by airline and find primary/alternatives
   const groupedByAirline = useMemo(() => {
-    // First consolidate deals to combine identical flights with different flight numbers
-    const consolidatedDeals = consolidateDeals(deals);
+    // First enrich deals with segment information
+    const enrichedDeals = enrichDealsWithSegments(deals);
+
+    // Then consolidate deals to combine identical flights with different flight numbers
+    const consolidatedDeals = consolidateDeals(enrichedDeals);
 
     const grouped = new Map<string, ConsolidatedDeal[]>();
 
@@ -482,7 +525,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     >
                       {/* Primary Deal */}
                       <div className="p-4">
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-4 mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <div className="p-2 bg-accent-500/10 rounded-lg">
@@ -551,6 +594,75 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                             )}
                           </div>
                         </div>
+
+                        {/* Flight Timeline - Show stops/segments if available */}
+                        {group.primary.segments && group.primary.segments.length > 0 && (
+                          <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+                            <div className="space-y-2">
+                              {group.primary.segments.map((segment, segIdx) => {
+                                const nextSegment = group.primary.segments![segIdx + 1];
+                                let layoverDuration = 0;
+
+                                if (nextSegment && segment.arrival && nextSegment.departure) {
+                                  const arrTime = new Date(segment.arrival).getTime();
+                                  const depTime = new Date(nextSegment.departure).getTime();
+                                  layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                }
+
+                                return (
+                                  <div key={segIdx}>
+                                    {/* Segment */}
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <span className="text-xs font-semibold text-blue-300">{segment.flightNumber}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className="font-mono text-white">{segment.origin}</span>
+                                        <div className="flex-1 flex items-center">
+                                          <div className="flex-1 border-t border-gray-600"></div>
+                                          <Plane className="h-3 w-3 text-gray-500 mx-1" />
+                                          <div className="flex-1 border-t border-gray-600"></div>
+                                        </div>
+                                        <span className="font-mono text-white">{segment.destination}</span>
+                                      </div>
+                                      {segment.duration && (
+                                        <span className="text-xs text-gray-500">{formatDuration(segment.duration)}</span>
+                                      )}
+                                    </div>
+
+                                    {/* Layover */}
+                                    {nextSegment && layoverDuration > 0 && (
+                                      <div className="flex items-center justify-center py-1.5">
+                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2.5 py-1 text-xs">
+                                          <span className="text-orange-300 flex items-center gap-1.5">
+                                            <MapPin className="h-3 w-3" />
+                                            <span>Layover at {segment.destination}</span>
+                                            <span className="text-orange-400">•</span>
+                                            <Clock className="h-3 w-3" />
+                                            <span>{formatDuration(layoverDuration)}</span>
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {group.primary.duration && (
+                              <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 flex items-center justify-between">
+                                <span>Total Travel Time:</span>
+                                <span className="text-white font-medium">{formatDuration(group.primary.duration)}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {/* Show stops summary if segments not available but stops are */}
+                        {(!group.primary.segments || group.primary.segments.length === 0) && group.primary.stops && group.primary.stops.length > 0 && (
+                          <div className="text-xs text-gray-400">
+                            <span className="text-orange-400">{group.primary.stops.length} stop{group.primary.stops.length > 1 ? 's' : ''}</span>
+                            <span className="ml-1">({group.primary.stops.map(s => s.code).join(', ')})</span>
+                          </div>
+                        )}
 
                         {/* Expand Button for Alternatives */}
                         {hasAlternatives && (
@@ -637,7 +749,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                         key={index}
                                         className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
                                       >
-                                        <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center justify-between gap-3 mb-2">
                                           <div className="flex-1">
                                             <div className="flex flex-wrap gap-1 mb-1">
                                               {deal.cabins.map((cabin, i) => (
@@ -681,6 +793,66 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                             )}
                                           </div>
                                         </div>
+
+                                        {/* Segment details for alternative deals */}
+                                        {deal.segments && deal.segments.length > 0 && (
+                                          <div className="mt-2 pt-2 border-t border-gray-700/50">
+                                            <div className="space-y-1.5">
+                                              {deal.segments.map((segment, segIdx) => {
+                                                const nextSegment = deal.segments![segIdx + 1];
+                                                let layoverDuration = 0;
+
+                                                if (nextSegment && segment.arrival && nextSegment.departure) {
+                                                  const arrTime = new Date(segment.arrival).getTime();
+                                                  const depTime = new Date(nextSegment.departure).getTime();
+                                                  layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                                }
+
+                                                return (
+                                                  <div key={segIdx}>
+                                                    <div className="flex items-center gap-1.5 text-xs">
+                                                      <span className="text-blue-300 font-semibold">{segment.flightNumber}</span>
+                                                      <span className="font-mono text-gray-300">{segment.origin}</span>
+                                                      <div className="flex-1 flex items-center">
+                                                        <div className="flex-1 border-t border-gray-600"></div>
+                                                        <Plane className="h-2.5 w-2.5 text-gray-500 mx-0.5" />
+                                                        <div className="flex-1 border-t border-gray-600"></div>
+                                                      </div>
+                                                      <span className="font-mono text-gray-300">{segment.destination}</span>
+                                                      {segment.duration && (
+                                                        <span className="text-gray-500 text-[10px]">{formatDuration(segment.duration)}</span>
+                                                      )}
+                                                    </div>
+                                                    {nextSegment && layoverDuration > 0 && (
+                                                      <div className="flex items-center justify-center py-1">
+                                                        <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2 py-0.5 text-[10px] text-orange-300 flex items-center gap-1">
+                                                          <MapPin className="h-2.5 w-2.5" />
+                                                          <span>Layover at {segment.destination}</span>
+                                                          <span>•</span>
+                                                          <Clock className="h-2.5 w-2.5" />
+                                                          <span>{formatDuration(layoverDuration)}</span>
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                            {deal.duration && (
+                                              <div className="mt-1.5 pt-1.5 border-t border-gray-700/50 text-[10px] text-gray-400 flex items-center justify-between">
+                                                <span>Total:</span>
+                                                <span className="text-white">{formatDuration(deal.duration)}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* Show stops summary if segments not available */}
+                                        {(!deal.segments || deal.segments.length === 0) && deal.stops && deal.stops.length > 0 && (
+                                          <div className="mt-2 text-[10px] text-gray-400">
+                                            <span className="text-orange-400">{deal.stops.length} stop{deal.stops.length > 1 ? 's' : ''}</span>
+                                            <span className="ml-1">({deal.stops.map(s => s.code).join(', ')})</span>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}

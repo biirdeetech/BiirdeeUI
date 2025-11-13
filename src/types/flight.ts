@@ -77,6 +77,24 @@ export interface MileageDeal {
   mileagePrice: number;
   matchType: 'full' | 'partial';
   cabins: string[];
+  flightNumber?: string;
+  segments?: Array<{
+    origin: string;
+    destination: string;
+    departure?: string;
+    arrival?: string;
+    flightNumber?: string;
+    duration?: number;
+    carrier?: string;
+    aircraft?: string;
+  }>;
+  stops?: Array<{
+    code: string;
+    duration?: number; // layover duration in minutes
+  }>;
+  departure?: string;
+  arrival?: string;
+  duration?: number;
 }
 
 export interface FlightSolution {
