@@ -17,6 +17,33 @@ const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'best-match' | 'time-insensitive'>('best-match');
 
+  // Consolidate identical deals with different flight numbers
+  const consolidateDeals = (dealsList: MileageDeal[]) => {
+    const consolidated = new Map<string, MileageDeal & { flightNumbers: string[]; variantCount: number }>();
+
+    dealsList.forEach(deal => {
+      // Create a key based on all properties except flight number
+      const key = `${deal.airlineCode}-${deal.mileage}-${deal.mileagePrice}-${deal.cabins.join(',')}-${deal.matchType}`;
+
+      if (consolidated.has(key)) {
+        const existing = consolidated.get(key)!;
+        // Add flight number if not already included
+        if (!existing.flightNumbers.includes(deal.flightNumber)) {
+          existing.flightNumbers.push(deal.flightNumber);
+          existing.variantCount++;
+        }
+      } else {
+        consolidated.set(key, {
+          ...deal,
+          flightNumbers: [deal.flightNumber],
+          variantCount: 1
+        });
+      }
+    });
+
+    return Array.from(consolidated.values());
+  };
+
   // Categorize deals by time sensitivity (5 hour threshold)
   const { bestMatchDeals, timeInsensitiveDeals } = useMemo(() => {
     // For now, we'll categorize based on match type since we don't have timing data
@@ -31,9 +58,10 @@ const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({
       return aValue - bValue;
     };
 
+    // Consolidate before returning
     return {
-      bestMatchDeals: bestMatch.sort(sortByValue),
-      timeInsensitiveDeals: timeInsensitive.sort(sortByValue)
+      bestMatchDeals: consolidateDeals(bestMatch).sort(sortByValue),
+      timeInsensitiveDeals: consolidateDeals(timeInsensitive).sort(sortByValue)
     };
   }, [deals]);
 
@@ -152,6 +180,27 @@ const MileageDealsDropdown: React.FC<MileageDealsDropdownProps> = ({
                         </div>
                         <div className="text-xs text-gray-400 mb-1">
                           Code: <span className="font-mono">{deal.airlineCode}</span>
+                        </div>
+                        {/* Flight Numbers Display */}
+                        <div className="text-xs text-gray-400 mb-2">
+                          {(deal as any).flightNumbers ? (
+                            <>
+                              <span className="text-gray-500">Flights: </span>
+                              <span className="text-white font-medium">
+                                {(deal as any).flightNumbers.join(', ')}
+                              </span>
+                              {(deal as any).variantCount > 1 && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded-full border border-blue-500/30">
+                                  {(deal as any).variantCount} variants
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-gray-500">Flight: </span>
+                              <span className="text-white font-medium">{deal.flightNumber}</span>
+                            </>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {deal.cabins.slice(0, 3).map((cabin, i) => (
