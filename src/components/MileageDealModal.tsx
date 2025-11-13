@@ -469,7 +469,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                 <div className="flex items-center justify-between gap-2 mb-2">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-xs font-semibold text-blue-300">
-                                      {segment.flightNumber || slice.flights[segIndex] || 'N/A'}
+                                      {segment.flightNumber || slice.flights?.[segIndex] || slice.flights?.[0] || ''}
                                     </span>
                                     {segment.carrier && (
                                       <span className="text-[10px] text-gray-400">
@@ -498,18 +498,16 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                 <div className="flex items-center gap-3">
                                   {/* Departure Info */}
                                   <div className="flex-1">
+                                    <div className="text-sm font-bold text-white">
+                                      {segment.departure?.time || (segment.departure?.at ? formatTime(segment.departure.at) : '')}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 font-mono font-semibold">
+                                      {segment.departure?.iataCode || segment.origin}
+                                    </div>
                                     {segment.departure?.at && (
-                                      <>
-                                        <div className="text-sm font-bold text-white">
-                                          {formatTime(segment.departure.at)}
-                                        </div>
-                                        <div className="text-[10px] text-gray-400 font-mono font-semibold">
-                                          {segment.departure.iataCode || segment.origin}
-                                        </div>
-                                        <div className="text-[9px] text-gray-500 mt-0.5">
-                                          {formatDate(segment.departure.at)}
-                                        </div>
-                                      </>
+                                      <div className="text-[9px] text-gray-500 mt-0.5">
+                                        {formatDate(segment.departure.at)}
+                                      </div>
                                     )}
                                   </div>
 
@@ -522,18 +520,16 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
 
                                   {/* Arrival Info */}
                                   <div className="flex-1 text-right">
+                                    <div className="text-sm font-bold text-white">
+                                      {segment.arrival?.time || (segment.arrival?.at ? formatTime(segment.arrival.at) : '')}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 font-mono font-semibold">
+                                      {segment.arrival?.iataCode || segment.destination}
+                                    </div>
                                     {segment.arrival?.at && (
-                                      <>
-                                        <div className="text-sm font-bold text-white">
-                                          {formatTime(segment.arrival.at)}
-                                        </div>
-                                        <div className="text-[10px] text-gray-400 font-mono font-semibold">
-                                          {segment.arrival.iataCode || segment.destination}
-                                        </div>
-                                        <div className="text-[9px] text-gray-500 mt-0.5">
-                                          {formatDate(segment.arrival.at)}
-                                        </div>
-                                      </>
+                                      <div className="text-[9px] text-gray-500 mt-0.5">
+                                        {formatDate(segment.arrival.at)}
+                                      </div>
                                     )}
                                   </div>
                                 </div>
