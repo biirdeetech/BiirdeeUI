@@ -657,12 +657,12 @@ const SearchPage: React.FC = () => {
       {/* Navigation - Sticky to top */}
       <Navigation />
 
-      <div className="lg:flex lg:overflow-hidden">
-        {/* Mobile/Tablet: Full width top section, Desktop: Fixed Left Sidebar */}
+      <div className="lg:flex lg:overflow-hidden lg:relative">
+        {/* Mobile/Tablet: Full width top section, Desktop: Overlay Sidebar */}
         <div
-          className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto z-40 transition-all duration-300 ${
-            sidebarCollapsed ? 'lg:w-0 lg:border-r-0' : 'lg:w-80'
-          }`}
+          className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto transition-all duration-300 ${
+            sidebarCollapsed ? 'lg:w-0 lg:border-r-0 lg:-translate-x-full' : 'lg:w-[350px] lg:translate-x-0 lg:shadow-2xl'
+          } lg:z-50`}
         >
           <div className={`p-4 lg:p-6 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             {/* Back to Search Button */}
@@ -679,11 +679,11 @@ const SearchPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Sidebar Toggle Button - Desktop Only */}
+        {/* Sidebar Toggle Button - Desktop Only, moved 70px lower */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className={`hidden lg:block fixed top-20 z-50 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
-            sidebarCollapsed ? 'left-0' : 'left-80'
+          className={`hidden lg:block fixed top-[150px] z-[60] bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
+            sidebarCollapsed ? 'left-0' : 'left-[350px]'
           }`}
           title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
         >
@@ -694,10 +694,16 @@ const SearchPage: React.FC = () => {
           )}
         </button>
 
-        {/* Main Content - Flight Results */}
-        <div className={`flex-1 lg:overflow-y-auto transition-all duration-300 ${
-          sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-80'
-        }`}>
+        {/* Backdrop when sidebar is open - Desktop Only */}
+        {!sidebarCollapsed && (
+          <div
+            className="hidden lg:block fixed inset-0 top-16 bg-black/20 z-40 transition-opacity duration-300"
+            onClick={() => setSidebarCollapsed(true)}
+          />
+        )}
+
+        {/* Main Content - Flight Results - Full width, no side margins */}
+        <div className="flex-1 lg:overflow-y-auto w-full">
           {/* Flight Filters - Sticky on desktop, normal flow on mobile */}
           {(results || loading || error) && (
             <FlightFilters
@@ -721,7 +727,7 @@ const SearchPage: React.FC = () => {
           )}
           
           {/* Flight Results */}
-          <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
+          <div className="px-4 py-6 lg:py-8">
             <FlightResults
               results={filteredResults}
               loading={loading}
