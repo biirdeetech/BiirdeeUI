@@ -51,110 +51,81 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
   const groupMileageByProgram = (breakdown?: any[]): GroupedMileageProgram[] => {
     if (!breakdown || breakdown.length === 0) return [];
 
-    // Find carriers that are available in ALL segments
-    const carriersBySegment = new Map<number, Set<string>>();
+    // Collect all flights from all segments and group by carrier
+    const programMap = new Map<string, any[]>();
 
-    breakdown.forEach((segment, segmentIndex) => {
-      const carriersInSegment = new Set<string>();
-      if (segment.allMatchingFlights && segment.allMatchingFlights.length > 0) {
-        segment.allMatchingFlights.forEach((flight: any) => {
-          const carrierCode = flight.operatingCarrier || flight.carrierCode;
-          if (carrierCode) {
-            carriersInSegment.add(carrierCode);
-          }
-        });
-      }
-      carriersBySegment.set(segmentIndex, carriersInSegment);
-    });
+    breakdown.forEach(segment => {
+      if (!segment.allMatchingFlights || segment.allMatchingFlights.length === 0) return;
 
-    // Find carriers that appear in ALL segments
-    if (carriersBySegment.size === 0) return [];
+      segment.allMatchingFlights.forEach((flight: any) => {
+        const carrierCode = flight.operatingCarrier || flight.carrierCode;
+        if (!carrierCode) return;
 
-    const allCarriers = Array.from(carriersBySegment.values());
-    const commonCarriers = new Set<string>(allCarriers[0]);
-
-    allCarriers.slice(1).forEach(segmentCarriers => {
-      commonCarriers.forEach(carrier => {
-        if (!segmentCarriers.has(carrier)) {
-          commonCarriers.delete(carrier);
+        if (!programMap.has(carrierCode)) {
+          programMap.set(carrierCode, []);
         }
+        programMap.get(carrierCode)!.push(flight);
       });
     });
 
-    // Now build programs only for carriers that can book all segments
-    const programMap = new Map<string, GroupedMileageProgram>();
+    // For each carrier, find the cheapest combination across all segments
+    const result: GroupedMileageProgram[] = [];
 
-    commonCarriers.forEach(carrierCode => {
+    programMap.forEach((flights, carrierCode) => {
+      // Sort all flights for this carrier by value (cheapest first)
+      const sortedFlights = flights.sort((a: any, b: any) => {
+        const aPrice = typeof a.mileagePrice === 'string'
+          ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
+          : (a.mileagePrice || 0);
+        const bPrice = typeof b.mileagePrice === 'string'
+          ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, ''))
+          : (b.mileagePrice || 0);
+        const aValue = (a.mileage || 0) + (aPrice * 100);
+        const bValue = (b.mileage || 0) + (bPrice * 100);
+        return aValue - bValue;
+      });
+
+      // Take the cheapest option (or sum if multiple segments)
       let totalMileage = 0;
       let totalPrice = 0;
       let allExactMatch = true;
       let anyExactMatch = false;
-      const flights: any[] = [];
-      let carrierName = carrierCode;
+      const carrierName = sortedFlights[0].operatingCarrier || carrierCode;
 
-      breakdown.forEach(segment => {
-        if (!segment.allMatchingFlights) return;
+      sortedFlights.forEach((flight: any) => {
+        const price = typeof flight.mileagePrice === 'string'
+          ? parseFloat(flight.mileagePrice.replace(/[^0-9.]/g, ''))
+          : (flight.mileagePrice || 0);
 
-        // Find the best matching flight for this carrier in this segment
-        const carrierFlights = segment.allMatchingFlights.filter((f: any) =>
-          (f.operatingCarrier || f.carrierCode) === carrierCode
-        );
+        totalMileage += flight.mileage || 0;
+        totalPrice += price;
 
-        if (carrierFlights.length > 0) {
-          // Sort by best value (lowest mileage + fees combination)
-          carrierFlights.sort((a: any, b: any) => {
-            const aPrice = typeof a.mileagePrice === 'string'
-              ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
-              : (a.mileagePrice || 0);
-            const bPrice = typeof b.mileagePrice === 'string'
-              ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, ''))
-              : (b.mileagePrice || 0);
-            const aValue = a.mileage + (aPrice * 100);
-            const bValue = b.mileage + (bPrice * 100);
-            return aValue - bValue;
-          });
-
-          const bestFlight = carrierFlights[0];
-          carrierName = bestFlight.operatingCarrier || carrierCode;
-
-          const price = typeof bestFlight.mileagePrice === 'string'
-            ? parseFloat(bestFlight.mileagePrice.replace(/[^0-9.]/g, ''))
-            : (bestFlight.mileagePrice || 0);
-
-          totalMileage += bestFlight.mileage || 0;
-          totalPrice += price;
-          flights.push(bestFlight);
-
-          if (bestFlight.exactMatch) {
-            anyExactMatch = true;
-          } else {
-            allExactMatch = false;
-          }
+        if (flight.exactMatch) {
+          anyExactMatch = true;
+        } else {
+          allExactMatch = false;
         }
       });
 
-      if (flights.length === breakdown.length) {
-        programMap.set(carrierCode, {
-          carrierCode,
-          carrierName,
-          totalMileage,
-          totalPrice,
-          matchType: allExactMatch ? 'exact' : anyExactMatch ? 'mixed' : 'partial',
-          flights,
-          segmentCount: flights.length
-        });
-      }
+      result.push({
+        carrierCode,
+        carrierName,
+        totalMileage,
+        totalPrice,
+        matchType: allExactMatch ? 'exact' : anyExactMatch ? 'mixed' : 'partial',
+        flights: sortedFlights,
+        segmentCount: sortedFlights.length
+      });
     });
 
-    const programs = Array.from(programMap.values());
-
-    programs.sort((a, b) => {
+    // Sort programs by best value
+    result.sort((a, b) => {
       const aValue = a.totalMileage + (a.totalPrice * 100);
       const bValue = b.totalMileage + (b.totalPrice * 100);
       return aValue - bValue;
     });
 
-    return programs;
+    return result;
   };
 
   const formatTime = (dateTime: string) => {
