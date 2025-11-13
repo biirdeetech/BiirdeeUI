@@ -778,6 +778,34 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   )}
                 </div>
 
+                {/* Segment Breakdown for multi-segment flights */}
+                {slice.mileageBreakdown && slice.mileageBreakdown.length > 1 && (
+                  <div className="mb-4 p-3 bg-gray-800/30 rounded border border-gray-700/50">
+                    <div className="text-xs font-medium text-gray-300 mb-2">Flight Segments:</div>
+                    <div className="space-y-2">
+                      {slice.mileageBreakdown.map((segment: any, segIdx: number) => (
+                        <div key={segIdx} className="flex items-center gap-3 text-[11px]">
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className="font-mono text-blue-300 font-semibold">{segment.flightNumber || 'N/A'}</div>
+                            <div className="text-gray-400">
+                              <span className="font-mono font-semibold text-gray-300">{segment.origin}</span>
+                              <span className="mx-1">→</span>
+                              <span className="font-mono font-semibold text-gray-300">{segment.destination}</span>
+                            </div>
+                            <div className="text-gray-500">{segment.carrier}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-orange-300 font-semibold">{segment.mileage?.toLocaleString() || 'N/A'} mi</div>
+                            {segment.matchingFlightsCount > 0 && (
+                              <div className="text-[9px] text-green-400">{segment.matchingFlightsCount} match{segment.matchingFlightsCount !== 1 ? 'es' : ''}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Group by Airline Program */}
                 {groupedPrograms.map((program, progIndex) => {
                   // Get all flights for this carrier
@@ -1055,6 +1083,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                     {altFlight.aircraft?.code && (
                                       <div className="mt-1 text-[9px] text-gray-500">
                                         Aircraft: {altFlight.aircraft.code}
+                                      </div>
+                                    )}
+
+                                    {/* Stop details if available */}
+                                    {altFlight.stops && altFlight.stops.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        <div className="text-[9px] font-medium text-gray-400 uppercase">Stops:</div>
+                                        {altFlight.stops.map((stop: any, stopIndex: number) => (
+                                          <div key={stopIndex} className="flex items-center gap-2 text-[10px] text-gray-400 pl-2 border-l-2 border-orange-500/30">
+                                            <span className="font-mono font-semibold text-orange-300">{stop.code || stop}</span>
+                                            {stop.name && <span className="text-gray-500">- {stop.name}</span>}
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
                                   </div>
