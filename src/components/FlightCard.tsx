@@ -996,31 +996,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                             );
                           }
 
-                          // Merge duplicate flights with same times but different flight numbers
-                          const mergedFlights: any[] = [];
-                          const flightMap = new Map<string, any>();
-
-                          filteredFlights.forEach(flight => {
-                            const depTime = new Date(flight.departure.at).getTime();
-                            const arrTime = new Date(flight.arrival.at).getTime();
-                            const key = `${depTime}-${arrTime}-${flight.mileage}-${flight.mileagePrice}`;
-
-                            if (flightMap.has(key)) {
-                              const existing = flightMap.get(key);
-                              if (!existing.flightNumbers) {
-                                existing.flightNumbers = [existing.flightNumber];
-                              }
-                              if (!existing.flightNumbers.includes(flight.flightNumber)) {
-                                existing.flightNumbers.push(flight.flightNumber);
-                              }
-                            } else {
-                              flightMap.set(key, { ...flight });
-                            }
-                          });
-
-                          mergedFlights.push(...Array.from(flightMap.values()));
-
-                          return mergedFlights.slice(0, 5).map((altFlight, altIndex) => {
+                          // NO CONSOLIDATION - display each flight as its own entry
+                          return filteredFlights.slice(0, 10).map((altFlight, altIndex) => {
                   // Calculate time difference
                   const flightTime = new Date(altFlight.departure.at).getTime();
                   const originalTime = new Date(slice.departure).getTime();
@@ -1066,7 +1043,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                   />
                                   <div>
                                     <div className="text-sm font-semibold text-white">
-                                      {altFlight.flightNumbers ? altFlight.flightNumbers.join(', ') : altFlight.flightNumber}
+                                      {altFlight.flightNumber}
                                     </div>
                                     <div className="text-xs text-gray-400">{carrierName}</div>
                                   </div>
