@@ -110,12 +110,13 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                 segments.push({
                   origin: flight.departure.iataCode,
                   destination: flight.stops[0].code || flight.stops[0].iataCode,
-                  departure: flight.departure.at,
+                  departure: { at: flight.departure.at, iataCode: flight.departure.iataCode },
                   arrival: undefined, // Not available in individual segment data
                   flightNumber: flight.flightNumber,
                   duration: undefined,
                   carrier: flight.operatingCarrier || flight.carrierCode,
-                  aircraft: flight.aircraft?.code
+                  aircraft: flight.aircraft?.code,
+                  cabin: flight.cabin
                 });
 
                 // Middle segments (if multiple stops)
@@ -128,7 +129,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     flightNumber: flight.flightNumber,
                     duration: undefined,
                     carrier: flight.operatingCarrier || flight.carrierCode,
-                    aircraft: flight.aircraft?.code
+                    aircraft: flight.aircraft?.code,
+                    cabin: flight.cabin
                   });
                 }
 
@@ -137,11 +139,12 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   origin: flight.stops[flight.stops.length - 1].code || flight.stops[flight.stops.length - 1].iataCode,
                   destination: flight.arrival.iataCode,
                   departure: undefined,
-                  arrival: flight.arrival.at,
+                  arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
                   flightNumber: flight.flightNumber,
                   duration: undefined,
                   carrier: flight.operatingCarrier || flight.carrierCode,
-                  aircraft: flight.aircraft?.code
+                  aircraft: flight.aircraft?.code,
+                  cabin: flight.cabin
                 });
 
                 return {
@@ -163,12 +166,13 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   segments: [{
                     origin: flight.departure.iataCode,
                     destination: flight.arrival.iataCode,
-                    departure: flight.departure.at,
-                    arrival: flight.arrival.at,
+                    departure: { at: flight.departure.at, iataCode: flight.departure.iataCode },
+                    arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
                     flightNumber: flight.flightNumber,
                     duration: flight.duration ? parseDuration(flight.duration) : undefined,
                     carrier: flight.operatingCarrier || flight.carrierCode,
-                    aircraft: flight.aircraft?.code
+                    aircraft: flight.aircraft?.code,
+                    cabin: flight.cabin
                   }],
                   stops: [],
                   departure: flight.departure.at,
@@ -439,11 +443,15 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                           let layoverDuration = 0;
                           let layoverAirport = '';
 
-                          if (nextSegment && segment.arrival && nextSegment.departure) {
-                            const arrTime = new Date(segment.arrival).getTime();
-                            const depTime = new Date(nextSegment.departure).getTime();
-                            layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
-                            layoverAirport = segment.destination?.code || '';
+                          if (nextSegment) {
+                            const arrivalTime = segment.arrival?.at || segment.arrival;
+                            const departureTime = nextSegment.departure?.at || nextSegment.departure;
+                            if (arrivalTime && departureTime) {
+                              const arrTime = new Date(arrivalTime).getTime();
+                              const depTime = new Date(departureTime).getTime();
+                              layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                            }
+                            layoverAirport = segment.arrival?.iataCode || segment.destination;
                           }
 
                           return (
@@ -481,14 +489,14 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                   {/* Departure */}
                                   <div className="flex-1">
                                     <div className="text-sm font-bold text-white">
-                                      {segment.departure ? formatTime(segment.departure) : formatTime(slice.departure)}
+                                      {segment.departure?.at ? formatTime(segment.departure.at) : (segment.departure ? formatTime(segment.departure) : '--:--')}
                                     </div>
                                     <div className="text-xs text-gray-400 font-mono">
-                                      {segment.origin?.code || slice.origin.code}
+                                      {segment.departure?.iataCode || segment.origin}
                                     </div>
-                                    {segment.departure && (
+                                    {segment.departure?.at && (
                                       <div className="text-xs text-gray-500">
-                                        {formatDate(segment.departure)}
+                                        {formatDate(segment.departure.at)}
                                       </div>
                                     )}
                                   </div>
@@ -503,14 +511,14 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                   {/* Arrival */}
                                   <div className="flex-1 text-right">
                                     <div className="text-sm font-bold text-white">
-                                      {segment.arrival ? formatTime(segment.arrival) : formatTime(slice.arrival)}
+                                      {segment.arrival?.at ? formatTime(segment.arrival.at) : (segment.arrival ? formatTime(segment.arrival) : '--:--')}
                                     </div>
                                     <div className="text-xs text-gray-400 font-mono">
-                                      {segment.destination?.code || slice.destination.code}
+                                      {segment.arrival?.iataCode || segment.destination}
                                     </div>
-                                    {segment.arrival && (
+                                    {segment.arrival?.at && (
                                       <div className="text-xs text-gray-500">
-                                        {formatDate(segment.arrival)}
+                                        {formatDate(segment.arrival.at)}
                                       </div>
                                     )}
                                   </div>
@@ -714,10 +722,14 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                 const nextSegment = group.primary.segments![segIdx + 1];
                                 let layoverDuration = 0;
 
-                                if (nextSegment && segment.arrival && nextSegment.departure) {
-                                  const arrTime = new Date(segment.arrival).getTime();
-                                  const depTime = new Date(nextSegment.departure).getTime();
-                                  layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                if (nextSegment) {
+                                  const arrivalTime = segment.arrival?.at || segment.arrival;
+                                  const departureTime = nextSegment.departure?.at || nextSegment.departure;
+                                  if (arrivalTime && departureTime) {
+                                    const arrTime = new Date(arrivalTime).getTime();
+                                    const depTime = new Date(departureTime).getTime();
+                                    layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                  }
                                 }
 
                                 return (
@@ -913,10 +925,14 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                                 const nextSegment = deal.segments![segIdx + 1];
                                                 let layoverDuration = 0;
 
-                                                if (nextSegment && segment.arrival && nextSegment.departure) {
-                                                  const arrTime = new Date(segment.arrival).getTime();
-                                                  const depTime = new Date(nextSegment.departure).getTime();
-                                                  layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                                if (nextSegment) {
+                                                  const arrivalTime = segment.arrival?.at || segment.arrival;
+                                                  const departureTime = nextSegment.departure?.at || nextSegment.departure;
+                                                  if (arrivalTime && departureTime) {
+                                                    const arrTime = new Date(arrivalTime).getTime();
+                                                    const depTime = new Date(departureTime).getTime();
+                                                    layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                                                  }
                                                 }
 
                                                 return (
