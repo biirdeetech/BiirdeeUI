@@ -722,6 +722,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <LocationSearchInputMulti
                     values={leg.origins}
                     onChange={(origins) => updateLeg(leg.id, 'origins', origins)}
+                    onLocationSelect={(location, index) => {
+                      // Store timezone from the first origin airport
+                      if (index === 0 && location.timezone) {
+                        updateLeg(leg.id, 'originTimezone', location.timezone);
+                      }
+                    }}
                     placeholder="Add origin (e.g., SFO)"
                     label="From"
                     onOpenNearbySearch={(code) => handleOpenNearbyModal(leg.id, code, 'origins')}
