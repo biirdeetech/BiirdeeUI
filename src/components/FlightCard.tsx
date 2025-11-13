@@ -1089,7 +1089,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                       // First segment: departure -> first stop
                                       constructedSegments.push({
                                         origin: altFlight.departure.iataCode,
-                                        destination: altFlight.stops[0],
+                                        destination: altFlight.stops[0].code || altFlight.stops[0].iataCode || altFlight.stops[0],
                                         flightNumber: flightNumbers[0],
                                         departure: altFlight.departure,
                                         arrival: null
@@ -1098,8 +1098,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                       // Middle segments: stop to stop
                                       for (let i = 0; i < altFlight.stops.length - 1; i++) {
                                         constructedSegments.push({
-                                          origin: altFlight.stops[i],
-                                          destination: altFlight.stops[i + 1],
+                                          origin: altFlight.stops[i].code || altFlight.stops[i].iataCode || altFlight.stops[i],
+                                          destination: altFlight.stops[i + 1].code || altFlight.stops[i + 1].iataCode || altFlight.stops[i + 1],
                                           flightNumber: flightNumbers[i + 1],
                                           departure: null,
                                           arrival: null
@@ -1108,7 +1108,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
                                       // Last segment: last stop -> arrival
                                       constructedSegments.push({
-                                        origin: altFlight.stops[altFlight.stops.length - 1],
+                                        origin: altFlight.stops[altFlight.stops.length - 1].code || altFlight.stops[altFlight.stops.length - 1].iataCode || altFlight.stops[altFlight.stops.length - 1],
                                         destination: altFlight.arrival.iataCode,
                                         flightNumber: flightNumbers[altFlight.stops.length],
                                         departure: null,
