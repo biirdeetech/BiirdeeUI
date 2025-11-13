@@ -243,7 +243,16 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                             <Plane className="h-4 w-4 text-accent-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800" />
                           </div>
                           <div className="text-xs text-gray-400 mt-1">
-                            {hasStops ? `${slice.stops.length} stop${slice.stops.length > 1 ? 's' : ''}` : 'Nonstop'}
+                            {hasStops ? (
+                              <span>
+                                {slice.stops.length} stop{slice.stops.length > 1 ? 's' : ''}
+                                {slice.stops.length > 0 && (
+                                  <span className="text-amber-400 ml-1">
+                                    ({slice.stops.map(s => s.code).join(', ')})
+                                  </span>
+                                )}
+                              </span>
+                            ) : 'Nonstop'}
                           </div>
                         </div>
 
@@ -268,30 +277,125 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                       )}
                     </div>
 
-                    {/* Expanded Stop Details */}
+                    {/* Expanded Stop Details - Enhanced Layover Information */}
                     {hasStops && isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
-                        {slice.segments.map((segment, segIndex) => (
-                          <div key={segIndex} className="flex items-center gap-3 text-sm">
-                            <div className="flex-shrink-0 w-16 text-gray-400">
-                              {segment.carrier.code} {segment.flightNumber}
-                            </div>
-                            <div className="flex items-center gap-2 flex-1">
-                              <span className="font-medium text-white">{segment.origin.code}</span>
-                              <span className="text-gray-500">→</span>
-                              <span className="font-medium text-white">{segment.destination.code}</span>
-                              <span className="text-gray-500 text-xs ml-2">
-                                {formatDuration(segment.duration)}
-                              </span>
-                            </div>
-                            {segIndex < slice.segments.length - 1 && (
-                              <div className="text-xs text-amber-400 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Layover: {formatDuration(slice.segments[segIndex + 1].layoverDuration || 0)}
+                      <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
+                        {slice.segments.map((segment, segIndex) => {
+                          const nextSegment = slice.segments[segIndex + 1];
+                          let layoverDuration = 0;
+                          let layoverAirport = '';
+
+                          if (nextSegment && segment.arrival && nextSegment.departure) {
+                            const arrTime = new Date(segment.arrival).getTime();
+                            const depTime = new Date(nextSegment.departure).getTime();
+                            layoverDuration = Math.round((depTime - arrTime) / (1000 * 60));
+                            layoverAirport = segment.destination?.code || '';
+                          }
+
+                          return (
+                            <div key={segIndex}>
+                              {/* Flight Segment */}
+                              <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <img
+                                      src={`https://www.gstatic.com/flights/airline_logos/35px/${segment.carrier.code}.png`}
+                                      alt={segment.carrier.code}
+                                      className="h-5 w-5 object-contain"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                    <span className="text-sm font-semibold text-blue-300">
+                                      {segment.carrier.code} {segment.flightNumber || slice.flights[segIndex]}
+                                    </span>
+                                    {segment.cabin && (
+                                      <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">
+                                        {segment.cabin}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {segment.duration && (
+                                    <div className="text-xs text-gray-400 flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      {formatDuration(segment.duration)}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  {/* Departure */}
+                                  <div className="flex-1">
+                                    <div className="text-sm font-bold text-white">
+                                      {segment.departure ? formatTime(segment.departure) : formatTime(slice.departure)}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">
+                                      {segment.origin?.code || slice.origin.code}
+                                    </div>
+                                    {segment.departure && (
+                                      <div className="text-xs text-gray-500">
+                                        {formatDate(segment.departure)}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Flight Line */}
+                                  <div className="flex-1 flex items-center">
+                                    <div className="flex-1 border-t-2 border-gray-600"></div>
+                                    <Plane className="h-3 w-3 text-gray-400 mx-1" />
+                                    <div className="flex-1 border-t-2 border-gray-600"></div>
+                                  </div>
+
+                                  {/* Arrival */}
+                                  <div className="flex-1 text-right">
+                                    <div className="text-sm font-bold text-white">
+                                      {segment.arrival ? formatTime(segment.arrival) : formatTime(slice.arrival)}
+                                    </div>
+                                    <div className="text-xs text-gray-400 font-mono">
+                                      {segment.destination?.code || slice.destination.code}
+                                    </div>
+                                    {segment.arrival && (
+                                      <div className="text-xs text-gray-500">
+                                        {formatDate(segment.arrival)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Booking Class */}
+                                {segment.pricings && segment.pricings.length > 0 && segment.pricings[0].bookingClass && (
+                                  <div className="mt-2 text-xs text-gray-400">
+                                    Booking Class: <span className="font-mono text-white">{segment.pricings[0].bookingClass}</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+
+                              {/* Layover Information */}
+                              {nextSegment && layoverDuration > 0 && (
+                                <div className="flex items-center justify-center py-2">
+                                  <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-2 text-sm">
+                                    <div className="flex items-center gap-2 text-orange-300 font-medium">
+                                      <MapPin className="h-4 w-4 text-orange-400" />
+                                      <span>Layover at {layoverAirport}</span>
+                                      <span className="text-orange-400">•</span>
+                                      <Clock className="h-4 w-4 text-orange-400" />
+                                      <span className="text-orange-200">{formatDuration(layoverDuration)}</span>
+                                    </div>
+                                    <div className="text-xs text-orange-400/70 text-center mt-1">
+                                      Next flight: {nextSegment.carrier.code} {nextSegment.flightNumber || slice.flights[segIndex + 1]}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Total Travel Time Summary */}
+                        <div className="mt-3 pt-3 border-t border-gray-700/50 flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Total Travel Time:</span>
+                          <span className="text-white font-semibold">{formatDuration(slice.duration)}</span>
+                        </div>
                       </div>
                     )}
 
