@@ -51,43 +51,99 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
   const groupMileageByProgram = (breakdown?: any[]): GroupedMileageProgram[] => {
     if (!breakdown || breakdown.length === 0) return [];
 
-    const programMap = new Map<string, GroupedMileageProgram>();
+    // Find carriers that are available in ALL segments
+    const carriersBySegment = new Map<number, Set<string>>();
 
-    breakdown.forEach(segment => {
-      if (!segment.allMatchingFlights || segment.allMatchingFlights.length === 0) return;
+    breakdown.forEach((segment, segmentIndex) => {
+      const carriersInSegment = new Set<string>();
+      if (segment.allMatchingFlights && segment.allMatchingFlights.length > 0) {
+        segment.allMatchingFlights.forEach((flight: any) => {
+          const carrierCode = flight.operatingCarrier || flight.carrierCode;
+          if (carrierCode) {
+            carriersInSegment.add(carrierCode);
+          }
+        });
+      }
+      carriersBySegment.set(segmentIndex, carriersInSegment);
+    });
 
-      segment.allMatchingFlights.forEach((flight: any) => {
-        const carrierCode = flight.operatingCarrier || flight.carrierCode;
-        if (!carrierCode) return;
+    // Find carriers that appear in ALL segments
+    if (carriersBySegment.size === 0) return [];
 
-        const price = typeof flight.mileagePrice === 'string'
-          ? parseFloat(flight.mileagePrice.replace(/[^0-9.]/g, ''))
-          : (flight.mileagePrice || 0);
+    const allCarriers = Array.from(carriersBySegment.values());
+    const commonCarriers = new Set<string>(allCarriers[0]);
 
-        if (!programMap.has(carrierCode)) {
-          programMap.set(carrierCode, {
-            carrierCode,
-            carrierName: flight.operatingCarrier || carrierCode,
-            totalMileage: 0,
-            totalPrice: 0,
-            matchType: flight.exactMatch ? 'exact' : 'partial',
-            flights: [],
-            segmentCount: 0
-          });
-        }
-
-        const program = programMap.get(carrierCode)!;
-        program.totalMileage += flight.mileage || 0;
-        program.totalPrice += price;
-        program.flights.push(flight);
-        program.segmentCount++;
-
-        if (flight.exactMatch && program.matchType === 'partial') {
-          program.matchType = 'mixed';
-        } else if (!flight.exactMatch && program.matchType === 'exact') {
-          program.matchType = 'mixed';
+    allCarriers.slice(1).forEach(segmentCarriers => {
+      commonCarriers.forEach(carrier => {
+        if (!segmentCarriers.has(carrier)) {
+          commonCarriers.delete(carrier);
         }
       });
+    });
+
+    // Now build programs only for carriers that can book all segments
+    const programMap = new Map<string, GroupedMileageProgram>();
+
+    commonCarriers.forEach(carrierCode => {
+      let totalMileage = 0;
+      let totalPrice = 0;
+      let allExactMatch = true;
+      let anyExactMatch = false;
+      const flights: any[] = [];
+      let carrierName = carrierCode;
+
+      breakdown.forEach(segment => {
+        if (!segment.allMatchingFlights) return;
+
+        // Find the best matching flight for this carrier in this segment
+        const carrierFlights = segment.allMatchingFlights.filter((f: any) =>
+          (f.operatingCarrier || f.carrierCode) === carrierCode
+        );
+
+        if (carrierFlights.length > 0) {
+          // Sort by best value (lowest mileage + fees combination)
+          carrierFlights.sort((a: any, b: any) => {
+            const aPrice = typeof a.mileagePrice === 'string'
+              ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
+              : (a.mileagePrice || 0);
+            const bPrice = typeof b.mileagePrice === 'string'
+              ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, ''))
+              : (b.mileagePrice || 0);
+            const aValue = a.mileage + (aPrice * 100);
+            const bValue = b.mileage + (bPrice * 100);
+            return aValue - bValue;
+          });
+
+          const bestFlight = carrierFlights[0];
+          carrierName = bestFlight.operatingCarrier || carrierCode;
+
+          const price = typeof bestFlight.mileagePrice === 'string'
+            ? parseFloat(bestFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+            : (bestFlight.mileagePrice || 0);
+
+          totalMileage += bestFlight.mileage || 0;
+          totalPrice += price;
+          flights.push(bestFlight);
+
+          if (bestFlight.exactMatch) {
+            anyExactMatch = true;
+          } else {
+            allExactMatch = false;
+          }
+        }
+      });
+
+      if (flights.length === breakdown.length) {
+        programMap.set(carrierCode, {
+          carrierCode,
+          carrierName,
+          totalMileage,
+          totalPrice,
+          matchType: allExactMatch ? 'exact' : anyExactMatch ? 'mixed' : 'partial',
+          flights,
+          segmentCount: flights.length
+        });
+      }
     });
 
     const programs = Array.from(programMap.values());
