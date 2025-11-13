@@ -130,6 +130,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
         <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {locations.map((location, index) => (
             <button
+              type="button"
               key={`${location.code}-${index}`}
               onClick={() => handleSelectLocation(location)}
               className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0"

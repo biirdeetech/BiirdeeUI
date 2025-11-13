@@ -78,8 +78,10 @@ const LocationSearchInputWithCallback: React.FC<LocationSearchInputWithCallbackP
   };
 
   const handleSelectLocation = (location: Location) => {
+    console.log('🎯 LocationSearchInputWithCallback: Location selected:', location);
     const code = locationType === 'SALES_CITIES' ? location.salesCityCode || location.code : location.code;
     const name = locationType === 'SALES_CITIES' ? location.salesCityName || location.cityName : location.cityName;
+    console.log('🎯 LocationSearchInputWithCallback: Selected code:', code, 'name:', name);
 
     setInputValue(name);
     onChange({ code, name });
@@ -126,6 +128,7 @@ const LocationSearchInputWithCallback: React.FC<LocationSearchInputWithCallbackP
         <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {locations.map((location, index) => (
             <button
+              type="button"
               key={`${location.code}-${index}`}
               onClick={() => handleSelectLocation(location)}
               className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0"

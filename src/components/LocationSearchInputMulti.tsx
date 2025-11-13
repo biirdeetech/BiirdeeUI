@@ -82,17 +82,23 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
   };
 
   const handleSelectLocation = (location: Location) => {
+    console.log('🎯 LocationSearchInputMulti: Location selected:', location);
     const code = locationType === 'SALES_CITIES' ? location.salesCityCode || location.code : location.code;
+    console.log('🎯 LocationSearchInputMulti: Selected code:', code);
 
     // Don't add duplicates
     if (!values.includes(code)) {
       const newValues = [...values, code];
+      console.log('🎯 LocationSearchInputMulti: New values:', newValues);
       onChange(newValues);
 
       // Call the location select callback with index
       if (onLocationSelect) {
+        console.log('🎯 LocationSearchInputMulti: Calling onLocationSelect callback');
         onLocationSelect(location, newValues.length - 1);
       }
+    } else {
+      console.log('⚠️ LocationSearchInputMulti: Duplicate code not added:', code);
     }
 
     setInputValue('');
@@ -204,6 +210,7 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
         <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {locations.map((location, index) => (
             <button
+              type="button"
               key={`${location.code}-${index}`}
               onClick={() => handleSelectLocation(location)}
               className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0"
