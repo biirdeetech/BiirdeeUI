@@ -1048,7 +1048,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                     const constructedSegments: any[] = [];
                                     const flightNumbers = altFlight.flightNumber ? [altFlight.flightNumber] : [];
 
-                                    if (altFlight.stops && Array.isArray(altFlight.stops)) {
+                                    if (altFlight.stops && Array.isArray(altFlight.stops) && altFlight.stops.length > 0) {
                                       // First segment: departure -> first stop
                                       constructedSegments.push({
                                         origin: altFlight.departure.iataCode,
@@ -1081,7 +1081,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
                                     const segments = altFlight.segments || constructedSegments;
 
-                                    return (
+                                    // If we have segments, show detailed view
+                                    if (segments.length > 0) {
+                                      return (
                                   <div className="space-y-2">
                                     {segments.map((segment: any, segIdx: number) => (
                                       <div key={segIdx}>
@@ -1133,7 +1135,53 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                       <span className="text-gray-300">{durationHours}h{durationMins}m</span>
                                     </div>
                                   </div>
-                                    );
+                                      );
+                                    } else {
+                                      // Fallback: No detailed stops data available, show simplified multi-stop view
+                                      return (
+                                        <div className="flex items-center gap-2 mb-2">
+                                          {/* Departure */}
+                                          <div className="flex-shrink-0">
+                                            <div className="text-sm font-bold text-white">{formatTime(altFlight.departure.at)}</div>
+                                            <div className="text-[10px] text-gray-400 font-mono">{altFlight.departure.iataCode}</div>
+                                            <div className="text-[10px] text-gray-500">{formatDate(altFlight.departure.at)}</div>
+                                          </div>
+
+                                          {/* Route line with stops indicator */}
+                                          <div className="flex-1 flex flex-col items-center justify-center relative">
+                                            <div className="w-full flex items-center justify-center relative">
+                                              <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t-2 border-dashed border-orange-500/40"></div>
+                                              </div>
+                                              <div className="relative bg-gray-900 px-2 flex items-center gap-1.5">
+                                                <div className="bg-orange-500/20 border border-orange-500/30 rounded px-1.5 py-0.5 text-[9px] text-orange-300 font-medium">
+                                                  {altFlight.numberOfStops} {altFlight.numberOfStops === 1 ? 'stop' : 'stops'}
+                                                </div>
+                                                <Plane className="h-3 w-3 text-gray-400" />
+                                                <div className="text-[10px] text-gray-400">
+                                                  <Clock className="h-2 w-2 inline mr-0.5" />
+                                                  {durationHours}h{durationMins}m
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            {/* Aircraft info if available */}
+                                            {altFlight.aircraft?.code && (
+                                              <div className="mt-1 text-[9px] text-gray-500">
+                                                Aircraft: {altFlight.aircraft.code}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Arrival */}
+                                          <div className="flex-shrink-0 text-right">
+                                            <div className="text-sm font-bold text-white">{formatTime(altFlight.arrival.at)}</div>
+                                            <div className="text-[10px] text-gray-400 font-mono">{altFlight.arrival.iataCode}</div>
+                                            <div className="text-[10px] text-gray-500">{formatDate(altFlight.arrival.at)}</div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                   })()
                                 ) : (
                                   /* Single segment / nonstop flight */
