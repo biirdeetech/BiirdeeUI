@@ -227,44 +227,51 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const removeLeg = (id: string) => {
-    if (legs.length > 1) {
-      setLegs(legs.filter(leg => leg.id !== id));
-    }
+    setLegs(prevLegs => {
+      if (prevLegs.length > 1) {
+        return prevLegs.filter(leg => leg.id !== id);
+      }
+      return prevLegs;
+    });
   };
 
   const updateLeg = (id: string, field: keyof FlightLeg, value: any) => {
     console.log('🔄 SearchForm.updateLeg called:', { id, field, value });
-    console.log('🔄 Current legs before update:', JSON.parse(JSON.stringify(legs)));
 
-    setLegs(legs.map(leg => {
-      if (leg.id === id) {
-        const updated = { ...leg, [field]: value };
-        console.log('🔄 Updated leg:', JSON.parse(JSON.stringify(updated)));
-        // Auto-update booking classes when cabin changes
-        if (field === 'cabin') {
-          // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
-          const isBusinessPlus = field === 'businessPlus' ? value : leg.businessPlus;
-          if (isBusinessPlus && (value === 'BUSINESS' || value === 'FIRST')) {
-            // Keep Business+ combined classes
-            const businessClasses = getDefaultBookingClasses('BUSINESS');
-            const firstClasses = getDefaultBookingClasses('FIRST');
-            updated.bookingClasses = [...new Set([...businessClasses, ...firstClasses])];
-          } else {
-            updated.bookingClasses = getDefaultBookingClasses(value);
-            // Reset businessPlus if not business/first
-            if (value !== 'BUSINESS' && value !== 'FIRST') {
-              updated.businessPlus = false;
+    // Use functional state update to get the latest state
+    setLegs(prevLegs => {
+      console.log('🔄 Current legs before update:', JSON.parse(JSON.stringify(prevLegs)));
+
+      return prevLegs.map(leg => {
+        if (leg.id === id) {
+          const updated = { ...leg, [field]: value };
+          console.log('🔄 Updated leg:', JSON.parse(JSON.stringify(updated)));
+          // Auto-update booking classes when cabin changes
+          if (field === 'cabin') {
+            // Check if Business+ is enabled for this leg (use updated value if businessPlus is being set)
+            const isBusinessPlus = field === 'businessPlus' ? value : leg.businessPlus;
+            if (isBusinessPlus && (value === 'BUSINESS' || value === 'FIRST')) {
+              // Keep Business+ combined classes
+              const businessClasses = getDefaultBookingClasses('BUSINESS');
+              const firstClasses = getDefaultBookingClasses('FIRST');
+              updated.bookingClasses = [...new Set([...businessClasses, ...firstClasses])];
+            } else {
+              updated.bookingClasses = getDefaultBookingClasses(value);
+              // Reset businessPlus if not business/first
+              if (value !== 'BUSINESS' && value !== 'FIRST') {
+                updated.businessPlus = false;
+              }
             }
           }
+          return updated;
         }
-        return updated;
-      }
-      return leg;
-    }));
+        return leg;
+      });
+    });
   };
 
   const updateLegMultiple = (id: string, updates: Partial<FlightLeg>) => {
-    setLegs(legs.map(leg => {
+    setLegs(prevLegs => prevLegs.map(leg => {
       if (leg.id === id) {
         return { ...leg, ...updates };
       }
@@ -274,7 +281,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
   const addBookingClass = (legId: string, bookingClass: string) => {
     if (bookingClass.trim()) {
-      setLegs(legs.map(leg =>
+      setLegs(prevLegs => prevLegs.map(leg =>
         leg.id === legId && !leg.bookingClasses.includes(bookingClass.toUpperCase())
           ? { ...leg, bookingClasses: [...leg.bookingClasses, bookingClass.toUpperCase()] }
           : leg
@@ -283,7 +290,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const removeBookingClass = (legId: string, bookingClass: string) => {
-    setLegs(legs.map(leg =>
+    setLegs(prevLegs => prevLegs.map(leg =>
       leg.id === legId
         ? { ...leg, bookingClasses: leg.bookingClasses.filter(c => c !== bookingClass) }
         : leg
@@ -293,7 +300,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const addOrigin = (legId: string, origin: string) => {
     if (origin.trim()) {
       const normalizedOrigin = origin.trim().toUpperCase();
-      setLegs(legs.map(leg => {
+      setLegs(prevLegs => prevLegs.map(leg => {
         if (leg.id === legId) {
           // Check if origin already exists
           if (leg.origins.includes(normalizedOrigin)) {
@@ -307,8 +314,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const removeOrigin = (legId: string, index: number) => {
-    setLegs(legs.map(leg => 
-      leg.id === legId 
+    setLegs(prevLegs => prevLegs.map(leg =>
+      leg.id === legId
         ? { ...leg, origins: leg.origins.filter((_, i) => i !== index) }
         : leg
     ));
@@ -317,7 +324,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const addDestination = (legId: string, destination: string) => {
     if (destination.trim()) {
       const normalizedDestination = destination.trim().toUpperCase();
-      setLegs(legs.map(leg => {
+      setLegs(prevLegs => prevLegs.map(leg => {
         if (leg.id === legId) {
           // Check if destination already exists
           if (leg.destinations.includes(normalizedDestination)) {
@@ -331,15 +338,15 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   const removeDestination = (legId: string, index: number) => {
-    setLegs(legs.map(leg => 
-      leg.id === legId 
+    setLegs(prevLegs => prevLegs.map(leg =>
+      leg.id === legId
         ? { ...leg, destinations: leg.destinations.filter((_, i) => i !== index) }
         : leg
     ));
   };
 
   const swapOriginsDestinations = (legId: string) => {
-    setLegs(legs.map(leg =>
+    setLegs(prevLegs => prevLegs.map(leg =>
       leg.id === legId
         ? { ...leg, origins: leg.destinations, destinations: leg.origins }
         : leg
