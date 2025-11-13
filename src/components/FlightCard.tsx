@@ -1042,52 +1042,46 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                               {/* Flight details */}
                               <div className="px-3 py-2.5">
                                 {/* Show segment-by-segment if multi-segment flight */}
-                                {(() => {
-                                  // Construct segments from stops data if not nonstop
-                                  const hasStops = altFlight.numberOfStops && altFlight.numberOfStops > 0;
+                                {altFlight.numberOfStops && altFlight.numberOfStops > 0 ? (
+                                  (() => {
+                                    // Build segments array from stops if available
+                                    const constructedSegments: any[] = [];
+                                    const flightNumbers = altFlight.flightNumber ? [altFlight.flightNumber] : [];
 
-                                  if (!hasStops) {
-                                    return null; // Will render nonstop version below
-                                  }
-
-                                  // Build segments array from stops if available
-                                  const constructedSegments: any[] = [];
-                                  const flightNumbers = altFlight.flightNumber ? [altFlight.flightNumber] : [];
-
-                                  if (altFlight.stops && Array.isArray(altFlight.stops)) {
-                                    // First segment: departure -> first stop
-                                    constructedSegments.push({
-                                      origin: altFlight.departure.iataCode,
-                                      destination: altFlight.stops[0],
-                                      flightNumber: flightNumbers[0],
-                                      departure: altFlight.departure,
-                                      arrival: null
-                                    });
-
-                                    // Middle segments: stop to stop
-                                    for (let i = 0; i < altFlight.stops.length - 1; i++) {
+                                    if (altFlight.stops && Array.isArray(altFlight.stops)) {
+                                      // First segment: departure -> first stop
                                       constructedSegments.push({
-                                        origin: altFlight.stops[i],
-                                        destination: altFlight.stops[i + 1],
-                                        flightNumber: flightNumbers[i + 1],
-                                        departure: null,
+                                        origin: altFlight.departure.iataCode,
+                                        destination: altFlight.stops[0],
+                                        flightNumber: flightNumbers[0],
+                                        departure: altFlight.departure,
                                         arrival: null
+                                      });
+
+                                      // Middle segments: stop to stop
+                                      for (let i = 0; i < altFlight.stops.length - 1; i++) {
+                                        constructedSegments.push({
+                                          origin: altFlight.stops[i],
+                                          destination: altFlight.stops[i + 1],
+                                          flightNumber: flightNumbers[i + 1],
+                                          departure: null,
+                                          arrival: null
+                                        });
+                                      }
+
+                                      // Last segment: last stop -> arrival
+                                      constructedSegments.push({
+                                        origin: altFlight.stops[altFlight.stops.length - 1],
+                                        destination: altFlight.arrival.iataCode,
+                                        flightNumber: flightNumbers[altFlight.stops.length],
+                                        departure: null,
+                                        arrival: altFlight.arrival
                                       });
                                     }
 
-                                    // Last segment: last stop -> arrival
-                                    constructedSegments.push({
-                                      origin: altFlight.stops[altFlight.stops.length - 1],
-                                      destination: altFlight.arrival.iataCode,
-                                      flightNumber: flightNumbers[altFlight.stops.length],
-                                      departure: null,
-                                      arrival: altFlight.arrival
-                                    });
-                                  }
+                                    const segments = altFlight.segments || constructedSegments;
 
-                                  const segments = altFlight.segments || constructedSegments;
-
-                                  return hasStops && segments.length > 0 ? (
+                                    return (
                                   <div className="space-y-2">
                                     {segments.map((segment: any, segIdx: number) => (
                                       <div key={segIdx}>
@@ -1139,6 +1133,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                       <span className="text-gray-300">{durationHours}h{durationMins}m</span>
                                     </div>
                                   </div>
+                                    );
+                                  })()
                                 ) : (
                                   /* Single segment / nonstop flight */
                                   <div className="flex items-center gap-2 mb-2">
@@ -1182,8 +1178,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                       <div className="text-[10px] text-gray-500">{formatDate(altFlight.arrival.at)}</div>
                                     </div>
                                   </div>
-                                );
-                                })()}
+                                )}
 
                                 {/* Match badges - only show if within tolerance */}
                                 <div className="flex items-center gap-1.5 flex-wrap">
