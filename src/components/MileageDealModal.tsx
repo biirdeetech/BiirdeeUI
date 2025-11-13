@@ -18,6 +18,11 @@ interface GroupedDeals {
   alternativesTimeInsensitive: MileageDeal[];
 }
 
+interface ConsolidatedDeal extends MileageDeal {
+  flightNumbers: string[];
+  variantCount: number;
+}
+
 const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'best-match' | 'more-options'>('best-match');
   const [expandedAirlines, setExpandedAirlines] = useState<Record<string, boolean>>({});
@@ -36,11 +41,41 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     return 0; // Placeholder - will need actual departure time from deal
   };
 
-  // Group deals by airline and find primary/alternatives
-  const groupedByAirline = useMemo(() => {
-    const grouped = new Map<string, MileageDeal[]>();
+  // Consolidate deals that are identical except for flight numbers
+  const consolidateDeals = (deals: MileageDeal[]): ConsolidatedDeal[] => {
+    const consolidated = new Map<string, ConsolidatedDeal>();
 
     deals.forEach(deal => {
+      // Create a key based on all properties except flight number
+      const key = `${deal.airlineCode}-${deal.mileage}-${deal.mileagePrice}-${deal.cabins.join(',')}-${deal.matchType}`;
+
+      if (consolidated.has(key)) {
+        const existing = consolidated.get(key)!;
+        // Add flight number if not already included
+        if (!existing.flightNumbers.includes(deal.flightNumber)) {
+          existing.flightNumbers.push(deal.flightNumber);
+          existing.variantCount++;
+        }
+      } else {
+        consolidated.set(key, {
+          ...deal,
+          flightNumbers: [deal.flightNumber],
+          variantCount: 1
+        });
+      }
+    });
+
+    return Array.from(consolidated.values());
+  };
+
+  // Group deals by airline and find primary/alternatives
+  const groupedByAirline = useMemo(() => {
+    // First consolidate deals to combine identical flights with different flight numbers
+    const consolidatedDeals = consolidateDeals(deals);
+
+    const grouped = new Map<string, ConsolidatedDeal[]>();
+
+    consolidatedDeals.forEach(deal => {
       const key = deal.airlineCode;
       if (!grouped.has(key)) {
         grouped.set(key, []);
@@ -375,6 +410,28 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                 </span>
                               ))}
                             </div>
+
+                            {/* Flight Numbers Display */}
+                            <div className="text-sm text-gray-400">
+                              {(group.primary as ConsolidatedDeal).flightNumbers ? (
+                                <>
+                                  <span className="text-gray-500">Flights: </span>
+                                  <span className="text-white font-medium">
+                                    {(group.primary as ConsolidatedDeal).flightNumbers.join(', ')}
+                                  </span>
+                                  {(group.primary as ConsolidatedDeal).variantCount > 1 && (
+                                    <span className="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/30">
+                                      {(group.primary as ConsolidatedDeal).variantCount} variants
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-gray-500">Flight: </span>
+                                  <span className="text-white font-medium">{group.primary.flightNumber}</span>
+                                </>
+                              )}
+                            </div>
                           </div>
 
                           <div className="text-right flex-shrink-0">
@@ -469,37 +526,60 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                     : 'More than 5 hours (sorted by value)'}
                                 </div>
                                 <div className="space-y-2">
-                                  {activeAlternatives.map((deal, index) => (
-                                    <div
-                                      key={index}
-                                      className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
-                                    >
-                                      <div className="flex items-center justify-between gap-3">
-                                        <div className="flex-1">
-                                          <div className="flex flex-wrap gap-1 mb-1">
-                                            {deal.cabins.map((cabin, i) => (
-                                              <span
-                                                key={i}
-                                                className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded"
-                                              >
-                                                {cabin}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="text-lg font-bold text-accent-400">
-                                            {deal.mileage.toLocaleString()}
-                                          </div>
-                                          {deal.mileagePrice > 0 && (
-                                            <div className="text-xs text-gray-400">
-                                              + ${deal.mileagePrice.toFixed(2)}
+                                  {activeAlternatives.map((deal, index) => {
+                                    const consolidatedDeal = deal as ConsolidatedDeal;
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
+                                      >
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex-1">
+                                            <div className="flex flex-wrap gap-1 mb-1">
+                                              {deal.cabins.map((cabin, i) => (
+                                                <span
+                                                  key={i}
+                                                  className="px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded"
+                                                >
+                                                  {cabin}
+                                                </span>
+                                              ))}
                                             </div>
-                                          )}
+                                            <div className="text-xs text-gray-400 mt-1">
+                                              {consolidatedDeal.flightNumbers ? (
+                                                <>
+                                                  <span className="text-gray-500">Flights: </span>
+                                                  <span className="text-white">
+                                                    {consolidatedDeal.flightNumbers.join(', ')}
+                                                  </span>
+                                                  {consolidatedDeal.variantCount > 1 && (
+                                                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded-full border border-blue-500/30">
+                                                      {consolidatedDeal.variantCount}
+                                                    </span>
+                                                  )}
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <span className="text-gray-500">Flight: </span>
+                                                  <span className="text-white">{deal.flightNumber}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-lg font-bold text-accent-400">
+                                              {deal.mileage.toLocaleString()}
+                                            </div>
+                                            {deal.mileagePrice > 0 && (
+                                              <div className="text-xs text-gray-400">
+                                                + ${deal.mileagePrice.toFixed(2)}
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </>
                             )}
