@@ -454,117 +454,128 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                             layoverAirport = segment.arrival?.iataCode || segment.destination;
                           }
 
+                          // Calculate segment duration if available
+                          let segmentDuration = segment.duration;
+                          if (!segmentDuration && segment.departure?.at && segment.arrival?.at) {
+                            const depTime = new Date(segment.departure.at).getTime();
+                            const arrTime = new Date(segment.arrival.at).getTime();
+                            segmentDuration = Math.round((arrTime - depTime) / (1000 * 60));
+                          }
+
                           return (
                             <div key={segIndex}>
-                              {/* Flight Segment */}
-                              <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <img
-                                      src={`https://www.gstatic.com/flights/airline_logos/35px/${segment.carrier.code}.png`}
-                                      alt={segment.carrier.code}
-                                      className="h-5 w-5 object-contain"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
-                                    <span className="text-sm font-semibold text-blue-300">
-                                      {segment.carrier.code} {segment.flightNumber || slice.flights[segIndex]}
+                              {/* Individual Segment */}
+                              <div className="bg-gray-800/30 rounded border border-gray-700/50 p-2.5">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-semibold text-blue-300">
+                                      {segment.flightNumber || slice.flights[segIndex] || 'N/A'}
                                     </span>
+                                    {segment.carrier && (
+                                      <span className="text-[10px] text-gray-400">
+                                        {typeof segment.carrier === 'string' ? segment.carrier : segment.carrier.code}
+                                      </span>
+                                    )}
+                                    {segment.aircraft && (
+                                      <span className="text-[9px] bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded">
+                                        {typeof segment.aircraft === 'string' ? segment.aircraft : segment.aircraft.code}
+                                      </span>
+                                    )}
                                     {segment.cabin && (
-                                      <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">
+                                      <span className="text-[9px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded">
                                         {segment.cabin}
                                       </span>
                                     )}
                                   </div>
-                                  {segment.duration && (
-                                    <div className="text-xs text-gray-400 flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {formatDuration(segment.duration)}
+                                  {segmentDuration && (
+                                    <div className="text-[10px] text-gray-400 font-medium">
+                                      <Clock className="h-2.5 w-2.5 inline mr-0.5" />
+                                      {Math.floor(segmentDuration / 60)}h {segmentDuration % 60}m
                                     </div>
                                   )}
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                  {/* Departure */}
+                                  {/* Departure Info */}
                                   <div className="flex-1">
-                                    <div className="text-sm font-bold text-white">
-                                      {segment.departure?.at ? formatTime(segment.departure.at) : (segment.departure ? formatTime(segment.departure) : '--:--')}
-                                    </div>
-                                    <div className="text-xs text-gray-400 font-mono">
-                                      {segment.departure?.iataCode || segment.origin}
-                                    </div>
                                     {segment.departure?.at && (
-                                      <div className="text-xs text-gray-500">
-                                        {formatDate(segment.departure.at)}
-                                      </div>
+                                      <>
+                                        <div className="text-sm font-bold text-white">
+                                          {formatTime(segment.departure.at)}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 font-mono font-semibold">
+                                          {segment.departure.iataCode || segment.origin}
+                                        </div>
+                                        <div className="text-[9px] text-gray-500 mt-0.5">
+                                          {formatDate(segment.departure.at)}
+                                        </div>
+                                      </>
                                     )}
                                   </div>
 
                                   {/* Flight Line */}
                                   <div className="flex-1 flex items-center">
                                     <div className="flex-1 border-t-2 border-gray-600"></div>
-                                    <Plane className="h-3 w-3 text-gray-400 mx-1" />
+                                    <Plane className="h-3 w-3 text-gray-500 mx-1" />
                                     <div className="flex-1 border-t-2 border-gray-600"></div>
                                   </div>
 
-                                  {/* Arrival */}
+                                  {/* Arrival Info */}
                                   <div className="flex-1 text-right">
-                                    <div className="text-sm font-bold text-white">
-                                      {segment.arrival?.at ? formatTime(segment.arrival.at) : (segment.arrival ? formatTime(segment.arrival) : '--:--')}
-                                    </div>
-                                    <div className="text-xs text-gray-400 font-mono">
-                                      {segment.arrival?.iataCode || segment.destination}
-                                    </div>
                                     {segment.arrival?.at && (
-                                      <div className="text-xs text-gray-500">
-                                        {formatDate(segment.arrival.at)}
-                                      </div>
+                                      <>
+                                        <div className="text-sm font-bold text-white">
+                                          {formatTime(segment.arrival.at)}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 font-mono font-semibold">
+                                          {segment.arrival.iataCode || segment.destination}
+                                        </div>
+                                        <div className="text-[9px] text-gray-500 mt-0.5">
+                                          {formatDate(segment.arrival.at)}
+                                        </div>
+                                      </>
                                     )}
                                   </div>
                                 </div>
-
-                                {/* Booking Class */}
-                                {segment.pricings && segment.pricings.length > 0 && segment.pricings[0].bookingClass && (
-                                  <div className="mt-2 text-xs text-gray-400">
-                                    Booking Class: <span className="font-mono text-white">{segment.pricings[0].bookingClass}</span>
-                                  </div>
-                                )}
                               </div>
 
-                              {/* Layover Information */}
-                              {nextSegment && layoverDuration > 0 && (
-                                <div className="flex items-center justify-center py-2">
-                                  <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-2 text-sm">
-                                    <div className="flex items-center gap-2 text-orange-300 font-medium">
-                                      <MapPin className="h-4 w-4 text-orange-400" />
-                                      <span>Layover at {layoverAirport}</span>
-                                      <span className="text-orange-400">•</span>
-                                      <Clock className="h-4 w-4 text-orange-400" />
-                                      <span className="text-orange-200">{formatDuration(layoverDuration)}</span>
-                                    </div>
-                                    <div className="text-xs text-orange-400/70 text-center mt-1">
-                                      Next flight: {nextSegment.carrier.code} {nextSegment.flightNumber || slice.flights[segIndex + 1]}
+                              {/* Layover indicator with duration calculation */}
+                              {segIndex < slice.segments.length - 1 && (() => {
+                                const nextSeg = slice.segments[segIndex + 1];
+                                let layoverTime = null;
+
+                                // Calculate layover duration if we have times
+                                if (segment.arrival?.at && nextSeg.departure?.at) {
+                                  const arrTime = new Date(segment.arrival.at).getTime();
+                                  const depTime = new Date(nextSeg.departure.at).getTime();
+                                  layoverTime = Math.round((depTime - arrTime) / (1000 * 60));
+                                }
+
+                                return (
+                                  <div className="flex items-center justify-center py-1.5">
+                                    <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2.5 py-1 text-[10px] text-orange-300 font-medium">
+                                      <Clock className="h-2.5 w-2.5 inline mr-1" />
+                                      Layover at {segment.arrival?.iataCode || segment.destination}
+                                      {layoverTime && layoverTime > 0 && (
+                                        <span className="ml-1.5 text-orange-400">
+                                          • {Math.floor(layoverTime / 60)}h {layoverTime % 60}m
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })()}
                             </div>
                           );
                         })}
 
-                        {/* Total Travel Time Summary */}
-                        <div className="mt-3 pt-3 border-t border-gray-700/50 flex items-center justify-between text-sm">
-                          <span className="text-gray-400">Total Travel Time:</span>
-                          <span className="text-white font-semibold">{formatDuration(slice.duration)}</span>
+                        {/* Total duration */}
+                        <div className="pt-2 border-t border-gray-700/50 flex items-center justify-between text-[11px]">
+                          <span className="text-gray-400 font-medium">Total Travel Time:</span>
+                          <span className="text-gray-200 font-semibold">{formatDuration(slice.duration)}</span>
                         </div>
                       </div>
                     )}
-
-                    {/* Flight Numbers */}
-                    <div className="mt-3 text-xs text-gray-500">
-                      Operated by: {slice.flights.join(', ')}
-                    </div>
                   </div>
                 );
               })}
@@ -939,13 +950,13 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                                   <div key={segIdx}>
                                                     <div className="flex items-center gap-1.5 text-xs">
                                                       <span className="text-blue-300 font-semibold">{segment.flightNumber}</span>
-                                                      <span className="font-mono text-gray-300">{segment.origin}</span>
+                                                      <span className="font-mono text-gray-300">{segment.departure?.iataCode || segment.origin}</span>
                                                       <div className="flex-1 flex items-center">
                                                         <div className="flex-1 border-t border-gray-600"></div>
                                                         <Plane className="h-2.5 w-2.5 text-gray-500 mx-0.5" />
                                                         <div className="flex-1 border-t border-gray-600"></div>
                                                       </div>
-                                                      <span className="font-mono text-gray-300">{segment.destination}</span>
+                                                      <span className="font-mono text-gray-300">{segment.arrival?.iataCode || segment.destination}</span>
                                                       {segment.duration && (
                                                         <span className="text-gray-500 text-[10px]">{formatDuration(segment.duration)}</span>
                                                       )}
@@ -953,11 +964,13 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                                                     {nextSegment && layoverDuration > 0 && (
                                                       <div className="flex items-center justify-center py-1">
                                                         <div className="bg-orange-500/20 border border-orange-500/30 rounded px-2 py-0.5 text-[10px] text-orange-300 flex items-center gap-1">
-                                                          <MapPin className="h-2.5 w-2.5" />
-                                                          <span>Layover at {segment.destination}</span>
-                                                          <span>•</span>
-                                                          <Clock className="h-2.5 w-2.5" />
-                                                          <span>{formatDuration(layoverDuration)}</span>
+                                                          <Clock className="h-2.5 w-2.5 inline mr-1" />
+                                                          Layover at {segment.arrival?.iataCode || segment.destination}
+                                                          {layoverDuration > 0 && (
+                                                            <span className="ml-1.5 text-orange-400">
+                                                              • {Math.floor(layoverDuration / 60)}h {layoverDuration % 60}m
+                                                            </span>
+                                                          )}
                                                         </div>
                                                       </div>
                                                     )}
