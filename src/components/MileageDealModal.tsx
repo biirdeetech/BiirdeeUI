@@ -106,13 +106,19 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                 // Note: We don't have individual segment times, so we'll show simplified version
                 const segments = [];
 
+                // Extract all flight numbers from all matching flights
+                const allFlightNumbers = matchingFlights
+                  .map((f: any) => f.flightNumber)
+                  .filter((fn: any) => fn)
+                  .join(', ') || flight.flightNumber;
+
                 // First segment
                 segments.push({
                   origin: flight.departure.iataCode,
                   destination: flight.stops[0].code || flight.stops[0].iataCode,
                   departure: { at: flight.departure.at, iataCode: flight.departure.iataCode },
                   arrival: undefined, // Not available in individual segment data
-                  flightNumber: flight.flightNumber,
+                  flightNumber: allFlightNumbers,
                   duration: undefined,
                   operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                   aircraft: flight.aircraft,
@@ -126,7 +132,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     destination: flight.stops[i + 1].code || flight.stops[i + 1].iataCode,
                     departure: undefined,
                     arrival: undefined,
-                    flightNumber: flight.flightNumber,
+                    flightNumber: allFlightNumbers,
                     duration: undefined,
                     operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                     aircraft: flight.aircraft,
@@ -140,7 +146,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   destination: flight.arrival.iataCode,
                   departure: undefined,
                   arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
-                  flightNumber: flight.flightNumber,
+                  flightNumber: allFlightNumbers,
                   duration: undefined,
                   operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                   aircraft: flight.aircraft,
