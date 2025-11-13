@@ -390,23 +390,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
             {/* Price Display - Right Aligned with Mileage on Left */}
             <div className="flex flex-wrap items-baseline gap-3 justify-end">
               {/* Mileage Info - Left Side */}
-              {totalMileage > 0 && (
+              {mileageDeals && mileageDeals.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-sm font-bold text-orange-300">{totalMileage.toLocaleString()}</span>
-                      <span className="text-xs text-orange-400">miles</span>
-                      {totalMileagePrice > 0 && (
-                        <>
-                          <span className="text-xs text-orange-400">+</span>
-                          <span className="text-sm font-semibold text-orange-300">${totalMileagePrice.toFixed(2)}</span>
-                        </>
-                      )}
-                      <span className="text-[10px] text-orange-500/70 ml-1">
-                        @ ${(totalMileagePrice / totalMileage).toFixed(3)}/mi
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    // Find the best (cheapest) mileage deal
+                    const bestDeal = mileageDeals.reduce((best, deal) => {
+                      const dealValue = deal.mileage + (deal.mileagePrice * 100); // Weight price more
+                      const bestValue = best.mileage + (best.mileagePrice * 100);
+                      return dealValue < bestValue ? deal : best;
+                    });
+
+                    return (
+                      <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[10px] text-orange-500/70 uppercase">Best:</span>
+                          <span className="text-sm font-bold text-orange-300">{bestDeal.mileage.toLocaleString()}</span>
+                          <span className="text-xs text-orange-400">miles</span>
+                          {bestDeal.mileagePrice > 0 && (
+                            <>
+                              <span className="text-xs text-orange-400">+</span>
+                              <span className="text-sm font-semibold text-orange-300">${bestDeal.mileagePrice.toFixed(2)}</span>
+                            </>
+                          )}
+                          <span className="text-[10px] text-orange-500/70 ml-1">
+                            @ ${(bestDeal.mileagePrice / bestDeal.mileage).toFixed(3)}/mi
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1166,7 +1178,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                             {/* Departure Info */}
                                             <div className="flex-1">
                                               <div className="text-sm font-bold text-white">
-                                                {segment.departure?.time || (segment.departure?.at ? formatTime(segment.departure.at) : 'N/A')}
+                                                {segment.departure?.time || (segment.departure?.at ? formatTime(segment.departure.at) : '--:--')}
                                               </div>
                                               <div className="text-[10px] text-gray-400 font-mono font-semibold">
                                                 {segment.departure?.iataCode || segment.origin}
@@ -1188,7 +1200,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                                             {/* Arrival Info */}
                                             <div className="flex-1 text-right">
                                               <div className="text-sm font-bold text-white">
-                                                {segment.arrival?.time || (segment.arrival?.at ? formatTime(segment.arrival.at) : 'N/A')}
+                                                {segment.arrival?.time || (segment.arrival?.at ? formatTime(segment.arrival.at) : '--:--')}
                                               </div>
                                               <div className="text-[10px] text-gray-400 font-mono font-semibold">
                                                 {segment.arrival?.iataCode || segment.destination}
