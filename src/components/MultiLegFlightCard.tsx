@@ -38,6 +38,69 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
     return uniqueCarriers.size;
   };
 
+  interface GroupedMileageProgram {
+    carrierCode: string;
+    carrierName: string;
+    totalMileage: number;
+    totalPrice: number;
+    matchType: 'exact' | 'partial' | 'mixed';
+    flights: any[];
+    segmentCount: number;
+  }
+
+  const groupMileageByProgram = (breakdown?: any[]): GroupedMileageProgram[] => {
+    if (!breakdown || breakdown.length === 0) return [];
+
+    const programMap = new Map<string, GroupedMileageProgram>();
+
+    breakdown.forEach(segment => {
+      if (!segment.allMatchingFlights || segment.allMatchingFlights.length === 0) return;
+
+      segment.allMatchingFlights.forEach((flight: any) => {
+        const carrierCode = flight.operatingCarrier || flight.carrierCode;
+        if (!carrierCode) return;
+
+        const price = typeof flight.mileagePrice === 'string'
+          ? parseFloat(flight.mileagePrice.replace(/[^0-9.]/g, ''))
+          : (flight.mileagePrice || 0);
+
+        if (!programMap.has(carrierCode)) {
+          programMap.set(carrierCode, {
+            carrierCode,
+            carrierName: flight.operatingCarrier || carrierCode,
+            totalMileage: 0,
+            totalPrice: 0,
+            matchType: flight.exactMatch ? 'exact' : 'partial',
+            flights: [],
+            segmentCount: 0
+          });
+        }
+
+        const program = programMap.get(carrierCode)!;
+        program.totalMileage += flight.mileage || 0;
+        program.totalPrice += price;
+        program.flights.push(flight);
+        program.segmentCount++;
+
+        if (flight.exactMatch && program.matchType === 'partial') {
+          program.matchType = 'mixed';
+        } else if (!flight.exactMatch && program.matchType === 'exact') {
+          program.matchType = 'mixed';
+        }
+      });
+    });
+
+    const programs = Array.from(programMap.values());
+
+    programs.sort((a, b) => {
+      const aValue = a.totalMileage + (a.totalPrice * 100);
+      const bValue = b.totalMileage + (b.totalPrice * 100);
+      return aValue - bValue;
+    });
+
+    return programs;
+  };
+
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
     try {
@@ -277,24 +340,43 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
                       </span>
                     </div>
                   )}
-                  {slice.mileage && slice.mileage > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-400 font-medium">Miles:</span>
-                        <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-sm font-medium">
-                          {slice.mileage.toLocaleString()} miles + {formatMileagePrice(slice.mileagePrice || 0)}
-                        </span>
+                  {slice.mileageBreakdown && slice.mileageBreakdown.some((mb: any) => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (() => {
+                    const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+                    return groupedPrograms.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-gray-400 font-medium text-sm">Miles:</span>
+                        {groupedPrograms.map((program) => (
+                          <div
+                            key={program.carrierCode}
+                            className={`text-purple-300 px-2 py-1 rounded text-sm font-medium flex items-center gap-1 ${
+                              program.matchType === 'exact'
+                                ? 'bg-green-500/20 border border-green-500/30'
+                                : program.matchType === 'partial'
+                                ? 'bg-purple-500/20 border border-purple-500/30'
+                                : 'bg-blue-500/20 border border-blue-500/30'
+                            }`}
+                          >
+                            <img
+                              src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
+                              alt={program.carrierCode}
+                              className="h-3 w-3 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <span className="font-semibold">{program.carrierCode}:</span>
+                            <span>{program.totalMileage.toLocaleString()}</span>
+                            {program.totalPrice > 0 && (
+                              <>
+                                <span>+</span>
+                                <span>${program.totalPrice.toFixed(2)}</span>
+                              </>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      {(() => {
-                        const programCount = countMileagePrograms(slice.mileageBreakdown);
-                        return programCount > 0 && (
-                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-0.5 rounded border border-gray-700">
-                            {programCount} {programCount === 1 ? 'program' : 'programs'} available
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>

@@ -895,34 +895,24 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
                   const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
 
-                          // Calculate time difference
-                          const flightTime = new Date(altFlight.departure.at).getTime();
-                          const originalTime = new Date(slice.departure).getTime();
-                          const diffMinutes = Math.round((flightTime - originalTime) / (1000 * 60));
-                          const timeDiffText = diffMinutes === 0 ? 'Same time' :
-                            diffMinutes > 0 ? `+${diffMinutes}m` : `${diffMinutes}m`;
+                  // Calculate duration
+                  const depTime = new Date(altFlight.departure.at);
+                  const arrTime = new Date(altFlight.arrival.at);
+                  const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
+                  const durationHours = Math.floor(durationMinutes / 60);
+                  const durationMins = durationMinutes % 60;
 
-                          // Check if within tolerance (only show matches within 960 minutes)
-                          const isWithinTolerance = Math.abs(diffMinutes) <= 960 && altFlight.timeComparison?.withinTolerance;
+                  // Calculate mileage value - use proper per-mile calculation
+                  const priceNum = typeof altFlight.mileagePrice === 'string'
+                    ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+                    : altFlight.mileagePrice;
+                  const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
 
-                          // Calculate duration
-                          const depTime = new Date(altFlight.departure.at);
-                          const arrTime = new Date(altFlight.arrival.at);
-                          const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
-                          const durationHours = Math.floor(durationMinutes / 60);
-                          const durationMins = durationMinutes % 60;
+                  // Use component-level formatters that respect origin timezone
+                  const formatTime = formatTimeInOriginTZ;
+                  const formatDate = formatDateInOriginTZ;
 
-                          // Calculate mileage value - use proper per-mile calculation
-                          const priceNum = typeof altFlight.mileagePrice === 'string'
-                            ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
-                            : altFlight.mileagePrice;
-                          const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
-
-                          // Use component-level formatters that respect origin timezone
-                          const formatTime = formatTimeInOriginTZ;
-                          const formatDate = formatDateInOriginTZ;
-
-                          return (
+                  return (
                             <div
                               key={altIndex}
                               className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border transition-all duration-200 overflow-hidden"
@@ -1068,16 +1058,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                               </div>
                             </div>
                           );
-                        })}
-                          </div>
-                        ))}
+                        });
+                        })()}
                       </div>
                     </div>
-                    )
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </div>
         ))}
       </div>
