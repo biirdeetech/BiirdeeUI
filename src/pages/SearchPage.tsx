@@ -658,7 +658,7 @@ const SearchPage: React.FC = () => {
 
       <div className="lg:flex lg:overflow-hidden">
         {/* Mobile/Tablet: Full width top section, Desktop: Fixed Left Sidebar */}
-        <div className="w-full lg:w-96 bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto z-40">
+        <div className="w-full lg:w-80 bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto z-40">
           <div className="p-4 lg:p-6">
             {/* Back to Search Button */}
             <div className="mb-4">
@@ -673,9 +673,9 @@ const SearchPage: React.FC = () => {
             <SearchForm compact onNewSearch={handleNewSearch} />
           </div>
         </div>
-        
+
         {/* Main Content - Flight Results */}
-        <div className="flex-1 lg:ml-96 lg:overflow-y-auto">
+        <div className="flex-1 lg:ml-80 lg:overflow-y-auto">
           {/* Flight Filters - Sticky on desktop, normal flow on mobile */}
           {(results || loading || error) && (
             <FlightFilters

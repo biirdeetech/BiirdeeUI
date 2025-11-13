@@ -65,17 +65,24 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
       }
     });
 
-    return Array.from(consolidated.values());
+    // Update all segments to show all consolidated flight numbers
+    const result = Array.from(consolidated.values());
+    result.forEach(deal => {
+      if (deal.segments && deal.segments.length > 0 && deal.flightNumbers.length > 1) {
+        const allFlightNumbers = deal.flightNumbers.join(', ');
+        deal.segments = deal.segments.map(seg => ({
+          ...seg,
+          flightNumber: allFlightNumbers
+        }));
+      }
+    });
+
+    return result;
   };
 
   // Enrich deals with segment information from flight slices and mileageBreakdown
   const enrichDealsWithSegments = (dealsList: MileageDeal[]): MileageDeal[] => {
     return dealsList.map(deal => {
-      // If deal already has segments, return as is
-      if (deal.segments && deal.segments.length > 0) {
-        return deal;
-      }
-
       // Try to enrich from flight slices mileageBreakdown
       if (flightSlices && flightSlices.length > 0) {
         const slice = flightSlices[0]; // Use first slice for now
