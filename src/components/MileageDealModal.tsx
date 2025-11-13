@@ -41,45 +41,6 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     return 0; // Placeholder - will need actual departure time from deal
   };
 
-  // Consolidate deals that are identical except for flight numbers
-  const consolidateDeals = (deals: MileageDeal[]): ConsolidatedDeal[] => {
-    const consolidated = new Map<string, ConsolidatedDeal>();
-
-    deals.forEach(deal => {
-      // Create a key based on all properties except flight number
-      const key = `${deal.airlineCode}-${deal.mileage}-${deal.mileagePrice}-${deal.cabins.join(',')}-${deal.matchType}`;
-
-      if (consolidated.has(key)) {
-        const existing = consolidated.get(key)!;
-        // Add flight number if not already included
-        if (!existing.flightNumbers.includes(deal.flightNumber)) {
-          existing.flightNumbers.push(deal.flightNumber);
-          existing.variantCount++;
-        }
-      } else {
-        consolidated.set(key, {
-          ...deal,
-          flightNumbers: [deal.flightNumber],
-          variantCount: 1
-        });
-      }
-    });
-
-    // Update all segments to show all consolidated flight numbers
-    const result = Array.from(consolidated.values());
-    result.forEach(deal => {
-      if (deal.segments && deal.segments.length > 0 && deal.flightNumbers.length > 1) {
-        const allFlightNumbers = deal.flightNumbers.join(', ');
-        deal.segments = deal.segments.map(seg => ({
-          ...seg,
-          flightNumber: allFlightNumbers
-        }));
-      }
-    });
-
-    return result;
-  };
-
   // Enrich deals with segment information from flight slices and mileageBreakdown
   const enrichDealsWithSegments = (dealsList: MileageDeal[]): MileageDeal[] => {
     return dealsList.map(deal => {
@@ -113,11 +74,8 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                 // Note: We don't have individual segment times, so we'll show simplified version
                 const segments = [];
 
-                // Extract all flight numbers from all matching flights
-                const allFlightNumbers = matchingFlights
-                  .map((f: any) => f.flightNumber)
-                  .filter((fn: any) => fn)
-                  .join(', ') || flight.flightNumber;
+                // Use the single flight number for this specific deal
+                const flightNumber = flight.flightNumber || deal.flightNumber;
 
                 // First segment
                 segments.push({
@@ -125,7 +83,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   destination: flight.stops[0].code || flight.stops[0].iataCode,
                   departure: { at: flight.departure.at, iataCode: flight.departure.iataCode },
                   arrival: undefined, // Not available in individual segment data
-                  flightNumber: allFlightNumbers,
+                  flightNumber: flightNumber,
                   duration: undefined,
                   operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                   aircraft: flight.aircraft,
@@ -139,7 +97,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                     destination: flight.stops[i + 1].code || flight.stops[i + 1].iataCode,
                     departure: undefined,
                     arrival: undefined,
-                    flightNumber: allFlightNumbers,
+                    flightNumber: flightNumber,
                     duration: undefined,
                     operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                     aircraft: flight.aircraft,
@@ -153,7 +111,7 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
                   destination: flight.arrival.iataCode,
                   departure: undefined,
                   arrival: { at: flight.arrival.at, iataCode: flight.arrival.iataCode },
-                  flightNumber: allFlightNumbers,
+                  flightNumber: flightNumber,
                   duration: undefined,
                   operatingCarrier: flight.operatingCarrier || flight.carrierCode,
                   aircraft: flight.aircraft,
@@ -241,12 +199,17 @@ const MileageDealModal: React.FC<MileageDealModalProps> = ({ deals, flightSlices
     // First enrich deals with segment information
     const enrichedDeals = enrichDealsWithSegments(deals);
 
-    // Then consolidate deals to combine identical flights with different flight numbers
-    const consolidatedDeals = consolidateDeals(enrichedDeals);
+    // Don't consolidate - display each flight separately
+    // Cast to ConsolidatedDeal for type compatibility (each deal is its own entry)
+    const dealsWithType: ConsolidatedDeal[] = enrichedDeals.map(deal => ({
+      ...deal,
+      flightNumbers: [deal.flightNumber],
+      variantCount: 1
+    }));
 
     const grouped = new Map<string, ConsolidatedDeal[]>();
 
-    consolidatedDeals.forEach(deal => {
+    dealsWithType.forEach(deal => {
       const key = deal.airlineCode;
       if (!grouped.has(key)) {
         grouped.set(key, []);
