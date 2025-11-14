@@ -229,7 +229,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const removeLeg = (id: string) => {
     setLegs(prevLegs => {
       if (prevLegs.length > 1) {
-        return prevLegs.filter(leg => leg.id !== id);
+        const newLegs = prevLegs.filter(leg => leg.id !== id);
+        // If we're down to 1 leg, remove fake round trip flags
+        if (newLegs.length === 1) {
+          return newLegs.map(leg => ({ ...leg, isFakeRoundTrip: false }));
+        }
+        return newLegs;
       }
       return prevLegs;
     });
@@ -393,7 +398,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: sourceLeg.destinations,
       destinations: sourceLeg.origins,
       vias: [],
-      nonstop: false,
+      nonstop: sourceLeg.nonstop,
       departDate: getDefaultReturnDate(),
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,
@@ -434,7 +439,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: sourceLeg.destinations,
       destinations: [],
       vias: [],
-      nonstop: false,
+      nonstop: sourceLeg.nonstop,
       departDate: getDefaultReturnDate(),
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,
@@ -477,7 +482,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: sourceLeg.destinations,
       destinations: [],
       vias: [],
-      nonstop: false,
+      nonstop: sourceLeg.nonstop,
       departDate: getDefaultReturnDate(),
       cabin: sourceLeg.cabin,
       bookingClasses: sourceLeg.bookingClasses,

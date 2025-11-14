@@ -44,7 +44,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
-  const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<number, 'best-match' | 'time-insensitive'>>({});
+  const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
 
 
   // Get flight data based on type
@@ -847,7 +847,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
               });
 
               // Filter by time proximity
-              let activeTab = sliceAlternativeTabs[sliceIndex] || 'best-match';
+              let activeTab = sliceAlternativeTabs[airlineKey] || 'best-match';
               const bestMatchFlights = sortedFlights.filter(f => {
                 const flightTime = new Date(f.departure.at).getTime();
                 const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
@@ -887,12 +887,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   {/* Tabs */}
                   <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
                     <button
-                      onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
+                      onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'best-match'})}
                       disabled={bestMatchFlights.length === 0}
                       className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
                         bestMatchFlights.length === 0
                           ? 'text-gray-600 cursor-not-allowed opacity-50'
-                          : (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
+                          : (sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match'
                           ? 'text-green-400 bg-gray-800/50'
                           : 'text-gray-400 hover:text-gray-300 cursor-pointer'
                       }`}
@@ -902,17 +902,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                         <span>Within 5hr</span>
                         <span className="text-[10px]">({bestMatchFlights.length})</span>
                       </div>
-                      {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && bestMatchFlights.length > 0 && (
+                      {(sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match' && bestMatchFlights.length > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                       )}
                     </button>
                     <button
-                      onClick={() => timeInsensitiveFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
+                      onClick={() => timeInsensitiveFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'time-insensitive'})}
                       disabled={timeInsensitiveFlights.length === 0}
                       className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
                         timeInsensitiveFlights.length === 0
                           ? 'text-gray-600 cursor-not-allowed opacity-50'
-                          : sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
+                          : sliceAlternativeTabs[airlineKey] === 'time-insensitive'
                           ? 'text-blue-400 bg-gray-800/50'
                           : 'text-gray-400 hover:text-gray-300 cursor-pointer'
                       }`}
@@ -922,7 +922,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                         <span>5hr+</span>
                         <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
                       </div>
-                      {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
+                      {sliceAlternativeTabs[airlineKey] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
                       )}
                     </button>
