@@ -921,7 +921,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   const depTime = new Date(altFlight.departure.at);
                   const arrTime = new Date(altFlight.arrival.at);
                   const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
-                  const durationHours = Math.floor(durationMinutes / 60);
+                  const durationHrs = Math.floor(durationMinutes / 60);
                   const durationMins = durationMinutes % 60;
 
                   // Calculate mileage value - use proper per-mile calculation
