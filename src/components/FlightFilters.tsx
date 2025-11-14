@@ -190,7 +190,7 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
           </div>
         </div>
           {/* Stops Filter */}
-        <div class="flex">
+        <div class="flex gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-300">Stops:</span>
             <select
