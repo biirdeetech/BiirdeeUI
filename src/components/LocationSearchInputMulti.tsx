@@ -150,7 +150,7 @@ const LocationSearchInputMulti: React.FC<LocationSearchInputMultiProps> = ({
       {/* Tags Display - Always reserve space for consistent height */}
       <div className="min-h-[36px] mb-2 overflow-visible">
         {values.length > 0 && (
-          <div className={constrainBadges ? "flex gap-2 overflow-x-auto scrollbar-hide overflow-visible" : "flex flex-wrap gap-2"}>
+          <div className={constrainBadges ? "flex gap-2 overflow-x-auto scrollbar-hide overflow-visible " : "flex flex-wrap gap-2"}>
             {values.map((value, idx) => (
               <span
                 key={idx}
