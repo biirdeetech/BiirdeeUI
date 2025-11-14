@@ -123,7 +123,7 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
         </div>
 
         {/* Quick Filters */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-center gap-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
           <div>
           <div className="flex flex-wrap items-center gap-2 lg:gap-4">
             {/* Quick Filter Checkboxes */}
@@ -190,7 +190,7 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
           </div>
         </div>
           {/* Stops Filter */}
-        <div>
+        <div class="flex">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-300">Stops:</span>
             <select
