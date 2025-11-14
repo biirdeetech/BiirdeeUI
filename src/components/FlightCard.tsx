@@ -804,180 +804,107 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
             {/* Expanded Mileage Alternatives */}
             {expandedSlices[sliceIndex] && slice.mileageBreakdown && (() => {
-              const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+              // Collect ALL flights from ALL segments - NO GROUPING
+              const allFlights: any[] = [];
+              slice.mileageBreakdown.forEach(breakdown => {
+                if (breakdown.allMatchingFlights) {
+                  breakdown.allMatchingFlights.forEach((flight: any) => {
+                    allFlights.push(flight);
+                  });
+                }
+              });
+
+              if (allFlights.length === 0) {
+                return null;
+              }
+
+              // Sort by time proximity
+              const originalTime = new Date(slice.departure).getTime();
+              const sortedFlights = allFlights.sort((a, b) => {
+                const aTime = new Date(a.departure.at).getTime();
+                const bTime = new Date(b.departure.at).getTime();
+                const aDiff = Math.abs(aTime - originalTime);
+                const bDiff = Math.abs(bTime - originalTime);
+                return aDiff - bDiff;
+              });
+
+              // Filter by time proximity
+              let activeTab = sliceAlternativeTabs[sliceIndex] || 'best-match';
+              const bestMatchFlights = sortedFlights.filter(f => {
+                const flightTime = new Date(f.departure.at).getTime();
+                const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+                return diffMinutes <= 300;
+              });
+              const timeInsensitiveFlights = sortedFlights.filter(f => {
+                const flightTime = new Date(f.departure.at).getTime();
+                const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+                return diffMinutes > 300;
+              });
+
+              // Auto-switch tabs if empty
+              if (activeTab === 'best-match' && bestMatchFlights.length === 0 && timeInsensitiveFlights.length > 0) {
+                activeTab = 'time-insensitive';
+              } else if (activeTab === 'time-insensitive' && timeInsensitiveFlights.length === 0 && bestMatchFlights.length > 0) {
+                activeTab = 'best-match';
+              }
+
+              const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
+
               return (
-              <div className="mt-3 space-y-3 bg-gray-900/50 p-3 rounded border border-gray-700">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs font-medium text-purple-300">
-                    Mileage Programs for {slice.origin.code} → {slice.destination.code}
-                  </div>
-                  {slice.stops && slice.stops.length > 0 && (
-                    <div className="text-[10px] text-gray-500">
-                      via {slice.stops.map(s => s.code).join(', ')}
+                <div className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-700">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Plane className="h-4 w-4 text-purple-400" />
+                      <span className="text-sm font-semibold text-white">Mileage Booking Options</span>
+                      <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Segment Breakdown for multi-segment flights */}
-                {slice.mileageBreakdown && slice.mileageBreakdown.length > 0 && (
-                  <div className="mb-4 p-3 bg-gray-800/30 rounded border border-gray-700/50">
-                    <div className="text-xs font-medium text-gray-300 mb-2">
-                      Flight Segments: {slice.origin.code} → {slice.destination.code}
-                      {slice.stops && slice.stops.length > 0 && (
-                        <span className="text-gray-500 ml-2">via {slice.stops.map(s => s.code).join(', ')}</span>
+                  {/* Tabs */}
+                  <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
+                    <button
+                      onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
+                      className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
+                        (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
+                          ? 'text-green-400 bg-gray-800/50'
+                          : 'text-gray-400 hover:text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Zap className="h-3 w-3" />
+                        <span>Within 5hr</span>
+                        <span className="text-[10px]">({bestMatchFlights.length})</span>
+                      </div>
+                      {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                       )}
-                    </div>
-                    <div className="space-y-2">
-                      {slice.mileageBreakdown.map((segment: any, segIdx: number) => {
-                        const hasMatches = segment.allMatchingFlights && segment.allMatchingFlights.length > 0;
-                        const matchingCount = segment.matchingFlightsCount || segment.allMatchingFlights?.length || 0;
-
-                        return (
-                          <div key={segIdx} className="flex items-center gap-3 text-[11px] bg-gray-900/30 p-2 rounded">
-                            <div className="flex items-center gap-2 flex-1">
-                              <div className="font-mono text-blue-300 font-semibold">{segment.flightNumber || 'N/A'}</div>
-                              <div className="text-gray-400">
-                                <span className="font-mono font-semibold text-gray-300">{segment.origin}</span>
-                                <span className="mx-1">→</span>
-                                <span className="font-mono font-semibold text-gray-300">{segment.destination}</span>
-                              </div>
-                              <div className="text-gray-500">{segment.carrier}</div>
-                            </div>
-                            <div className="text-right">
-                              {segment.matched && segment.mileage ? (
-                                <>
-                                  <div className="text-orange-300 font-semibold">{segment.mileage.toLocaleString()} mi</div>
-                                  {matchingCount > 0 && (
-                                    <div className="text-[9px] text-green-400">{matchingCount} program{matchingCount !== 1 ? 's' : ''}</div>
-                                  )}
-                                  {segment.exactMatch && (
-                                    <div className="text-[9px] text-green-500 font-semibold">Exact Match</div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="text-gray-500 text-[10px]">No matches</div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    </button>
+                    <button
+                      onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
+                      className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
+                        sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
+                          ? 'text-blue-400 bg-gray-800/50'
+                          : 'text-gray-400 hover:text-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        <span>5hr+</span>
+                        <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
+                      </div>
+                      {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                      )}
+                    </button>
                   </div>
-                )}
 
-                {/* Flat List of All Mileage Flights - NO GROUPING */}
-                {(() => {
-                  // Collect ALL flights from ALL segments
-                  const allFlights: any[] = [];
-                  slice.mileageBreakdown.forEach(breakdown => {
-                    if (breakdown.allMatchingFlights) {
-                      breakdown.allMatchingFlights.forEach((flight: any) => {
-                        allFlights.push(flight);
-                      });
-                    }
-                  });
-
-                  // Sort by time proximity to original flight
-                  const originalTime = new Date(slice.departure).getTime();
-                  const sortedFlights = allFlights.sort((a, b) => {
-                    const aTime = new Date(a.departure.at).getTime();
-                    const bTime = new Date(b.departure.at).getTime();
-                    const aDiff = Math.abs(aTime - originalTime);
-                    const bDiff = Math.abs(bTime - originalTime);
-                    return aDiff - bDiff;
-                  });
-
-                  if (sortedFlights.length === 0) {
-                    return <div className="text-center py-4 text-gray-500 text-sm">No mileage alternatives available</div>;
-                  }
-
-                  return (
-                    <div className="border border-gray-700 rounded-lg overflow-hidden">
-                      {/* Simple Header - No Airline Grouping */}
-                      <div className="bg-gray-800/50 px-3 py-2 border-b border-gray-700">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Plane className="h-4 w-4 text-purple-400" />
-                            <span className="text-sm font-semibold text-white">All Available Mileage Flights</span>
-                            <span className="text-xs text-gray-400">({sortedFlights.length} options)</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tabs - Time-based filtering */}
-                      <div className="flex border-b border-gray-700/50 bg-gray-800/30">
-                        <button
-                          onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
-                          className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                            (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
-                              ? 'text-green-400 bg-gray-800/50'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Zap className="h-3 w-3" />
-                            <span>Within 5hr</span>
-                          </div>
-                          {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
-                          className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                            sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
-                              ? 'text-blue-400 bg-gray-800/50'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Clock className="h-3 w-3" />
-                            <span>5hr+</span>
-                          </div>
-                          {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Flight alternatives list */}
-                      <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
-                        {(() => {
-                          let activeTab = sliceAlternativeTabs[sliceIndex] || 'best-match';
-
-                          const bestMatchFlights = sortedFlights.filter(altFlight => {
-                            const flightTime = new Date(altFlight.departure.at).getTime();
-                            const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
-                            return diffMinutes <= 300;
-                          });
-
-                          const timeInsensitiveFlights = sortedFlights.filter(altFlight => {
-                            const flightTime = new Date(altFlight.departure.at).getTime();
-                            const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
-                            return diffMinutes > 300;
-                          });
-
-                          // Auto-switch to tab with records if current tab is empty
-                          if (activeTab === 'best-match' && bestMatchFlights.length === 0 && timeInsensitiveFlights.length > 0) {
-                            activeTab = 'time-insensitive';
-                            setTimeout(() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'}), 0);
-                          } else if (activeTab === 'time-insensitive' && timeInsensitiveFlights.length === 0 && bestMatchFlights.length > 0) {
-                            activeTab = 'best-match';
-                            setTimeout(() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'}), 0);
-                          }
-
-                          const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
-
-                          if (filteredFlights.length === 0) {
-                            return (
-                              <div className="text-center py-4 text-gray-500 text-xs">
-                                No flights in this time range
-                              </div>
-                            );
-                          }
-
-                          // NO CONSOLIDATION - display each flight as its own entry
-                          return filteredFlights.slice(0, 10).map((altFlight, altIndex) => {
+                  {/* Flight List */}
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {filteredFlights.length === 0 ? (
+                      <div className="text-center py-6 text-gray-500 text-sm">No flights in this time range</div>
+                    ) : (
+                      filteredFlights.slice(0, 15).map((altFlight, altIndex) => {
                   // Calculate time difference
                   const flightTime = new Date(altFlight.departure.at).getTime();
                   const originalTime = new Date(slice.departure).getTime();
@@ -1007,11 +934,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   const formatTime = formatTimeInOriginTZ;
                   const formatDate = formatDateInOriginTZ;
 
+                  // Format times in origin timezone
+                  const depTimeFormatted = formatTimeInOriginTZ(altFlight.departure.at);
+                  const depDateFormatted = formatDateInOriginTZ(altFlight.departure.at);
+                  const arrTimeFormatted = formatTimeInOriginTZ(altFlight.arrival.at);
+                  const arrDateFormatted = formatDateInOriginTZ(altFlight.arrival.at);
+
+                  const isNonstop = !altFlight.stops || altFlight.stops.length === 0;
+
                   return (
-                            <div
-                              key={altIndex}
-                              className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700 transition-all duration-200 overflow-hidden"
-                            >
+                    <div
+                      key={altIndex}
+                      className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700 transition-all duration-200 p-3"
+                    >
                               {/* Header with carrier and mileage */}
                               <div className="flex items-center justify-between px-3 py-2 bg-gray-900/30 border-b border-gray-700/50">
                                 <div className="flex items-center gap-2">
@@ -1350,8 +1285,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                               </div>
                             </div>
                           );
-                        });
-                        })()}
+                        })
+                      )}
                       </div>
                     </div>
                   );
