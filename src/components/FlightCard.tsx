@@ -42,6 +42,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
   const [showReturnDropdown, setShowReturnDropdown] = useState(false);
   const [showAddToProposal, setShowAddToProposal] = useState(false);
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
+  const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<number, 'best-match' | 'time-insensitive'>>({});
 
@@ -403,27 +404,29 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
               {mileageDeals && mileageDeals.length > 0 && (
                 <div className="flex items-center gap-2">
                   {(() => {
-                    // Find the best (cheapest) mileage deal
+                    // Find the best (cheapest) mileage deal based on total converted value
                     const bestDeal = mileageDeals.reduce((best, deal) => {
-                      const dealValue = deal.mileage + (deal.mileagePrice * 100); // Weight price more
-                      const bestValue = best.mileage + (best.mileagePrice * 100);
-                      return dealValue < bestValue ? deal : best;
+                      const dealTotalValue = (deal.mileage * 0.15) + deal.mileagePrice;
+                      const bestTotalValue = (best.mileage * 0.15) + best.mileagePrice;
+                      return dealTotalValue < bestTotalValue ? deal : best;
                     });
+
+                    const totalConvertedValue = (bestDeal.mileage * 0.15) + bestDeal.mileagePrice;
 
                     return (
                       <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-[10px] text-orange-500/70 uppercase">Best:</span>
                           <span className="text-sm font-bold text-orange-300">{bestDeal.mileage.toLocaleString()}</span>
-                          <span className="text-xs text-orange-400">miles</span>
+                          <span className="text-xs text-orange-400">mi</span>
                           {bestDeal.mileagePrice > 0 && (
                             <>
-                              <span className="text-xs text-orange-400">+</span>
+                              <span className="text-xs text-orange-400"> + </span>
                               <span className="text-sm font-semibold text-orange-300">${bestDeal.mileagePrice.toFixed(2)}</span>
                             </>
                           )}
                           <span className="text-[10px] text-orange-500/70 ml-1">
-                            @ ${(bestDeal.mileagePrice / bestDeal.mileage).toFixed(3)}/mi
+                            ≈ ${totalConvertedValue.toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -758,37 +761,41 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   return groupedPrograms.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-gray-400 font-medium text-xs lg:text-sm">Miles:</span>
-                      {groupedPrograms.map((program, progIndex) => (
-                        <button
-                          key={program.carrierCode}
-                          onClick={() => setExpandedSlices(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
-                          className={`text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1 relative ${
-                            program.matchType === 'exact'
-                              ? 'bg-green-500/20 border border-green-500/30'
-                              : program.matchType === 'partial'
-                              ? 'bg-purple-500/20 border border-purple-500/30'
-                              : 'bg-blue-500/20 border border-blue-500/30'
-                          }`}
-                        >
-                          <img
-                            src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
-                            alt={program.carrierCode}
-                            className="h-3 w-3 object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                          <span className="font-semibold">{program.carrierCode}:</span>
-                          <span>{program.totalMileage.toLocaleString()}</span>
-                          {program.totalPrice > 0 && (
-                            <>
-                              <span>+</span>
-                              <span>${program.totalPrice.toFixed(2)}</span>
-                            </>
-                          )}
-                          {progIndex === 0 && <ChevronDown className={`h-3 w-3 transition-transform ${expandedSlices[sliceIndex] ? 'rotate-180' : ''}`} />}
-                        </button>
-                      ))}
+                      {groupedPrograms.map((program, progIndex) => {
+                        const airlineKey = `${sliceIndex}-${program.carrierCode}`;
+                        const isExpanded = expandedSliceAirlines[airlineKey];
+                        return (
+                          <button
+                            key={program.carrierCode}
+                            onClick={() => setExpandedSliceAirlines(prev => ({ ...prev, [airlineKey]: !prev[airlineKey] }))}
+                            className={`text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1 relative ${
+                              program.matchType === 'exact'
+                                ? 'bg-green-500/20 border border-green-500/30'
+                                : program.matchType === 'partial'
+                                ? 'bg-purple-500/20 border border-purple-500/30'
+                                : 'bg-blue-500/20 border border-blue-500/30'
+                            }`}
+                          >
+                            <img
+                              src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
+                              alt={program.carrierCode}
+                              className="h-3 w-3 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <span className="font-semibold">{program.carrierCode}:</span>
+                            <span>{program.totalMileage.toLocaleString()}</span>
+                            {program.totalPrice > 0 && (
+                              <>
+                                <span>+</span>
+                                <span>${program.totalPrice.toFixed(2)}</span>
+                              </>
+                            )}
+                            <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+                        );
+                      })}
                     </div>
                   );
                 })()}
@@ -802,17 +809,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
               </div>
             )}
 
-            {/* Expanded Mileage Alternatives */}
-            {expandedSlices[sliceIndex] && slice.mileageBreakdown && (() => {
-              // Collect ALL flights from ALL segments - NO GROUPING
-              const allFlights: any[] = [];
-              slice.mileageBreakdown.forEach(breakdown => {
-                if (breakdown.allMatchingFlights) {
-                  breakdown.allMatchingFlights.forEach((flight: any) => {
-                    allFlights.push(flight);
-                  });
+            {/* Expanded Mileage Alternatives - Per Airline */}
+            {slice.mileageBreakdown && (() => {
+              const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+
+              return groupedPrograms.map((program) => {
+                const airlineKey = `${sliceIndex}-${program.carrierCode}`;
+                if (!expandedSliceAirlines[airlineKey]) {
+                  return null;
                 }
-              });
+
+                // Get flights for THIS airline only
+                const allFlights: any[] = [];
+                slice.mileageBreakdown.forEach(breakdown => {
+                  if (breakdown.allMatchingFlights) {
+                    breakdown.allMatchingFlights.forEach((flight: any) => {
+                      // Filter by carrier code
+                      if (flight.carrierCode === program.carrierCode) {
+                        allFlights.push(flight);
+                      }
+                    });
+                  }
+                });
 
               if (allFlights.length === 0) {
                 return null;
@@ -850,25 +868,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
 
               const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
 
-              return (
-                <div className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-700">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Plane className="h-4 w-4 text-purple-400" />
-                      <span className="text-sm font-semibold text-white">Mileage Booking Options</span>
-                      <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
+                return (
+                  <div key={airlineKey} className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-700">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
+                          alt={program.carrierCode}
+                          className="h-5 w-5 object-contain"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                        <span className="text-sm font-semibold text-white">{program.carrierCode} Mileage Options</span>
+                        <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
+                      </div>
                     </div>
-                  </div>
 
                   {/* Tabs */}
                   <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
                     <button
-                      onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
+                      onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'best-match'})}
+                      disabled={bestMatchFlights.length === 0}
                       className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                        (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
+                        bestMatchFlights.length === 0
+                          ? 'text-gray-600 cursor-not-allowed opacity-50'
+                          : (sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match'
                           ? 'text-green-400 bg-gray-800/50'
-                          : 'text-gray-400 hover:text-gray-300'
+                          : 'text-gray-400 hover:text-gray-300 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center justify-center gap-1.5">
@@ -876,16 +902,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                         <span>Within 5hr</span>
                         <span className="text-[10px]">({bestMatchFlights.length})</span>
                       </div>
-                      {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && (
+                      {(sliceAlternativeTabs[sliceIndex] || 'best-match') === 'best-match' && bestMatchFlights.length > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                       )}
                     </button>
                     <button
-                      onClick={() => setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
+                      onClick={() => timeInsensitiveFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [sliceIndex]: 'time-insensitive'})}
+                      disabled={timeInsensitiveFlights.length === 0}
                       className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                        sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
+                        timeInsensitiveFlights.length === 0
+                          ? 'text-gray-600 cursor-not-allowed opacity-50'
+                          : sliceAlternativeTabs[sliceIndex] === 'time-insensitive'
                           ? 'text-blue-400 bg-gray-800/50'
-                          : 'text-gray-400 hover:text-gray-300'
+                          : 'text-gray-400 hover:text-gray-300 cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center justify-center gap-1.5">
@@ -893,7 +922,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                         <span>5hr+</span>
                         <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
                       </div>
-                      {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && (
+                      {sliceAlternativeTabs[sliceIndex] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
                       )}
                     </button>
@@ -959,20 +988,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                           <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
                           <span className="text-xs text-gray-400">{carrierName}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="bg-orange-500/15 border border-orange-400/40 rounded px-2 py-1">
-                            <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
-                            <span className="text-[10px] text-orange-400/70"> mi</span>
-                            <span className="text-xs text-orange-400/60"> + </span>
-                            <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-orange-500/15 border border-orange-400/40 rounded px-2 py-1">
+                              <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
+                              <span className="text-[10px] text-orange-400/70"> mi</span>
+                              <span className="text-xs text-orange-400/60"> + </span>
+                              <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
+                            </div>
+                            <button
+                              onClick={() => setShowAddToProposal(true)}
+                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Add
+                            </button>
                           </div>
-                          <button
-                            onClick={() => setShowAddToProposal(true)}
-                            className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
-                          >
-                            <Plus className="h-3 w-3" />
-                            Add
-                          </button>
+                          <div className="text-[10px] text-orange-400/80">
+                            Total Value: ${((altFlight.mileage * 0.15) + priceNum).toFixed(2)}
+                          </div>
                         </div>
                       </div>
 
@@ -1040,10 +1074,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   );
                 })
               )}
-              </div>
-            </div>
-          );
-        })()}
+                  </div>
+                </div>
+              );
+            });
+          })()}
           </div>
         ))}
       </div>

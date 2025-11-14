@@ -647,6 +647,20 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               </select>
             </div>
 
+            {/* Page Size */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-300">Results</label>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
+              >
+                {[5, 10, 25, 50, 100, 200, 300, 400, 500].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Divider - hide on small screens */}
             <div className="hidden sm:block h-6 w-px bg-gray-700"></div>
 
