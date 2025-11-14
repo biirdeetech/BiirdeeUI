@@ -41,6 +41,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
   const [selectedReturnIndex, setSelectedReturnIndex] = useState(0);
   const [showReturnDropdown, setShowReturnDropdown] = useState(false);
   const [showAddToProposal, setShowAddToProposal] = useState(false);
+  const [selectedMileageFlight, setSelectedMileageFlight] = useState<any>(null);
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
@@ -997,7 +998,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                               <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
                             </div>
                             <button
-                              onClick={() => setShowAddToProposal(true)}
+                              onClick={() => {
+                                setSelectedMileageFlight(altFlight);
+                                setShowAddToProposal(true);
+                              }}
                               className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
                             >
                               <Plus className="h-3 w-3" />
@@ -1088,7 +1092,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
       {showAddToProposal && (
         <AddToProposalModal
           flight={flight}
-          onClose={() => setShowAddToProposal(false)}
+          selectedMileageFlight={selectedMileageFlight}
+          onClose={() => {
+            setShowAddToProposal(false);
+            setSelectedMileageFlight(null);
+          }}
         />
       )}
 

@@ -524,18 +524,22 @@ const SearchPage: React.FC = () => {
         const bDuration = b.slices.reduce((sum, slice) => sum + slice.duration, 0);
         comparison = aDuration - bDuration;
       } else if (filterState.sortBy === 'miles') {
-        // Sort by mileage (for aero searches)
+        // Sort by mileage USD value (miles * 0.15 + fees)
         // Flights without mileage go to end
-        const aMileage = a.totalMileage || (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
-        const bMileage = b.totalMileage || (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
-        comparison = aMileage - bMileage;
+        const aMileage = a.totalMileage || 0;
+        const bMileage = b.totalMileage || 0;
+        const aMileagePrice = a.totalMileagePrice || 0;
+        const bMileagePrice = b.totalMileagePrice || 0;
 
-        // If mileage is equal, compare fees
-        if (comparison === 0 && a.totalMileage && b.totalMileage) {
-          const aMileagePrice = a.totalMileagePrice || 0;
-          const bMileagePrice = b.totalMileagePrice || 0;
-          comparison = aMileagePrice - bMileagePrice;
-        }
+        // Calculate total USD value for each flight
+        const aValue = aMileage > 0
+          ? (aMileage * 0.15) + aMileagePrice
+          : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
+        const bValue = bMileage > 0
+          ? (bMileage * 0.15) + bMileagePrice
+          : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
+
+        comparison = aValue - bValue;
       } else if (filterState.sortBy === 'value') {
         // Comprehensive value scoring
         const getValueScore = (flight: any) => {

@@ -26,10 +26,11 @@ interface Client {
 
 interface AddToProposalModalProps {
   flight: FlightSolution | GroupedFlight;
+  selectedMileageFlight?: any;
   onClose: () => void;
 }
 
-const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, onClose }) => {
+const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selectedMileageFlight, onClose }) => {
   const { user, profile } = useAuth();
   const { showNotification } = useNotification();
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -203,12 +204,26 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, onClose
 
       const nextOptionNumber = (existingOptions?.[0]?.option_number || 0) + 1;
 
+      // Prepare flight data - include mileage info if selected
+      const flightDataToSave = selectedMileageFlight
+        ? {
+            ...flight,
+            selectedMileageOption: selectedMileageFlight,
+            mileageDetails: {
+              carrier: selectedMileageFlight.carrierCode,
+              mileage: selectedMileageFlight.mileage,
+              mileagePrice: selectedMileageFlight.mileagePrice,
+              totalValue: (selectedMileageFlight.mileage * 0.15) + parseFloat(selectedMileageFlight.mileagePrice || 0)
+            }
+          }
+        : flight;
+
       // Add flight to proposal
       const { error } = await supabase
         .from('proposal_options')
         .insert({
           proposal_id: proposalId,
-          flight_data: flight,
+          flight_data: flightDataToSave,
           agent_notes: agentNotes,
           selected_price: selectedPrice,
           option_number: nextOptionNumber,
@@ -303,6 +318,36 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, onClose
                 <span className="text-white ml-2">{formatPrice(flightPrice)}</span>
               </div>
             </div>
+            {selectedMileageFlight && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-orange-500/70 uppercase font-medium">Mileage Option Selected</span>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-sm font-bold text-orange-300">{selectedMileageFlight.mileage?.toLocaleString()}</span>
+                        <span className="text-xs text-orange-400">miles</span>
+                        <span className="text-xs text-orange-400"> + </span>
+                        <span className="text-sm font-semibold text-orange-300">
+                          ${typeof selectedMileageFlight.mileagePrice === 'string'
+                            ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, '')).toFixed(2)
+                            : selectedMileageFlight.mileagePrice?.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-orange-500/70 uppercase font-medium">Total Value</span>
+                      <div className="text-lg font-bold text-orange-300">
+                        ${((selectedMileageFlight.mileage * 0.15) +
+                          (typeof selectedMileageFlight.mileagePrice === 'string'
+                            ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+                            : selectedMileageFlight.mileagePrice)).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Add to Existing Proposal */}
