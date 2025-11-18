@@ -10,9 +10,10 @@ import FlightSegmentDetails from './FlightSegmentDetails';
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
   originTimezone?: string;
+  perCentValue?: number;
 }
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015 }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     const date = new Date(dateStr);
@@ -407,12 +408,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   {(() => {
                     // Find the best (cheapest) mileage deal based on total converted value
                     const bestDeal = mileageDeals.reduce((best, deal) => {
-                      const dealTotalValue = (deal.mileage * 0.015) + deal.mileagePrice;
-                      const bestTotalValue = (best.mileage * 0.015) + best.mileagePrice;
+                      const dealTotalValue = (deal.mileage * perCentValue) + deal.mileagePrice;
+                      const bestTotalValue = (best.mileage * perCentValue) + best.mileagePrice;
                       return dealTotalValue < bestTotalValue ? deal : best;
                     });
 
-                    const totalConvertedValue = (bestDeal.mileage * 0.015) + bestDeal.mileagePrice;
+                    const totalConvertedValue = (bestDeal.mileage * perCentValue) + bestDeal.mileagePrice;
 
                     return (
                       <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
@@ -1031,7 +1032,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                             </button>
                           </div>
                           <div className="text-[10px] text-orange-400/80">
-                            Total Value: ${((altFlight.mileage * 0.015) + priceNum).toFixed(2)}
+                            Total Value: ${((altFlight.mileage * perCentValue) + priceNum).toFixed(2)}
                           </div>
                         </div>
                       </div>
@@ -1115,6 +1116,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
         <AddToProposalModal
           flight={flight}
           selectedMileageFlight={selectedMileageFlight}
+          perCentValue={perCentValue}
           onClose={() => {
             setShowAddToProposal(false);
             setSelectedMileageFlight(null);

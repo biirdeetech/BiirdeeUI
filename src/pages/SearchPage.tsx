@@ -41,6 +41,7 @@ const SearchPage: React.FC = () => {
   const [streamComplete, setStreamComplete] = useState(false);
   const [originTimezone, setOriginTimezone] = useState<string | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [perCentValue, setPerCentValue] = useState(0.015);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
@@ -231,6 +232,9 @@ const SearchPage: React.FC = () => {
   useEffect(() => {
     const timezone = searchParams.get('leg0_originTimezone') || searchParams.get('originTimezone');
     setOriginTimezone(timezone || undefined);
+
+    const perCent = parseFloat(searchParams.get('perCentValue') || '0.015');
+    setPerCentValue(perCent);
   }, [searchParams]);
 
   console.log('🔍 SearchPage: Extracted URL parameters:', extractedParams);
@@ -524,7 +528,7 @@ const SearchPage: React.FC = () => {
         const bDuration = b.slices.reduce((sum, slice) => sum + slice.duration, 0);
         comparison = aDuration - bDuration;
       } else if (filterState.sortBy === 'miles') {
-        // Sort by mileage USD value (miles * 0.015 + fees)
+        // Sort by mileage USD value (miles * perCentValue + fees)
         // Flights without mileage go to end
         const aMileage = a.totalMileage || 0;
         const bMileage = b.totalMileage || 0;
@@ -533,10 +537,10 @@ const SearchPage: React.FC = () => {
 
         // Calculate total USD value for each flight
         const aValue = aMileage > 0
-          ? (aMileage * 0.015) + aMileagePrice
+          ? (aMileage * perCentValue) + aMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
         const bValue = bMileage > 0
-          ? (bMileage * 0.015) + bMileagePrice
+          ? (bMileage * perCentValue) + bMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
 
         comparison = aValue - bValue;
@@ -743,6 +747,7 @@ const SearchPage: React.FC = () => {
               currentPage={extractedParams.pageNum || 1}
               pageSize={extractedParams.pageSize || 25}
               originTimezone={originTimezone}
+              perCentValue={perCentValue}
             />
           </div>
         </div>

@@ -27,10 +27,11 @@ interface Client {
 interface AddToProposalModalProps {
   flight: FlightSolution | GroupedFlight;
   selectedMileageFlight?: any;
+  perCentValue?: number;
   onClose: () => void;
 }
 
-const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selectedMileageFlight, onClose }) => {
+const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selectedMileageFlight, perCentValue = 0.015, onClose }) => {
   const { user, profile } = useAuth();
   const { showNotification } = useNotification();
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -213,7 +214,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
               carrier: selectedMileageFlight.carrierCode,
               mileage: selectedMileageFlight.mileage,
               mileagePrice: selectedMileageFlight.mileagePrice,
-              totalValue: (selectedMileageFlight.mileage * 0.015) + parseFloat(selectedMileageFlight.mileagePrice || 0)
+              totalValue: (selectedMileageFlight.mileage * perCentValue) + parseFloat(selectedMileageFlight.mileagePrice || 0)
             }
           }
         : flight;
@@ -338,7 +339,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
                     <div className="text-right">
                       <span className="text-xs text-orange-500/70 uppercase font-medium">Total Value</span>
                       <div className="text-lg font-bold text-orange-300">
-                        ${((selectedMileageFlight.mileage * 0.015) +
+                        ${((selectedMileageFlight.mileage * perCentValue) +
                           (typeof selectedMileageFlight.mileagePrice === 'string'
                             ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, ''))
                             : selectedMileageFlight.mileagePrice)).toFixed(2)}

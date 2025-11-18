@@ -62,6 +62,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [passengers, setPassengers] = useState(1);
+  const [perCentValue, setPerCentValue] = useState(0.015);
 
   const [legs, setLegs] = useState<FlightLeg[]>([
     {
@@ -182,6 +183,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
       // Initialize pagination and aero options from URL
       setPageSize(parseInt(searchParams.get('pageSize') || '25'));
+      setPerCentValue(parseFloat(searchParams.get('perCentValue') || '0.015'));
       setPageNum(parseInt(searchParams.get('pageNum') || '1'));
       setAeroEnabled(searchParams.get('aero') === 'true');
       setAirlines(searchParams.get('airlines') || '');
@@ -587,6 +589,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
     // Add pagination options
     searchParams.append('pageSize', pageSize.toString());
+    searchParams.append('perCentValue', perCentValue.toString());
     searchParams.append('pageNum', pageNum.toString());
 
     // Add aero options
@@ -664,6 +667,20 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <option key={size} value={size}>{size}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Per Cent Value */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-300">Per Cent Value</label>
+              <input
+                type="number"
+                value={perCentValue}
+                onChange={(e) => setPerCentValue(Number(e.target.value))}
+                step="0.001"
+                min="0"
+                max="1"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all w-24"
+              />
             </div>
 
             {/* Divider - hide on small screens */}
