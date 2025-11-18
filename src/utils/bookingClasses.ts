@@ -9,7 +9,7 @@ export const getDefaultBookingClasses = (cabin: string): string[] => {
       return ['W', 'R', 'G', 'P', 'T', 'S'];
     case 'COACH':
       return [
-         'Y', 'B', 'M', 'H', 'K', 'L', 'Q', 'V', 'S', 'N', 'T', 'R', 'O', 'E', 'X', 'U', 'G', 'Z'
+         'Y','B','M','H','K','L','Q','V','S','N','T','R','O','E','X','U','G','Z'
         ];
     default:
       return [];
