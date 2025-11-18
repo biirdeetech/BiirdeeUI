@@ -29,18 +29,9 @@ export const bookingClassesToExt = (classes: string[]): string => {
 export const extToBookingClasses = (ext: string): string[] => {
   if (!ext) return [];
 
-  // CASE 1 — New syntax: bc=C:~[abc]
-  const newSyntaxMatch = ext.match(/bc=C:~\[([a-z]+)\]/i);
-  if (newSyntaxMatch) {
-    const letters = newSyntaxMatch[1].split('');
-    return letters.map(l => l.toUpperCase());
-  }
+  // Matches bc=y or BC=y (case-insensitive)
+  const matches = ext.match(/bc=([a-z])/gi);
+  if (!matches) return [];
 
-  // CASE 2 — Legacy syntax: bc=y|bc=h etc
-  const legacyMatches = ext.match(/bc=([a-z])/gi);
-  if (legacyMatches) {
-    return legacyMatches.map(m => m.replace(/bc=/i, '').toUpperCase());
-  }
-
-  return [];
+  return matches.map(m => m.replace(/bc=/i, '').toUpperCase());
 };
