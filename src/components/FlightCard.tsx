@@ -484,14 +484,47 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
               {/* Total Price */}
               <div className="flex flex-col items-end">
-                <div className="text-xl font-medium text-neutral-100">
-                  {formatPrice(displayTotal, currency)}
-                </div>
-                {totalMileage > 0 && matchType === 'exact' && (
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage Value: ${((totalMileage * perCentValue) + totalMileagePrice).toFixed(2)}
-                  </div>
-                )}
+                {(() => {
+                  // Calculate best mileage value from cabin groups
+                  const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
+                  const bestMileageValue = cabinMileageOptions.length > 0
+                    ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
+                    : null;
+
+                  // Parse cash price
+                  const cashPrice = typeof displayTotal === 'string'
+                    ? parseFloat(displayTotal.replace(/[^0-9.]/g, ''))
+                    : displayTotal;
+
+                  // Show strike-through if mileage is significantly cheaper (more than 30% savings)
+                  const showStrikeThrough = matchType === 'exact' && bestMileageValue && bestMileageValue < cashPrice * 0.7;
+
+                  return (
+                    <>
+                      <div className={`text-xl font-medium ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                        {formatPrice(displayTotal, currency)}
+                        {showStrikeThrough && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
+                          </div>
+                        )}
+                      </div>
+                      {showStrikeThrough && bestMileageValue && (
+                        <button
+                          onClick={() => {
+                            const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
+                            if (dealIndex >= 0) {
+                              setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                            }
+                          }}
+                          className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer"
+                        >
+                          ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash price</span>
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
