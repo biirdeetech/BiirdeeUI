@@ -72,7 +72,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: true,
       departDate: getDefaultDepartDate(),
-      cabin: 'BUSINESS',
+      cabin: 'COACH',
       bookingClasses: (() => {
         const businessClasses = getDefaultBookingClasses('BUSINESS');
         const firstClasses = getDefaultBookingClasses('FIRST');
