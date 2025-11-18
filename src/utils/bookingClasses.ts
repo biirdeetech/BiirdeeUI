@@ -38,5 +38,5 @@ export const extToBookingClasses = (ext: string): string[] => {
 
 export const getDefaultBookingClasses = (cabin: string): string[] => {
   const key = cabin.replace('-', '_').toUpperCase();
-  return CABIN_BUCKETS[key] ?? [];
+  return getDefaultBookingClasses(key)
 };
