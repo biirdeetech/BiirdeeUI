@@ -407,12 +407,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                   {(() => {
                     // Find the best (cheapest) mileage deal based on total converted value
                     const bestDeal = mileageDeals.reduce((best, deal) => {
-                      const dealTotalValue = (deal.mileage * 0.15) + deal.mileagePrice;
-                      const bestTotalValue = (best.mileage * 0.15) + best.mileagePrice;
+                      const dealTotalValue = (deal.mileage * 0.015) + deal.mileagePrice;
+                      const bestTotalValue = (best.mileage * 0.015) + best.mileagePrice;
                       return dealTotalValue < bestTotalValue ? deal : best;
                     });
 
-                    const totalConvertedValue = (bestDeal.mileage * 0.15) + bestDeal.mileagePrice;
+                    const totalConvertedValue = (bestDeal.mileage * 0.015) + bestDeal.mileagePrice;
 
                     return (
                       <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
@@ -448,7 +448,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                 </div>
                 {totalMileage > 0 && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage Value: ${((totalMileage * 0.15) + totalMileagePrice).toFixed(2)}
+                    Mileage Value: ${((totalMileage * 0.015) + totalMileagePrice).toFixed(2)}
                   </div>
                 )}
               </div>
