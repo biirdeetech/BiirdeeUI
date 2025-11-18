@@ -19,13 +19,11 @@ export const getDefaultBookingClasses = (cabin: string): string[] => {
 export const bookingClassesToExt = (classes: string[]): string => {
   if (!classes || classes.length === 0) return '';
 
-  // Deduplicate + sort-like grouping for predictable output
   const unique = Array.from(new Set(classes.map(c => c.toUpperCase())));
 
-  // ITA wants lowercase inside the brackets
-  const bracket = unique.map(c => c.toLowerCase()).join('');
+  const parts = unique.map(c => `bc=${c.toLowerCase()}`);
 
-  return `f bc=C:~[${bracket}]`;
+  return `f ${parts.join('|')}`;
 };
 
 export const extToBookingClasses = (ext: string): string[] => {
