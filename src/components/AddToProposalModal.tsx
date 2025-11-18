@@ -338,7 +338,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
                     <div className="text-right">
                       <span className="text-xs text-orange-500/70 uppercase font-medium">Total Value</span>
                       <div className="text-lg font-bold text-orange-300">
-                        ${((selectedMileageFlight.mileage * 0.15) +
+                        ${((selectedMileageFlight.mileage * 0.015) +
                           (typeof selectedMileageFlight.mileagePrice === 'string'
                             ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, ''))
                             : selectedMileageFlight.mileagePrice)).toFixed(2)}
