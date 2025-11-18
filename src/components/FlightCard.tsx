@@ -386,7 +386,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
             )}
             {isPremium && (
               <div className="px-2 py-1 bg-accent-500/20 text-accent-400 text-xs font-medium rounded">
-                Premium
+                Premium Carrier
               </div>
             )}
             {slices.length > 1 && (
