@@ -402,8 +402,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
             {/* Price Display - Right Aligned with Mileage on Left */}
             <div className="flex flex-wrap items-baseline gap-3 justify-end">
-              {/* Mileage Info - Left Side */}
-              {mileageDeals && mileageDeals.length > 0 && (
+              {/* Mileage Info - Left Side - Only show for exact match */}
+              {mileageDeals && mileageDeals.length > 0 && matchType === 'exact' && (
                 <div className="flex items-center gap-2">
                   {(() => {
                     // Find the best (cheapest) mileage deal based on total converted value
@@ -447,9 +447,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <div className="text-xl font-medium text-neutral-100">
                   {formatPrice(displayTotal, currency)}
                 </div>
-                {totalMileage > 0 && (
+                {totalMileage > 0 && matchType === 'exact' && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Mileage Value: ${((totalMileage * 0.015) + totalMileagePrice).toFixed(2)}
+                    Mileage Value: ${((totalMileage * perCentValue) + totalMileagePrice).toFixed(2)}
                   </div>
                 )}
               </div>
