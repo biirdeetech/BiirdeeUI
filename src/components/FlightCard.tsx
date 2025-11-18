@@ -1031,7 +1031,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                             </button>
                           </div>
                           <div className="text-[10px] text-orange-400/80">
-                            Total Value: ${((altFlight.mileage * 0.15) + priceNum).toFixed(2)}
+                            Total Value: ${((altFlight.mileage * 0.015) + priceNum).toFixed(2)}
                           </div>
                         </div>
                       </div>
