@@ -213,7 +213,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
               carrier: selectedMileageFlight.carrierCode,
               mileage: selectedMileageFlight.mileage,
               mileagePrice: selectedMileageFlight.mileagePrice,
-              totalValue: (selectedMileageFlight.mileage * 0.15) + parseFloat(selectedMileageFlight.mileagePrice || 0)
+              totalValue: (selectedMileageFlight.mileage * 0.015) + parseFloat(selectedMileageFlight.mileagePrice || 0)
             }
           }
         : flight;
