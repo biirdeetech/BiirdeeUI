@@ -13,6 +13,51 @@ interface FlightCardProps {
   perCentValue?: number;
 }
 
+// Helper to group mileage options by cabin and find best value per cabin
+const groupMileageByCabin = (slices: any[], perCentValue: number) => {
+  const cabinGroups = new Map<string, { mileage: number; price: number; totalValue: number }>();
+
+  slices.forEach((slice: any) => {
+    if (slice.mileageBreakdown && Array.isArray(slice.mileageBreakdown)) {
+      slice.mileageBreakdown.forEach((breakdown: any) => {
+        if (breakdown.allMatchingFlights && Array.isArray(breakdown.allMatchingFlights)) {
+          breakdown.allMatchingFlights.forEach((flight: any) => {
+            const cabin = flight.cabin || 'UNKNOWN';
+            const mileage = flight.mileage || 0;
+
+            // Parse price (handle AUD/USD/etc)
+            let price = 0;
+            const priceStr = flight.mileagePrice || '0';
+            if (typeof priceStr === 'string') {
+              const cleaned = priceStr.replace(/[A-Z]+\s*/g, '').trim();
+              price = parseFloat(cleaned) || 0;
+              // Simple currency conversion (AUD to USD approximation)
+              if (priceStr.includes('AUD')) {
+                price = price * 0.65;
+              }
+            } else {
+              price = priceStr;
+            }
+
+            const totalValue = (mileage * perCentValue) + price;
+
+            // Keep only the best (lowest) value for each cabin
+            const existing = cabinGroups.get(cabin);
+            if (!existing || totalValue < existing.totalValue) {
+              cabinGroups.set(cabin, { mileage, price, totalValue });
+            }
+          });
+        }
+      });
+    }
+  });
+
+  return Array.from(cabinGroups.entries()).map(([cabin, data]) => ({
+    cabin,
+    ...data
+  }));
+};
+
 const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015 }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
@@ -402,40 +447,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
             {/* Price Display - Right Aligned with Mileage on Left */}
             <div className="flex flex-wrap items-baseline gap-3 justify-end">
-              {/* Mileage Info - Left Side - Only show for exact match */}
-              {mileageDeals && mileageDeals.length > 0 && matchType === 'exact' && (
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    // Find the best (cheapest) mileage deal based on total converted value
-                    const bestDeal = mileageDeals.reduce((best, deal) => {
-                      const dealTotalValue = (deal.mileage * perCentValue) + deal.mileagePrice;
-                      const bestTotalValue = (best.mileage * perCentValue) + best.mileagePrice;
-                      return dealTotalValue < bestTotalValue ? deal : best;
-                    });
+              {/* Mileage Info - Left Side - Only show for exact match, grouped by cabin */}
+              {matchType === 'exact' && (() => {
+                const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
 
-                    const totalConvertedValue = (bestDeal.mileage * perCentValue) + bestDeal.mileagePrice;
+                if (cabinMileageOptions.length === 0) return null;
 
-                    return (
-                      <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
+                return (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {cabinMileageOptions.map(({ cabin, mileage, price, totalValue }) => (
+                      <div key={cabin} className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
                         <div className="flex items-baseline gap-1.5">
-                          <span className="text-[10px] text-orange-500/70 uppercase">Best:</span>
-                          <span className="text-sm font-bold text-orange-300">{bestDeal.mileage.toLocaleString()}</span>
+                          <span className="text-[10px] text-orange-500/70 uppercase">{cabin}:</span>
+                          <span className="text-sm font-bold text-orange-300">{mileage.toLocaleString()}</span>
                           <span className="text-xs text-orange-400">mi</span>
-                          {bestDeal.mileagePrice > 0 && (
+                          {price > 0 && (
                             <>
                               <span className="text-xs text-orange-400"> + </span>
-                              <span className="text-sm font-semibold text-orange-300">${bestDeal.mileagePrice.toFixed(2)}</span>
+                              <span className="text-sm font-semibold text-orange-300">${price.toFixed(2)}</span>
                             </>
                           )}
                           <span className="text-[10px] text-orange-500/70 ml-1">
-                            ≈ ${totalConvertedValue.toFixed(2)}
+                            ≈ ${totalValue.toFixed(2)}
                           </span>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Price Per Mile */}
               <div className="text-xs text-gray-400">
