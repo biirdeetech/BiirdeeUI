@@ -1258,9 +1258,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   </div>
                 </div>
               );
-            });
-          })
+              });
+            })()}
+          </div>
         ))}
+      </div>
 
 
       {/* Add to Proposal Modal */}
