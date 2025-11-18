@@ -1,7 +1,7 @@
 export const getDefaultBookingClasses = (cabin: string): string[] => {
   switch (cabin) {
     case 'FIRST':
-      return ['F', 'A', 'P'];
+      return ['F', 'A'];
     case 'BUSINESS':
       return ['C', 'J', 'D', 'I', 'Z'];
     case 'PREMIUM-COACH':
