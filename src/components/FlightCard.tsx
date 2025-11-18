@@ -577,8 +577,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                       {slice.cabins[0]}
                     </div>
                   )}
-                  {/* Departure flight number */}
-                  {slice.flights && slice.flights.length > 0 && slice.flights[0] && (
+                  {/* Departure flight number - only show for connecting flights */}
+                  {(!slice.stops || slice.stops.length > 0) && slice.flights && slice.flights.length > 0 && slice.flights[0] && (
                     <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                       {slice.flights[0]}
                     </div>
@@ -590,7 +590,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                     const isNonstop = !slice.stops || slice.stops.length === 0;
 
                     if (isNonstop) {
-                      // Nonstop flight - single green line with plane in middle
+                      // Nonstop flight - show carrier info in center
+                      const firstSegment = slice.segments?.[0];
+                      const carrierCode = firstSegment?.carrier?.code;
+                      const flightNumber = slice.flights?.[0];
+
                       return (
                         <>
                           <div className="flex items-center gap-1 relative">
@@ -599,10 +603,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                             <div className="flex-1 border-t-2 border-emerald-500/40"></div>
                           </div>
 
-                          {/* Duration below */}
-                          <div className="text-center text-xs lg:text-sm font-medium text-gray-200 mt-2">
-                            <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3 inline mr-1" />
-                            {formatDuration(slice.duration)}
+                          {/* Carrier and flight number in center */}
+                          <div className="flex flex-col items-center gap-1 mt-2">
+                            {carrierCode && (
+                              <div className="flex items-center gap-1.5">
+                                <img
+                                  src={`https://www.gstatic.com/flights/airline_logos/35px/${carrierCode}.png`}
+                                  alt={carrierCode}
+                                  className="h-4 w-4 object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                                {flightNumber && (
+                                  <span className="text-xs text-gray-400 font-mono">{flightNumber}</span>
+                                )}
+                              </div>
+                            )}
+                            {/* Duration */}
+                            <div className="text-xs lg:text-sm font-medium text-gray-200 flex items-center gap-1">
+                              <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+                              {formatDuration(slice.duration)}
+                            </div>
                           </div>
                         </>
                       );
@@ -725,8 +747,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone }) => {
                       {slice.cabins[slice.cabins.length - 1]}
                     </div>
                   )}
-                  {/* Arrival flight number - last segment */}
-                  {slice.flights && slice.flights.length > 0 && slice.flights[slice.flights.length - 1] && (
+                  {/* Arrival flight number - last segment - only show for connecting flights */}
+                  {(!slice.stops || slice.stops.length > 0) && slice.flights && slice.flights.length > 0 && slice.flights[slice.flights.length - 1] && (
                     <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                       {slice.flights[slice.flights.length - 1]}
                     </div>
