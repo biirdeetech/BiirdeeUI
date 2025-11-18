@@ -13,6 +13,64 @@ interface FlightCardProps {
   perCentValue?: number;
 }
 
+// Helper to group similar mileage flights for cleaner display
+const groupMileageFlights = (flights: any[]) => {
+  const groups: { [key: string]: { flights: any[]; type: 'airline' | 'time' | 'date' | 'single' } } = {};
+
+  flights.forEach((flight) => {
+    const depDate = new Date(flight.departure.at).toISOString().split('T')[0];
+    const depTime = new Date(flight.departure.at).toTimeString().slice(0, 5);
+    const route = `${flight.departure.iataCode}-${flight.arrival.iataCode}`;
+
+    // Try to group by: same route + same time + same date → different airlines
+    const routeTimeDate = `${route}|${depTime}|${depDate}`;
+
+    // Try to group by: same route + same airline + same date → different times
+    const routeAirlineDate = `${route}|${flight.carrierCode}|${depDate}`;
+
+    // Try to group by: same route + same airline + same time → different dates
+    const routeAirlineTime = `${route}|${flight.carrierCode}|${depTime}`;
+
+    if (!groups[routeTimeDate]) {
+      groups[routeTimeDate] = { flights: [], type: 'airline' };
+    }
+    groups[routeTimeDate].flights.push(flight);
+  });
+
+  // Convert to array and mark group types
+  return Object.entries(groups).map(([key, group]) => {
+    if (group.flights.length === 1) {
+      return { ...group, type: 'single' as const };
+    }
+
+    // Determine actual grouping type
+    const firstFlight = group.flights[0];
+    const sameAirline = group.flights.every(f => f.carrierCode === firstFlight.carrierCode);
+    const sameTime = group.flights.every(f => {
+      const t1 = new Date(f.departure.at).toTimeString().slice(0, 5);
+      const t2 = new Date(firstFlight.departure.at).toTimeString().slice(0, 5);
+      return t1 === t2;
+    });
+    const sameDate = group.flights.every(f => {
+      const d1 = new Date(f.departure.at).toISOString().split('T')[0];
+      const d2 = new Date(firstFlight.departure.at).toISOString().split('T')[0];
+      return d1 === d2;
+    });
+
+    if (!sameAirline && sameTime && sameDate) {
+      return { ...group, type: 'airline' as const };
+    } else if (sameAirline && !sameTime && sameDate) {
+      return { ...group, type: 'time' as const };
+    } else if (sameAirline && sameTime && !sameDate) {
+      return { ...group, type: 'date' as const };
+    }
+
+    return { ...group, type: 'single' as const };
+  }).flatMap(group =>
+    group.type === 'single' ? [group.flights[0]] : [group]
+  );
+};
+
 // Helper to group mileage options by cabin and find best value per cabin
 const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   const cabinGroups = new Map<string, { mileage: number; price: number; totalValue: number }>();
@@ -901,7 +959,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             {/* Expanded Segment Details */}
             {expandedSegments[sliceIndex] && slice.segments && slice.segments.length > 0 && (
-              <div className="mb-4">
+              <div className="mb-4 border border-blue-500/20 bg-blue-500/5 rounded-lg p-4">
+                <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
+                  <Plane className="h-3 w-3" />
+                  Flight Segments
+                </div>
                 <FlightSegmentDetails slice={slice} originTimezone={originTimezone} />
               </div>
             )}
@@ -966,7 +1028,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
 
                 return (
-                  <div key={airlineKey} className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-700">
+                  <div key={airlineKey} className="mt-3 bg-purple-900/10 p-3 rounded border border-purple-500/20">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">

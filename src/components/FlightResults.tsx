@@ -195,18 +195,21 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     const grouped = new Map<string, (FlightSolution | GroupedFlight)[]>();
 
     flightList.forEach(flight => {
-      // Create a signature based on airline and route (origin-destination)
+      // Create a signature based on airline, route, AND cabin (so cabin-specific options remain separate)
       let signature = '';
       if ('id' in flight) {
         const firstSlice = flight.slices[0];
         const lastSlice = flight.slices[flight.slices.length - 1];
         // Get primary airline from first segment
         const airline = firstSlice.segments[0]?.carrier.code || 'UNKNOWN';
-        signature = `${airline}-${firstSlice.origin.code}-${lastSlice.destination.code}`;
+        // Include cabin information in signature to keep cabin-specific flights separate
+        const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
+        signature = `${airline}-${firstSlice.origin.code}-${lastSlice.destination.code}-${cabin}`;
       } else {
         const airline = flight.outboundSlice.segments[0]?.carrier.code || 'UNKNOWN';
         const returnDest = flight.returnOptions[0]?.returnSlice?.destination.code || flight.outboundSlice.origin.code;
-        signature = `${airline}-${flight.outboundSlice.origin.code}-${returnDest}`;
+        const cabin = flight.outboundSlice.cabins?.join(',') || 'UNKNOWN';
+        signature = `${airline}-${flight.outboundSlice.origin.code}-${returnDest}-${cabin}`;
       }
 
       if (!grouped.has(signature)) {
