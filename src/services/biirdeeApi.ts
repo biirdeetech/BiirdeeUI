@@ -488,13 +488,35 @@ class BiirdeeService {
       const dominantCarrier = itinerary.ext?.dominantCarrier || itinerary.carriers?.[0];
 
       if (dominantCarrier) {
+        // Extract cabin information from actual matching flights
+        const cabinsSet = new Set<string>();
+
+        slices.forEach((slice: any) => {
+          if (slice.mileageBreakdown && Array.isArray(slice.mileageBreakdown)) {
+            slice.mileageBreakdown.forEach((breakdown: any) => {
+              if (breakdown.allMatchingFlights && Array.isArray(breakdown.allMatchingFlights)) {
+                breakdown.allMatchingFlights.forEach((flight: any) => {
+                  if (flight.cabin) {
+                    cabinsSet.add(flight.cabin);
+                  }
+                });
+              }
+            });
+          }
+        });
+
+        // Fallback to ITA Matrix cabins if no Aero cabins found
+        const cabins = cabinsSet.size > 0
+          ? Array.from(cabinsSet)
+          : (slices[0]?.cabins || []);
+
         mileageDeals.push({
           airline: dominantCarrier.shortName || dominantCarrier.name || dominantCarrier.code,
           airlineCode: dominantCarrier.code,
           mileage: solution.totalMileage,
           mileagePrice: solution.totalMileagePrice || 0,
           matchType: solution.fullyEnriched ? 'full' : 'partial',
-          cabins: slices[0]?.cabins || []
+          cabins: cabins
         });
       }
     }
