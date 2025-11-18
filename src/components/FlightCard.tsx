@@ -555,7 +555,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     : displayTotal;
 
                   // Show strike-through if mileage is significantly cheaper (more than 30% savings)
-                  const showStrikeThrough = matchType === 'exact' && bestMileageValue && bestMileageValue < cashPrice * 0.7;
+                  // Works for ANY match type (exact, partial, or any mileage data)
+                  const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.7;
 
                   return (
                     <>
@@ -895,7 +896,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 {/* View Segments Button */}
                 {slice.segments && slice.segments.length > 1 && (
                   <button
-                    onClick={() => setExpandedSegments(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
+                    onClick={() => {
+                      const isCurrentlyExpanded = expandedSegments[sliceIndex];
+                      // Close all mileage containers and segments
+                      setExpandedSliceAirlines({});
+                      setExpandedSegments({});
+                      // Toggle current one
+                      if (!isCurrentlyExpanded) {
+                        setExpandedSegments({ [sliceIndex]: true });
+                      }
+                    }}
                     className="flex items-center gap-1 px-2 py-1 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white text-xs rounded transition-colors"
                   >
                     <Plane className="h-3 w-3" />
@@ -922,7 +932,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         return (
                           <button
                             key={program.carrierCode}
-                            onClick={() => setExpandedSliceAirlines(prev => ({ ...prev, [airlineKey]: !prev[airlineKey] }))}
+                            onClick={() => {
+                              const isCurrentlyExpanded = expandedSliceAirlines[airlineKey];
+                              // Close all mileage containers and segments
+                              setExpandedSliceAirlines({});
+                              setExpandedSegments({});
+                              // Toggle current one
+                              if (!isCurrentlyExpanded) {
+                                setExpandedSliceAirlines({ [airlineKey]: true });
+                              }
+                            }}
                             className={`text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1 relative ${
                               program.matchType === 'exact'
                                 ? 'bg-green-500/20 border border-green-500/30'
