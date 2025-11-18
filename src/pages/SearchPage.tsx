@@ -524,7 +524,7 @@ const SearchPage: React.FC = () => {
         const bDuration = b.slices.reduce((sum, slice) => sum + slice.duration, 0);
         comparison = aDuration - bDuration;
       } else if (filterState.sortBy === 'miles') {
-        // Sort by mileage USD value (miles * 0.15 + fees)
+        // Sort by mileage USD value (miles * 0.015 + fees)
         // Flights without mileage go to end
         const aMileage = a.totalMileage || 0;
         const bMileage = b.totalMileage || 0;
@@ -533,10 +533,10 @@ const SearchPage: React.FC = () => {
 
         // Calculate total USD value for each flight
         const aValue = aMileage > 0
-          ? (aMileage * 0.15) + aMileagePrice
+          ? (aMileage * 0.015) + aMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
         const bValue = bMileage > 0
-          ? (bMileage * 0.15) + bMileagePrice
+          ? (bMileage * 0.015) + bMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
 
         comparison = aValue - bValue;
