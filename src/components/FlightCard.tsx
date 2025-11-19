@@ -128,6 +128,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
+  const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
 
 
   // Get flight data based on type
@@ -1092,7 +1093,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       groupMileageFlights(filteredFlights.slice(0, 15)).map((group, groupIndex) => {
                         const altFlight = group.primary;
                         const altIndex = groupIndex;
-                        const [showAlternatives, setShowAlternatives] = React.useState(false);
+                        const alternativeKey = `${sliceIndex}-${airlineKey}-${groupIndex}`;
+                        const showAlternatives = showAlternativeTimes[alternativeKey] || false;
                   // Calculate time difference
                   const flightTime = new Date(altFlight.departure.at).getTime();
                   const originalTime = new Date(slice.departure).getTime();
@@ -1237,7 +1239,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       {group.alternatives.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-700">
                           <button
-                            onClick={() => setShowAlternatives(!showAlternatives)}
+                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [alternativeKey]: !showAlternatives}))}
                             className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
                           >
                             <span className="text-xs font-medium text-gray-300">
