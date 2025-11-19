@@ -1143,6 +1143,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     : altFlight.mileagePrice;
                   const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
 
+                  // Calculate total mileage value for comparison with cash price
+                  const mileageTotalValue = (altFlight.mileage * (perCentValue / 100)) + priceNum;
+
+                  // Get original flight cash price for this slice
+                  const sliceCashPrice = typeof slice.price === 'string'
+                    ? parseFloat(slice.price.replace(/[^0-9.]/g, ''))
+                    : (slice.price || 0);
+
+                  // Show savings if mileage is significantly cheaper (more than 15% savings)
+                  const mileageSavings = sliceCashPrice > 0 && mileageTotalValue < sliceCashPrice * 0.85
+                    ? sliceCashPrice - mileageTotalValue
+                    : 0;
+
                   // Use component-level formatters that respect origin timezone
                   const formatTime = formatTimeInOriginTZ;
                   const formatDate = formatDateInOriginTZ;
@@ -1191,8 +1204,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               Add
                             </button>
                           </div>
-                          <div className="text-[10px] text-orange-400/80">
-                            Total Value: ${((altFlight.mileage * perCentValue) + priceNum).toFixed(2)}
+                          <div className="flex flex-col items-end gap-0.5">
+                            {mileageSavings > 0 ? (
+                              <>
+                                <div className="text-[10px] text-gray-400 line-through">
+                                  Cash: ${sliceCashPrice.toFixed(2)}
+                                </div>
+                                <div className="text-[10px] font-semibold text-green-400">
+                                  Save ${mileageSavings.toFixed(2)} with miles!
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-[10px] text-orange-400/80">
+                                Total Value: ${mileageTotalValue.toFixed(2)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
