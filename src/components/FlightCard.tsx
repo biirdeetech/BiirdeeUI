@@ -529,9 +529,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
           </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto">
+          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto h-7">
             {/* Price Per Mile */}
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-gray-400 flex items-center h-full">
               ${formatPricePerMile(pricePerMile)}/mi
             </div>
 
@@ -553,8 +553,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
-                <div className="flex items-center gap-2">
-                  <div className={`text-xl font-medium ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                <div className="flex items-center gap-2 h-full">
+                  <div className={`text-xl font-medium flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
                     {formatPrice(displayTotal, currency)}
                     {showStrikeThrough && (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -1080,6 +1080,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         <span className="text-sm font-semibold text-white">{program.carrierCode} Mileage Options</span>
                         <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
                       </div>
+                      <button
+                        onClick={() => {
+                          setExpandedSliceAirlines(prev => {
+                            const newState = { ...prev };
+                            delete newState[airlineKey];
+                            return newState;
+                          });
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-300 transition-colors px-2 py-1 hover:bg-gray-800/50 rounded"
+                      >
+                        Collapse
+                      </button>
                     </div>
 
                   {/* Tabs */}
@@ -1206,6 +1218,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2">
                             <div className="bg-orange-500/15 border border-orange-400/40 rounded px-2 py-1">
+                              {altFlight.cabin && (
+                                <>
+                                  <span className="text-[10px] text-orange-400/70 uppercase">{altFlight.cabin}:</span>
+                                  <span className="text-xs text-orange-400/60"> </span>
+                                </>
+                              )}
                               <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
                               <span className="text-[10px] text-orange-400/70"> mi</span>
                               <span className="text-xs text-orange-400/60"> + </span>

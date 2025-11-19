@@ -213,6 +213,7 @@ class BiirdeeService {
         ...(params.strict_airline_match !== undefined && { strict_airline_match: params.strict_airline_match }),
         ...(params.time_tolerance !== undefined && { time_tolerance: params.time_tolerance }),
         ...(params.strict_leg_match !== undefined && { strict_leg_match: params.strict_leg_match }),
+        ...(params.all_aero_cabin !== undefined && { all_aero_cabin: params.all_aero_cabin }),
         summary: globalSummary,
         ...(params.sales_city && {
           sales_city: typeof params.sales_city === 'string'

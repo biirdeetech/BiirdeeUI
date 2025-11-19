@@ -395,7 +395,7 @@ const SearchPage: React.FC = () => {
   };
 
   // Filter and sort flights
-  const applyFilters = (flights: SearchResponse, filterState: FlightFilterState): SearchResponse => {
+  const applyFilters = (flights: SearchResponse, filterState: FlightFilterState, perCent: number): SearchResponse => {
     if (!flights.solutionList?.solutions) return flights;
     
     let filteredSolutions = [...flights.solutionList.solutions];
@@ -539,10 +539,10 @@ const SearchPage: React.FC = () => {
 
         // Calculate total USD value for each flight
         const aValue = aMileage > 0
-          ? (aMileage * perCentValue) + aMileagePrice
+          ? (aMileage * perCent) + aMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
         const bValue = bMileage > 0
-          ? (bMileage * perCentValue) + bMileagePrice
+          ? (bMileage * perCent) + bMileagePrice
           : (filterState.sortOrder === 'asc' ? Infinity : -Infinity);
 
         comparison = aValue - bValue;
@@ -622,10 +622,10 @@ const SearchPage: React.FC = () => {
       // DO NOT auto-set stopCounts - empty array means "all stops"
       // User must manually select specific stop counts if they want to filter
 
-      const filtered = applyFilters(results, filters);
+      const filtered = applyFilters(results, filters, perCentValue);
       setFilteredResults(filtered);
     }
-  }, [results, filters]);
+  }, [results, filters, perCentValue]);
 
   const handleNewSearch = () => {
     // Reset search state to allow new search
