@@ -617,11 +617,8 @@ const SearchPage: React.FC = () => {
   // Apply filters whenever results or filters change
   useEffect(() => {
     if (results) {
-      // Initialize stopCounts filter if empty
-      if (filters.stopCounts.length === 0) {
-        const availableStops = calculateAvailableStops(results);
-        setFilters(prev => ({ ...prev, stopCounts: availableStops }));
-      }
+      // DO NOT auto-set stopCounts - empty array means "all stops"
+      // User must manually select specific stop counts if they want to filter
 
       const filtered = applyFilters(results, filters);
       setFilteredResults(filtered);

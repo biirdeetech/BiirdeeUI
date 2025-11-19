@@ -152,6 +152,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
   const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
+  const [showMileageDropdown, setShowMileageDropdown] = useState<Record<number, boolean>>({});
 
 
   // Get flight data based on type
@@ -503,40 +504,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 )}
               </div>
             )}
+            {/* Cheapest Mileage Badge - Show for exact match */}
+            {matchType === 'exact' && (() => {
+              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
+              if (cabinMileageOptions.length === 0) return null;
+
+              // Find cheapest option
+              const cheapest = cabinMileageOptions.reduce((min, opt) =>
+                opt.totalValue < min.totalValue ? opt : min
+              , cabinMileageOptions[0]);
+
+              return (
+                <div className="px-2 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-400/40 text-orange-300 text-xs font-medium rounded flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase opacity-70">{cheapest.cabin}:</span>
+                  <span className="font-bold">{cheapest.mileage.toLocaleString()}</span>
+                  <span className="text-[10px]">mi</span>
+                  {cheapest.price > 0 && (
+                    <>
+                      <span className="text-[10px]">+</span>
+                      <span className="font-semibold">${cheapest.price.toFixed(2)}</span>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
-            {/* Price Display - Right Aligned with Mileage on Left */}
             <div className="flex flex-wrap items-baseline gap-3 justify-end">
-              {/* Mileage Info - Left Side - Only show for exact match, grouped by cabin */}
-              {matchType === 'exact' && (() => {
-                const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
-
-                if (cabinMileageOptions.length === 0) return null;
-
-                return (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {cabinMileageOptions.map(({ cabin, mileage, price, totalValue }) => (
-                      <div key={cabin} className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg px-3 py-1.5">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-[10px] text-orange-500/70 uppercase">{cabin}:</span>
-                          <span className="text-sm font-bold text-orange-300">{mileage.toLocaleString()}</span>
-                          <span className="text-xs text-orange-400">mi</span>
-                          {price > 0 && (
-                            <>
-                              <span className="text-xs text-orange-400"> + </span>
-                              <span className="text-sm font-semibold text-orange-300">${price.toFixed(2)}</span>
-                            </>
-                          )}
-                          <span className="text-[10px] text-orange-500/70 ml-1">
-                            ≈ ${totalValue.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
               {/* Price Per Mile */}
               <div className="text-xs text-gray-400">
                 ${formatPricePerMile(pricePerMile)}/mi
@@ -930,21 +924,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
                   const anyExpanded = groupedPrograms.some(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
                   const expandedProgram = groupedPrograms.find(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
+                  const isDropdownOpen = showMileageDropdown[sliceIndex] || false;
+
+                  // Auto-select best program if none selected
+                  if (!anyExpanded && groupedPrograms.length > 0) {
+                    const bestProgram = groupedPrograms[0];
+                    setTimeout(() => {
+                      setExpandedSliceAirlines({ [`${sliceIndex}-${bestProgram.carrierCode}`]: true });
+                    }, 0);
+                  }
 
                   return groupedPrograms.length > 0 && (
                     <div className="relative">
                       <button
                         onClick={() => {
-                          if (anyExpanded) {
-                            setExpandedSliceAirlines({});
-                            setExpandedSegments({});
-                          } else {
-                            // Open the first/best program by default
-                            const bestProgram = groupedPrograms[0];
-                            setExpandedSliceAirlines({});
-                            setExpandedSegments({});
-                            setExpandedSliceAirlines({ [`${sliceIndex}-${bestProgram.carrierCode}`]: true });
-                          }
+                          setShowMileageDropdown(prev => ({ ...prev, [sliceIndex]: !isDropdownOpen }));
                         }}
                         className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/30 rounded-lg transition-colors text-sm"
                       >
@@ -967,10 +961,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         ) : (
                           <span className="text-purple-300">{groupedPrograms.length} program{groupedPrograms.length > 1 ? 's' : ''}</span>
                         )}
-                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${anyExpanded ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
 
-                      {anyExpanded && (
+                      {isDropdownOpen && (
                         <div className="absolute left-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 min-w-[200px]">
                           {groupedPrograms.map((program) => {
                             const airlineKey = `${sliceIndex}-${program.carrierCode}`;
@@ -982,6 +976,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                   setExpandedSliceAirlines({});
                                   setExpandedSegments({});
                                   setExpandedSliceAirlines({ [airlineKey]: true });
+                                  setShowMileageDropdown(prev => ({ ...prev, [sliceIndex]: false }));
                                 }}
                                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg ${
                                   isSelected ? 'bg-gray-700' : ''
@@ -1266,6 +1261,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           <div className="text-lg font-semibold text-white">{depTimeFormatted}</div>
                           <div className="text-xs text-gray-400">{depDateFormatted}</div>
                           <div className="text-sm font-medium text-gray-200">{altFlight.departure.iataCode}</div>
+                          {altFlight.cabin && (
+                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
+                          )}
                         </div>
 
                         {/* Flight Line with Layovers */}
@@ -1317,6 +1315,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           <div className="text-lg font-semibold text-white">{arrTimeFormatted}</div>
                           <div className="text-xs text-gray-400">{arrDateFormatted}</div>
                           <div className="text-sm font-medium text-gray-200">{altFlight.arrival.iataCode}</div>
+                          {altFlight.cabin && (
+                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
+                          )}
                         </div>
                       </div>
 
