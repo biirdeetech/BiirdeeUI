@@ -19,33 +19,56 @@ const groupMileageFlights = (flights: any[]) => {
 
   flights.forEach((flight) => {
     const route = `${flight.departure.iataCode}-${flight.arrival.iataCode}`;
-    const flightNum = flight.flightNumber;
+    const depTime = new Date(flight.departure.at).toISOString().slice(11, 16); // HH:MM
+    const arrTime = new Date(flight.arrival.at).toISOString().slice(11, 16);
     const layovers = flight.segments?.map((s: any) => s.arrival?.iataCode).filter((code: string, idx: number, arr: string[]) => idx < arr.length - 1).join(',') || '';
 
-    // Group by: flight number + route + layover pattern (these define the "same" flight)
-    const groupKey = `${flightNum}|${route}|${layovers}`;
+    // Primary grouping: same route + same times + same layovers = different carriers
+    const timeRouteKey = `${route}|${depTime}|${arrTime}|${layovers}`;
 
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, []);
+    if (!groups.has(timeRouteKey)) {
+      groups.set(timeRouteKey, []);
     }
-    groups.get(groupKey)!.push(flight);
+    groups.get(timeRouteKey)!.push(flight);
   });
 
-  // Convert to grouped structure
+  // Convert to grouped structure with sub-grouping
   return Array.from(groups.values()).map(groupFlights => {
     if (groupFlights.length === 1) {
-      return { primary: groupFlights[0], alternatives: [] };
+      return {
+        primary: groupFlights[0],
+        alternativeTimes: [],
+        alternativeCarriers: []
+      };
     }
 
-    // Sort by departure time
-    groupFlights.sort((a, b) =>
-      new Date(a.departure.at).getTime() - new Date(b.departure.at).getTime()
-    );
+    // Check if same flight number (time alternatives) or different flight numbers (carrier alternatives)
+    const sameFlightNum = groupFlights.every(f => f.flightNumber === groupFlights[0].flightNumber);
 
-    return {
-      primary: groupFlights[0],
-      alternatives: groupFlights.slice(1)
-    };
+    if (sameFlightNum) {
+      // Time alternatives - same flight at different departure times
+      groupFlights.sort((a, b) =>
+        new Date(a.departure.at).getTime() - new Date(b.departure.at).getTime()
+      );
+      return {
+        primary: groupFlights[0],
+        alternativeTimes: groupFlights.slice(1),
+        alternativeCarriers: []
+      };
+    } else {
+      // Carrier alternatives - different flights at same time/route
+      // Prefer lower flight number or carrier code
+      groupFlights.sort((a, b) => {
+        const aNum = parseInt(a.flightNumber?.replace(/\D/g, '') || '9999');
+        const bNum = parseInt(b.flightNumber?.replace(/\D/g, '') || '9999');
+        return aNum - bNum;
+      });
+      return {
+        primary: groupFlights[0],
+        alternativeTimes: [],
+        alternativeCarriers: groupFlights.slice(1)
+      };
+    }
   });
 };
 
@@ -1236,14 +1259,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       </div>
 
                       {/* Alternative Times Button */}
-                      {group.alternatives.length > 0 && (
+                      {group.alternativeTimes.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-700">
                           <button
                             onClick={() => setShowAlternativeTimes(prev => ({...prev, [alternativeKey]: !showAlternatives}))}
                             className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
                           >
                             <span className="text-xs font-medium text-gray-300">
-                              {group.alternatives.length} alternative time{group.alternatives.length !== 1 ? 's' : ''}
+                              {group.alternativeTimes.length} alternative time{group.alternativeTimes.length !== 1 ? 's' : ''}
                             </span>
                             <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
                           </button>
@@ -1251,7 +1274,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           {/* Alternative Times List */}
                           {showAlternatives && (
                             <div className="mt-2 space-y-2">
-                              {group.alternatives.map((altTime: any, altTimeIdx: number) => {
+                              {group.alternativeTimes.map((altTime: any, altTimeIdx: number) => {
                                 const altDepTime = formatTimeInOriginTZ(altTime.departure.at);
                                 const altDepDate = formatDateInOriginTZ(altTime.departure.at);
                                 const altArrTime = formatTimeInOriginTZ(altTime.arrival.at);
@@ -1276,6 +1299,57 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                     <button
                                       onClick={() => {
                                         setSelectedMileageFlight(altTime);
+                                        setShowAddToProposal(true);
+                                      }}
+                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Alternative Carriers Button */}
+                      {group.alternativeCarriers.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-700">
+                          <button
+                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [`${alternativeKey}-carriers`]: !showAlternativeTimes[`${alternativeKey}-carriers`]}))}
+                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
+                          >
+                            <span className="text-xs font-medium text-gray-300">
+                              {group.alternativeCarriers.length} alternative carrier{group.alternativeCarriers.length !== 1 ? 's' : ''}
+                            </span>
+                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternativeTimes[`${alternativeKey}-carriers`] ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Alternative Carriers List */}
+                          {showAlternativeTimes[`${alternativeKey}-carriers`] && (
+                            <div className="mt-2 space-y-2">
+                              {group.alternativeCarriers.map((altCarrier: any, altCarrierIdx: number) => {
+                                return (
+                                  <div
+                                    key={altCarrierIdx}
+                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
+                                  >
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <img
+                                        src={`https://www.gstatic.com/flights/airline_logos/35px/${altCarrier.carrierCode}.png`}
+                                        alt={altCarrier.carrierCode}
+                                        className="h-5 w-5 object-contain"
+                                      />
+                                      <div className="text-xs">
+                                        <div className="text-white font-medium">{altCarrier.flightNumber}</div>
+                                        <div className="text-gray-400">{altCarrier.carrierCode}</div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMileageFlight(altCarrier);
                                         setShowAddToProposal(true);
                                       }}
                                       className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
