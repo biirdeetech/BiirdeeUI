@@ -116,6 +116,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [timeTolerance, setTimeTolerance] = useState(960);
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
+  const [allAeroCabin, setAllAeroCabin] = useState(true);
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
   const [currency, setCurrency] = useState<Currency | null>({ code: 'USD', displayName: 'United States Dollar (USD)' });
 
@@ -191,6 +192,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '960'));
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
+      setAllAeroCabin(searchParams.get('all_aero_cabin') !== 'false');
 
       const salesCityCode = searchParams.get('sales_city');
       if (salesCityCode) {
@@ -608,6 +610,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     }
     if (fetchSummary) {
       searchParams.append('summary', 'true');
+    }
+    if (!allAeroCabin) {
+      searchParams.append('all_aero_cabin', 'false');
     }
     if (salesCity) {
       searchParams.append('sales_city', salesCity.code);
@@ -1344,6 +1349,18 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                         className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
                       />
                       <span className="text-xs text-gray-400">Strict Leg Match</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allAeroCabin}
+                        onChange={(e) => setAllAeroCabin(e.target.checked)}
+                        className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                      />
+                      <span className="text-xs text-gray-400">Allow All Cabins</span>
                     </label>
                   </div>
 

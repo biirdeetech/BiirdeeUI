@@ -35,6 +35,7 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       time_tolerance: 960,
       strict_leg_match: false,
       summary: false,
+      all_aero_cabin: true,
       salesCity: null as { code: string; name: string } | null,
       currency: null as Currency | null
     }
@@ -436,6 +437,25 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
                 className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
               />
               <span className="text-sm font-medium text-gray-300">Fetch ITA Summary</span>
+            </label>
+          </div>
+
+          {/* Allow All Cabins */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={advancedSettings.aero.all_aero_cabin}
+                onChange={(e) => {
+                  setAdvancedSettings(prev => ({
+                    ...prev,
+                    aero: { ...prev.aero, all_aero_cabin: e.target.checked }
+                  }));
+                  onSettingsChange({ ...advancedSettings, aero: { ...advancedSettings.aero, all_aero_cabin: e.target.checked } });
+                }}
+                className="w-4 h-4 text-accent-600 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+              />
+              <span className="text-sm font-medium text-gray-300">Allow All Cabins</span>
             </label>
           </div>
 

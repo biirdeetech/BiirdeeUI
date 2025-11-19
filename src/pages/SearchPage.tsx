@@ -136,6 +136,7 @@ const SearchPage: React.FC = () => {
         time_tolerance: parseInt(searchParams.get('time_tolerance') || '960'),
         strict_leg_match: searchParams.get('strict_leg_match') === 'true',
         summary: searchParams.get('summary') === 'true',
+        all_aero_cabin: searchParams.get('all_aero_cabin') !== 'false',
         sales_city: searchParams.get('sales_city') || undefined,
         currency: searchParams.get('currency') || undefined
       };
@@ -220,6 +221,7 @@ const SearchPage: React.FC = () => {
         time_tolerance: parseInt(searchParams.get('time_tolerance') || '960'),
         strict_leg_match: searchParams.get('strict_leg_match') === 'true',
         summary: searchParams.get('summary') === 'true',
+        all_aero_cabin: searchParams.get('all_aero_cabin') !== 'false',
         sales_city: searchParams.get('sales_city') || undefined,
         currency: searchParams.get('currency') || undefined
       };

@@ -465,7 +465,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }`}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
           <div className="flex items-center gap-3 flex-wrap">
             {carrier.code && (
               <img
@@ -529,62 +529,60 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
           </div>
-          <div className="flex flex-col items-end gap-2 w-full lg:w-auto">
-            <div className="flex flex-wrap items-baseline gap-3 justify-end">
-              {/* Price Per Mile */}
-              <div className="text-xs text-gray-400">
-                ${formatPricePerMile(pricePerMile)}/mi
-              </div>
-
-              {/* Total Price */}
-              <div className="flex flex-col items-end">
-                {(() => {
-                  // Calculate best mileage value from cabin groups
-                  const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
-                  const bestMileageValue = cabinMileageOptions.length > 0
-                    ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
-                    : null;
-
-                  // Parse cash price
-                  const cashPrice = typeof displayTotal === 'string'
-                    ? parseFloat(displayTotal.replace(/[^0-9.]/g, ''))
-                    : displayTotal;
-
-                  // Show strike-through if mileage is significantly cheaper (more than 10% savings)
-                  // Works for ANY match type (exact, partial, or any mileage data)
-                  const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
-
-                  return (
-                    <>
-                      <div className={`text-xl font-medium ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
-                        {formatPrice(displayTotal, currency)}
-                        {showStrikeThrough && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
-                          </div>
-                        )}
-                      </div>
-                      {showStrikeThrough && bestMileageValue && (
-                        <button
-                          onClick={() => {
-                            const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
-                            if (dealIndex >= 0) {
-                              setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
-                            }
-                          }}
-                          className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer"
-                        >
-                          ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash price</span>
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
+          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto">
+            {/* Price Per Mile */}
+            <div className="text-xs text-gray-400">
+              ${formatPricePerMile(pricePerMile)}/mi
             </div>
 
-            {/* Action Buttons - Match badges on left, buttons on right */}
-            <div className="flex flex-wrap items-center gap-2 justify-end">
+            {/* Total Price */}
+            {(() => {
+              // Calculate best mileage value from cabin groups
+              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
+              const bestMileageValue = cabinMileageOptions.length > 0
+                ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
+                : null;
+
+              // Parse cash price
+              const cashPrice = typeof displayTotal === 'string'
+                ? parseFloat(displayTotal.replace(/[^0-9.]/g, ''))
+                : displayTotal;
+
+              // Show strike-through if mileage is significantly cheaper (more than 10% savings)
+              // Works for ANY match type (exact, partial, or any mileage data)
+              const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
+
+              return (
+                <div className="flex items-center gap-2">
+                  <div className={`text-xl font-medium ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                    {formatPrice(displayTotal, currency)}
+                    {showStrikeThrough && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
+                      </div>
+                    )}
+                  </div>
+                  {showStrikeThrough && bestMileageValue && (
+                    <button
+                      onClick={() => {
+                        const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
+                        if (dealIndex >= 0) {
+                          setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                        }
+                      }}
+                      className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
               {/* Match Type Badge - Left Side */}
               {matchType && matchType !== 'none' && (
                 <div>
@@ -615,8 +613,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <Plus className="h-3 w-3" />
                 Add to proposal
               </button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -926,14 +922,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   const expandedProgram = groupedPrograms.find(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
                   const isDropdownOpen = showMileageDropdown[sliceIndex] || false;
 
-                  // Auto-select best program if none selected
-                  if (!anyExpanded && groupedPrograms.length > 0) {
-                    const bestProgram = groupedPrograms[0];
-                    setTimeout(() => {
-                      setExpandedSliceAirlines({ [`${sliceIndex}-${bestProgram.carrierCode}`]: true });
-                    }, 0);
-                  }
-
                   return groupedPrograms.length > 0 && (
                     <div className="relative">
                       <button
@@ -942,9 +930,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         }}
                         className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/30 rounded-lg transition-colors text-sm"
                       >
-                        <span className="text-gray-300 font-medium">Mile Programs Available ({groupedPrograms?.length || '0'}):</span>
-                        {expandedProgram ? (
+                        <span className="text-gray-300 font-medium">Mile Programs Available ({groupedPrograms?.length || '0'})</span>
+                        {expandedProgram && (
                           <>
+                            <span className="text-gray-500">-</span>
                             <img
                               src={`https://www.gstatic.com/flights/airline_logos/35px/${expandedProgram.carrierCode}.png`}
                               alt={expandedProgram.carrierCode}
@@ -958,8 +947,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               {expandedProgram.carrierCode}
                             </span>
                           </>
-                        ) : (
-                          <span className="text-purple-300">{groupedPrograms.length} program{groupedPrograms.length > 1 ? 's' : ''}</span>
                         )}
                         <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
