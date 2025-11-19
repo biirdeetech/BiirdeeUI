@@ -556,9 +556,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     ? parseFloat(displayTotal.replace(/[^0-9.]/g, ''))
                     : displayTotal;
 
-                  // Show strike-through if mileage is significantly cheaper (more than 30% savings)
+                  // Show strike-through if mileage is significantly cheaper (more than 10% savings)
                   // Works for ANY match type (exact, partial, or any mileage data)
-                  const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.7;
+                  const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
                   return (
                     <>
@@ -725,10 +725,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     const isNonstop = !slice.stops || slice.stops.length === 0;
 
                     if (isNonstop) {
-                      // Nonstop flight - show carrier info in center
+                      // Nonstop flight - only show carrier if different from main carrier in header
                       const firstSegment = slice.segments?.[0];
                       const carrierCode = firstSegment?.carrier?.code;
                       const flightNumber = slice.flights?.[0];
+
+                      // Check if this carrier/flight is same as shown in header (redundant)
+                      const isRedundant = carrierCode === carrier.code && flightNumber === slices[0].flights?.[0];
 
                       return (
                         <>
@@ -738,9 +741,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             <div className="flex-1 border-t-2 border-emerald-500/40"></div>
                           </div>
 
-                          {/* Carrier and flight number in center */}
+                          {/* Carrier and flight number in center - hide if redundant with header */}
                           <div className="flex flex-col items-center gap-1 mt-2">
-                            {carrierCode && (
+                            {!isRedundant && carrierCode && (
                               <div className="flex items-center gap-1.5">
                                 <img
                                   src={`https://www.gstatic.com/flights/airline_logos/35px/${carrierCode}.png`}
@@ -925,53 +928,86 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 )}
                 {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (() => {
                   const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+                  const anyExpanded = groupedPrograms.some(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
+                  const expandedProgram = groupedPrograms.find(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
+
                   return groupedPrograms.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-gray-400 font-medium text-xs lg:text-sm">Miles:</span>
-                      {groupedPrograms.map((program, progIndex) => {
-                        const airlineKey = `${sliceIndex}-${program.carrierCode}`;
-                        const isExpanded = expandedSliceAirlines[airlineKey];
-                        return (
-                          <button
-                            key={program.carrierCode}
-                            onClick={() => {
-                              const isCurrentlyExpanded = expandedSliceAirlines[airlineKey];
-                              // Close all mileage containers and segments
-                              setExpandedSliceAirlines({});
-                              setExpandedSegments({});
-                              // Toggle current one
-                              if (!isCurrentlyExpanded) {
-                                setExpandedSliceAirlines({ [airlineKey]: true });
-                              }
-                            }}
-                            className={`text-purple-300 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded text-xs lg:text-sm font-medium hover:bg-purple-500/30 transition-colors flex items-center gap-1 relative ${
-                              program.matchType === 'exact'
-                                ? 'bg-green-500/20 border border-green-500/30'
-                                : program.matchType === 'partial'
-                                ? 'bg-purple-500/20 border border-purple-500/30'
-                                : 'bg-blue-500/20 border border-blue-500/30'
-                            }`}
-                          >
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          if (anyExpanded) {
+                            setExpandedSliceAirlines({});
+                            setExpandedSegments({});
+                          } else {
+                            // Open the first/best program by default
+                            const bestProgram = groupedPrograms[0];
+                            setExpandedSliceAirlines({});
+                            setExpandedSegments({});
+                            setExpandedSliceAirlines({ [`${sliceIndex}-${bestProgram.carrierCode}`]: true });
+                          }
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/30 rounded-lg transition-colors text-sm"
+                      >
+                        <span className="text-gray-300 font-medium">Miles:</span>
+                        {expandedProgram ? (
+                          <>
                             <img
-                              src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
-                              alt={program.carrierCode}
-                              className="h-3 w-3 object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
+                              src={`https://www.gstatic.com/flights/airline_logos/35px/${expandedProgram.carrierCode}.png`}
+                              alt={expandedProgram.carrierCode}
+                              className="h-4 w-4 object-contain"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
-                            <span className="font-semibold">{program.carrierCode}:</span>
-                            <span>{program.totalMileage.toLocaleString()}</span>
-                            {program.totalPrice > 0 && (
-                              <>
-                                <span>+</span>
-                                <span>${program.totalPrice.toFixed(2)}</span>
-                              </>
-                            )}
-                            <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          </button>
-                        );
-                      })}
+                            <span className={`font-semibold ${
+                              expandedProgram.matchType === 'exact' ? 'text-green-400' :
+                              expandedProgram.matchType === 'partial' ? 'text-purple-300' : 'text-blue-300'
+                            }`}>
+                              {expandedProgram.carrierCode}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-purple-300">{groupedPrograms.length} program{groupedPrograms.length > 1 ? 's' : ''}</span>
+                        )}
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${anyExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {anyExpanded && (
+                        <div className="absolute left-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 min-w-[200px]">
+                          {groupedPrograms.map((program) => {
+                            const airlineKey = `${sliceIndex}-${program.carrierCode}`;
+                            const isSelected = expandedSliceAirlines[airlineKey];
+                            return (
+                              <button
+                                key={program.carrierCode}
+                                onClick={() => {
+                                  setExpandedSliceAirlines({});
+                                  setExpandedSegments({});
+                                  setExpandedSliceAirlines({ [airlineKey]: true });
+                                }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                                  isSelected ? 'bg-gray-700' : ''
+                                }`}
+                              >
+                                <img
+                                  src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
+                                  alt={program.carrierCode}
+                                  className="h-4 w-4 object-contain"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                                <span className={`font-semibold ${
+                                  program.matchType === 'exact' ? 'text-green-400' :
+                                  program.matchType === 'partial' ? 'text-purple-300' : 'text-blue-300'
+                                }`}>
+                                  {program.carrierCode}
+                                </span>
+                                <span className="text-gray-300">{program.totalMileage.toLocaleString()}</span>
+                                {program.totalPrice > 0 && (
+                                  <span className="text-gray-400 text-xs">+ ${program.totalPrice.toFixed(2)}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

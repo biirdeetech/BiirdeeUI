@@ -195,10 +195,10 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
             <span className="text-sm font-medium text-gray-300">Stops:</span>
             <select
               multiple={false}
-              value={filters.stopCounts.length === availableStops.length ? 'all' : filters.stopCounts.join(',')}
+              value={filters.stopCounts.length === 0 || filters.stopCounts.length === availableStops.length ? 'all' : filters.stopCounts.join(',')}
               onChange={(e) => {
                 if (e.target.value === 'all') {
-                  updateFilter('stopCounts', availableStops);
+                  updateFilter('stopCounts', []);
                 } else {
                   const selected = e.target.value.split(',').map(Number).filter(n => !isNaN(n));
                   updateFilter('stopCounts', selected);
