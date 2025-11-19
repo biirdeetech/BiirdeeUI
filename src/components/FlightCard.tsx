@@ -15,60 +15,38 @@ interface FlightCardProps {
 
 // Helper to group similar mileage flights for cleaner display
 const groupMileageFlights = (flights: any[]) => {
-  const groups: { [key: string]: { flights: any[]; type: 'airline' | 'time' | 'date' | 'single' } } = {};
+  const groups = new Map<string, any[]>();
 
   flights.forEach((flight) => {
-    const depDate = new Date(flight.departure.at).toISOString().split('T')[0];
-    const depTime = new Date(flight.departure.at).toTimeString().slice(0, 5);
     const route = `${flight.departure.iataCode}-${flight.arrival.iataCode}`;
+    const flightNum = flight.flightNumber;
+    const layovers = flight.segments?.map((s: any) => s.arrival?.iataCode).filter((code: string, idx: number, arr: string[]) => idx < arr.length - 1).join(',') || '';
 
-    // Try to group by: same route + same time + same date → different airlines
-    const routeTimeDate = `${route}|${depTime}|${depDate}`;
+    // Group by: flight number + route + layover pattern (these define the "same" flight)
+    const groupKey = `${flightNum}|${route}|${layovers}`;
 
-    // Try to group by: same route + same airline + same date → different times
-    const routeAirlineDate = `${route}|${flight.carrierCode}|${depDate}`;
-
-    // Try to group by: same route + same airline + same time → different dates
-    const routeAirlineTime = `${route}|${flight.carrierCode}|${depTime}`;
-
-    if (!groups[routeTimeDate]) {
-      groups[routeTimeDate] = { flights: [], type: 'airline' };
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
     }
-    groups[routeTimeDate].flights.push(flight);
+    groups.get(groupKey)!.push(flight);
   });
 
-  // Convert to array and mark group types
-  return Object.entries(groups).map(([key, group]) => {
-    if (group.flights.length === 1) {
-      return { ...group, type: 'single' as const };
+  // Convert to grouped structure
+  return Array.from(groups.values()).map(groupFlights => {
+    if (groupFlights.length === 1) {
+      return { primary: groupFlights[0], alternatives: [] };
     }
 
-    // Determine actual grouping type
-    const firstFlight = group.flights[0];
-    const sameAirline = group.flights.every(f => f.carrierCode === firstFlight.carrierCode);
-    const sameTime = group.flights.every(f => {
-      const t1 = new Date(f.departure.at).toTimeString().slice(0, 5);
-      const t2 = new Date(firstFlight.departure.at).toTimeString().slice(0, 5);
-      return t1 === t2;
-    });
-    const sameDate = group.flights.every(f => {
-      const d1 = new Date(f.departure.at).toISOString().split('T')[0];
-      const d2 = new Date(firstFlight.departure.at).toISOString().split('T')[0];
-      return d1 === d2;
-    });
+    // Sort by departure time
+    groupFlights.sort((a, b) =>
+      new Date(a.departure.at).getTime() - new Date(b.departure.at).getTime()
+    );
 
-    if (!sameAirline && sameTime && sameDate) {
-      return { ...group, type: 'airline' as const };
-    } else if (sameAirline && !sameTime && sameDate) {
-      return { ...group, type: 'time' as const };
-    } else if (sameAirline && sameTime && !sameDate) {
-      return { ...group, type: 'date' as const };
-    }
-
-    return { ...group, type: 'single' as const };
-  }).flatMap(group =>
-    group.type === 'single' ? [group.flights[0]] : [group]
-  );
+    return {
+      primary: groupFlights[0],
+      alternatives: groupFlights.slice(1)
+    };
+  });
 };
 
 // Helper to group mileage options by cabin and find best value per cabin
@@ -1111,7 +1089,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     {filteredFlights.length === 0 ? (
                       <div className="text-center py-6 text-gray-500 text-sm">No flights in this time range</div>
                     ) : (
-                      filteredFlights.slice(0, 15).map((altFlight, altIndex) => {
+                      groupMileageFlights(filteredFlights.slice(0, 15)).map((group, groupIndex) => {
+                        const altFlight = group.primary;
+                        const altIndex = groupIndex;
+                        const [showAlternatives, setShowAlternatives] = React.useState(false);
                   // Calculate time difference
                   const flightTime = new Date(altFlight.departure.at).getTime();
                   const originalTime = new Date(slice.departure).getTime();
@@ -1251,6 +1232,62 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           <div className="text-sm font-medium text-gray-200">{altFlight.arrival.iataCode}</div>
                         </div>
                       </div>
+
+                      {/* Alternative Times Button */}
+                      {group.alternatives.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-700">
+                          <button
+                            onClick={() => setShowAlternatives(!showAlternatives)}
+                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
+                          >
+                            <span className="text-xs font-medium text-gray-300">
+                              {group.alternatives.length} alternative time{group.alternatives.length !== 1 ? 's' : ''}
+                            </span>
+                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Alternative Times List */}
+                          {showAlternatives && (
+                            <div className="mt-2 space-y-2">
+                              {group.alternatives.map((altTime: any, altTimeIdx: number) => {
+                                const altDepTime = formatTimeInOriginTZ(altTime.departure.at);
+                                const altDepDate = formatDateInOriginTZ(altTime.departure.at);
+                                const altArrTime = formatTimeInOriginTZ(altTime.arrival.at);
+                                const altArrDate = formatDateInOriginTZ(altTime.arrival.at);
+
+                                return (
+                                  <div
+                                    key={altTimeIdx}
+                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
+                                  >
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <div className="text-xs">
+                                        <div className="text-white font-medium">{altDepTime}</div>
+                                        <div className="text-gray-400">{altDepDate}</div>
+                                      </div>
+                                      <div className="text-gray-500">→</div>
+                                      <div className="text-xs">
+                                        <div className="text-white font-medium">{altArrTime}</div>
+                                        <div className="text-gray-400">{altArrDate}</div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMileageFlight(altTime);
+                                        setShowAddToProposal(true);
+                                      }}
+                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
