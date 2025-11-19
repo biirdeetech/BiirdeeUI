@@ -942,7 +942,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         }}
                         className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/30 rounded-lg transition-colors text-sm"
                       >
-                        <span className="text-gray-300 font-medium">Miles ({groupedPrograms?.length || '0'}):</span>
+                        <span className="text-gray-300 font-medium">Mile Programs ({groupedPrograms?.length || '0'}):</span>
                         {expandedProgram ? (
                           <>
                             <img
