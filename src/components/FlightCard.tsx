@@ -553,28 +553,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
-                <div className="flex items-center gap-2 h-full">
-                  <div className={`text-xl font-medium flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
-                    {formatPrice(displayTotal, currency)}
-                    {showStrikeThrough && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
-                      </div>
+                <div className="flex flex-col items-end gap-1 h-full">
+                  {slices.length === 2 && (
+                    <div className="text-xs text-gray-400 font-medium">Total Price</div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <div className={`text-xl font-medium flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                      {formatPrice(displayTotal, currency)}
+                      {showStrikeThrough && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
+                        </div>
+                      )}
+                    </div>
+                    {showStrikeThrough && bestMileageValue && (
+                      <button
+                        onClick={() => {
+                          const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
+                          if (dealIndex >= 0) {
+                            setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                          }
+                        }}
+                        className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
+                      </button>
                     )}
                   </div>
-                  {showStrikeThrough && bestMileageValue && (
-                    <button
-                      onClick={() => {
-                        const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
-                        if (dealIndex >= 0) {
-                          setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
-                        }
-                      }}
-                      className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
-                    >
-                      ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
-                    </button>
-                  )}
                 </div>
               );
             })()}
@@ -623,8 +628,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             {/* Slice Label */}
             <div className="flex items-center gap-2 mb-2 lg:mb-3">
               {getSliceLabel(sliceIndex) && (
-                <div className="text-sm font-medium text-accent-400">
-                  {getSliceLabel(sliceIndex)}
+                <div className="flex items-center gap-3">
+                  <div className="text-sm font-medium text-accent-400">
+                    {getSliceLabel(sliceIndex)}
+                  </div>
+                  {slices.length === 2 && (
+                    <div className="text-sm font-semibold text-gray-300">
+                      {formatPrice(displayTotal / 2, currency)}
+                    </div>
+                  )}
                 </div>
               )}
               
