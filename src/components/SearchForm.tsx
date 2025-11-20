@@ -945,7 +945,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
                   <select
                     value={globalCabinClass}
-                    onChange={(e) => setGlobalCabinClass(e.target.value)}
+                    onChange={(e) => {
+                      const newCabin = e.target.value;
+                      setGlobalCabinClass(newCabin);
+                      // Update all legs with the new cabin class
+                      setLegs(prevLegs => prevLegs.map(leg => ({ ...leg, cabin: newCabin })));
+                    }}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
                   >
                     <option value="COACH">Cheapest Available</option>
