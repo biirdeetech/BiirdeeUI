@@ -110,7 +110,6 @@ const groupFlightsByOutbound = (flights: FlightSolution[]): (FlightSolution | Gr
       returnSlice: flight.slices[1], // Use the return slice (CDG → SFO)
       totalAmount: flight.totalAmount,
       displayTotal: flight.displayTotal,
-      currency: flight.currency || 'USD',
       ext: flight.ext,
       originalFlightId: flight.id
     });

@@ -6,8 +6,6 @@ import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
 import MileageDealsDropdown from './MileageDealsDropdown';
 import FlightSegmentDetails from './FlightSegmentDetails';
-import { calculateBestMileageForTrip } from '../utils/mileageCalculator';
-import MileageCalculationModal from './MileageCalculationModal';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -155,7 +153,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
   const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
   const [showMileageDropdown, setShowMileageDropdown] = useState<Record<number, boolean>>({});
-  const [showMileageCalculation, setShowMileageCalculation] = useState(false);
 
 
   // Get flight data based on type
@@ -532,12 +529,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
           </div>
-          <div className="flex flex-col items-end gap-1">
-            {/* Total Price - Large and Prominent */}
+          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto h-7">
+            {/* Price Per Mile */}
+            <div className="text-xs text-gray-400 flex items-center h-full">
+              ${formatPricePerMile(pricePerMile)}/mi
+            </div>
+
+            {/* Total Price */}
             {(() => {
-              // Use new intelligent mileage calculator
-              const bestMileageResult = calculateBestMileageForTrip(slices, perCentValue);
-              const bestMileageValue = bestMileageResult?.totalValue || null;
+              // Calculate best mileage value from cabin groups
+              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
+              const bestMileageValue = cabinMileageOptions.length > 0
+                ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
+                : null;
 
               // Parse cash price
               const cashPrice = typeof displayTotal === 'string'
@@ -545,42 +549,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 : displayTotal;
 
               // Show strike-through if mileage is significantly cheaper (more than 10% savings)
+              // Works for ANY match type (exact, partial, or any mileage data)
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
-                <>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-end">
-                      <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">
-                        Total Trip
+                <div className="flex items-center gap-2 h-full">
+                  <div className={`text-xl font-medium flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                    {formatPrice(displayTotal, currency)}
+                    {showStrikeThrough && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
                       </div>
-                      <div className={`text-3xl font-bold leading-none ${showStrikeThrough ? 'text-red-400 relative' : 'text-emerald-400'}`}>
-                        {formatPrice(displayTotal, currency)}
-                        {showStrikeThrough && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        ${formatPricePerMile(pricePerMile)}/mi
-                      </div>
-                    </div>
-                    {showStrikeThrough && bestMileageResult && (
-                      <button
-                        onClick={() => setShowMileageCalculation(true)}
-                        className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
-                        title={`Click to see breakdown\nStrategy: ${bestMileageResult.strategy}\nSegments: ${bestMileageResult.segments.length}`}
-                      >
-                        ${bestMileageResult.totalValue.toFixed(2)}
-                        <span className="text-xs font-normal">mileage</span>
-                        {bestMileageResult.strategy === 'pieced' && (
-                          <span className="text-[10px] opacity-70">(pieced)</span>
-                        )}
-                      </button>
                     )}
                   </div>
-                </>
+                  {showStrikeThrough && bestMileageValue && (
+                    <button
+                      onClick={() => {
+                        const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
+                        if (dealIndex >= 0) {
+                          setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                        }
+                      }}
+                      className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
+                    </button>
+                  )}
+                </div>
               );
             })()}
           </div>
@@ -628,21 +623,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             {/* Slice Label */}
             <div className="flex items-center gap-2 mb-2 lg:mb-3">
               {getSliceLabel(sliceIndex) && (
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-medium text-accent-400">
-                    {getSliceLabel(sliceIndex)}
-                  </div>
-                  {slice.mileage && slice.mileagePrice && (
-                    <div className="text-sm text-gray-400">
-                      <span className="font-semibold text-orange-400">
-                        {slice.mileage.toLocaleString()} mi
-                      </span>
-                      <span className="mx-1">+</span>
-                      <span className="font-semibold text-gray-300">
-                        ${typeof slice.mileagePrice === 'number' ? slice.mileagePrice.toFixed(2) : slice.mileagePrice}
-                      </span>
-                    </div>
-                  )}
+                <div className="text-sm font-medium text-accent-400">
+                  {getSliceLabel(sliceIndex)}
                 </div>
               )}
               
@@ -680,11 +662,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Total Trip Price</div>
-                              <div className="text-lg font-bold text-emerald-400 leading-none">
+                              <div className="text-sm font-medium text-white">
                                 {formatPrice(returnOption.displayTotal, returnOption.currency || 'USD')}
                               </div>
-                              <div className="text-[10px] text-gray-500 mt-1">
+                              <div className="text-xs text-gray-400">
                                 ${formatPricePerMile(returnOption.ext.pricePerMile)}/mi
                               </div>
                             </div>
@@ -1477,19 +1458,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           }}
         />
       )}
-
-      {/* Mileage Calculation Modal */}
-      {showMileageCalculation && (() => {
-        const bestMileageResult = calculateBestMileageForTrip(slices, perCentValue);
-        return bestMileageResult ? (
-          <MileageCalculationModal
-            isOpen={showMileageCalculation}
-            onClose={() => setShowMileageCalculation(false)}
-            calculation={bestMileageResult}
-            perCentValue={perCentValue}
-          />
-        ) : null;
-      })()}
 
     </div>
   );
