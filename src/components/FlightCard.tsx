@@ -555,10 +555,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               return (
                 <div className="flex flex-col items-end gap-1 h-full">
                   {slices.length === 2 && (
-                    <div className="text-xs text-gray-400 font-medium">Total Round Trip</div>
+                    <div className="text-xs text-gray-400 font-medium">
+                      Total Trip Price
+                      {hasMultipleReturns && <span className="text-gray-500 ml-1">(for this return option)</span>}
+                    </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <div className={`text-xl font-bold flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
+                    <div className={`text-2xl font-bold flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-emerald-400'}`}>
                       {formatPrice(displayTotal, currency)}
                       {showStrikeThrough && (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -680,7 +683,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-sm font-medium text-white">
+                              <div className="text-[10px] text-gray-500 uppercase mb-0.5">Total Trip</div>
+                              <div className="text-sm font-bold text-emerald-400">
                                 {formatPrice(returnOption.displayTotal, returnOption.currency || 'USD')}
                               </div>
                               <div className="text-xs text-gray-400">
