@@ -532,13 +532,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
           </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto h-7">
-            {/* Price Per Mile */}
-            <div className="text-xs text-gray-400 flex items-center h-full">
-              ${formatPricePerMile(pricePerMile)}/mi
-            </div>
-
-            {/* Total Price */}
+          <div className="flex flex-col items-end gap-1">
+            {/* Total Price - Large and Prominent */}
             {(() => {
               // Use new intelligent mileage calculator
               const bestMileageResult = calculateBestMileageForTrip(slices, perCentValue);
@@ -553,21 +548,23 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
-                <div className="flex flex-col items-end gap-1 h-full">
-                  {slices.length === 2 && (
-                    <div className="text-xs text-gray-400 font-medium">
-                      Total Trip Price
-                      {hasMultipleReturns && <span className="text-gray-500 ml-1">(for this return option)</span>}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <div className={`text-2xl font-bold flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-emerald-400'}`}>
-                      {formatPrice(displayTotal, currency)}
-                      {showStrikeThrough && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
-                        </div>
-                      )}
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-end">
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">
+                        Total Trip
+                      </div>
+                      <div className={`text-3xl font-bold leading-none ${showStrikeThrough ? 'text-red-400 relative' : 'text-emerald-400'}`}>
+                        {formatPrice(displayTotal, currency)}
+                        {showStrikeThrough && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        ${formatPricePerMile(pricePerMile)}/mi
+                      </div>
                     </div>
                     {showStrikeThrough && bestMileageResult && (
                       <button
@@ -583,7 +580,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       </button>
                     )}
                   </div>
-                </div>
+                </>
               );
             })()}
           </div>
@@ -683,11 +680,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[10px] text-gray-500 uppercase mb-0.5">Total Trip</div>
-                              <div className="text-sm font-bold text-emerald-400">
+                              <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Total Trip Price</div>
+                              <div className="text-lg font-bold text-emerald-400 leading-none">
                                 {formatPrice(returnOption.displayTotal, returnOption.currency || 'USD')}
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-[10px] text-gray-500 mt-1">
                                 ${formatPricePerMile(returnOption.ext.pricePerMile)}/mi
                               </div>
                             </div>
