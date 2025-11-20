@@ -632,9 +632,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   <div className="text-sm font-medium text-accent-400">
                     {getSliceLabel(sliceIndex)}
                   </div>
-                  {slices.length === 2 && (
-                    <div className="text-sm font-semibold text-gray-300">
-                      {formatPrice(displayTotal / 2, currency)}
+                  {slice.mileage && slice.mileagePrice && (
+                    <div className="text-sm text-gray-400">
+                      <span className="font-semibold text-orange-400">
+                        {slice.mileage.toLocaleString()} mi
+                      </span>
+                      <span className="mx-1">+</span>
+                      <span className="font-semibold text-gray-300">
+                        ${typeof slice.mileagePrice === 'number' ? slice.mileagePrice.toFixed(2) : slice.mileagePrice}
+                      </span>
                     </div>
                   )}
                 </div>
