@@ -149,6 +149,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
       const legCount = parseInt(searchParams.get('legCount') || '1');
       const newLegs: FlightLeg[] = [];
+      const newBookingClassSelections: Record<string, string> = {};
 
       for (let i = 0; i < legCount; i++) {
         const origins = searchParams.get(`leg${i}_origins`)?.split(',').filter(o => o.trim()) || [];
@@ -161,8 +162,13 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const vias = viaParam ? viaParam.split(',').filter(v => v.trim()) : [];
 
         const isNonstop = searchParams.get(`leg${i}_nonstop`) === 'true';
+        const legId = Math.random().toString(36).substr(2, 9);
+        const bookingClassSelection = searchParams.get(`leg${i}_bookingClassSelection`) || 'all';
+
+        newBookingClassSelections[legId] = bookingClassSelection;
+
         newLegs.push({
-          id: Math.random().toString(36).substr(2, 9),
+          id: legId,
           origins: origins.length > 0 ? origins : [searchParams.get(i === 0 ? 'origin' : 'destination') || ''].filter(o => o),
           destinations: destinations.length > 0 ? destinations : [searchParams.get(i === 0 ? 'destination' : 'origin') || ''].filter(d => d),
           vias: vias,
@@ -186,6 +192,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
       if (newLegs.length > 0) {
         setLegs(newLegs);
+        setBookingClassSelection(newBookingClassSelections);
       }
       setPassengers(parseInt(searchParams.get('passengers') || '1'));
 
@@ -576,6 +583,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       searchParams.append(`leg${index}_departDate`, leg.departDate);
       searchParams.append(`leg${index}_cabin`, leg.cabin);
       searchParams.append(`leg${index}_ext`, bookingClassesToExt(leg.bookingClasses));
+      searchParams.append(`leg${index}_bookingClassSelection`, bookingClassSelection[leg.id] || 'all');
       // Date controls
       searchParams.append(`leg${index}_departureDateType`, leg.departureDateType);
       searchParams.append(`leg${index}_departureDateModifier`, leg.departureDateModifier);
