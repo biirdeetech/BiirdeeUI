@@ -97,6 +97,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
   const [showViaInput, setShowViaInput] = useState<string | null>(null);
+  const [bookingClassSelection, setBookingClassSelection] = useState<Record<string, string>>({ '1': 'all' });
 
   // Nearby airport modal state
   const [nearbyModalOpen, setNearbyModalOpen] = useState(false);
@@ -214,8 +215,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   }, [compact, searchParams]);
 
   const addLeg = () => {
+    const newLegId = Math.random().toString(36).substr(2, 9);
     const newLeg: FlightLeg = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: newLegId,
       origins: legs.length === 1 ? legs[0].destinations : [''],
       destinations: legs.length === 1 ? legs[0].origins : [''],
       vias: [],
@@ -235,6 +237,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       fetchSummary: legs[0].fetchSummary
     };
     setLegs([...legs, newLeg]);
+    setBookingClassSelection(prev => ({ ...prev, [newLegId]: 'all' }));
   };
 
   const removeLeg = (id: string) => {
@@ -940,8 +943,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 {/* Cabin Class */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
-                  {/* Invisible space reservation for alignment with Booking Classes badges */}
-                  <div className="min-h-[36px] mb-2"></div>
                   <select
                     value={globalCabinClass}
                     onChange={(e) => setGlobalCabinClass(e.target.value)}
@@ -997,9 +998,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 </div>
                 <div className="space-y-2">
                   <select
-                    value="all"
+                    value={bookingClassSelection[leg.id] || 'all'}
                     onChange={(e) => {
                       const value = e.target.value;
+                      setBookingClassSelection(prev => ({ ...prev, [leg.id]: value }));
                       if (value === 'all') {
                         // Set all booking classes for all cabins
                         const allClasses = [
@@ -1023,7 +1025,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                         updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
                       }
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 mb-2"
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
                   >
                     <option value="all">All</option>
                     <option value="economy">Economy</option>
@@ -1032,7 +1034,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     <option value="first">First</option>
                     <option value="business_plus">Business + First</option>
                   </select>
-                  <div className="text-xs text-gray-400 mb-2">Booking Classes</div>
+                  <div className="text-xs text-gray-400 mt-2 mb-2">Booking Classes</div>
                   <div className="min-h-[36px] mb-2">
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                       {leg.bookingClasses.map((bookingClass) => (
