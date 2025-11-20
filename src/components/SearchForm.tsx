@@ -935,71 +935,29 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 />
               </div>
 
-              {/* Cabin Class Dropdown */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
-                <select
-                  value={globalCabinClass}
-                  onChange={(e) => setGlobalCabinClass(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
-                >
-                  <option value="COACH">Cheapest Available</option>
-                  <option value="PREMIUM-COACH">Premium Economy</option>
-                  <option value="BUSINESS">Business Class or Higher</option>
-                  <option value="FIRST">First Class</option>
-                </select>
-              </div>
-
               {/* Cabin Class and Booking Classes Row */}
               <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
-                {/* Booking Class Selection */}
+                {/* Cabin Class */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Booking Class Selection</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
                   {/* Invisible space reservation for alignment with Booking Classes badges */}
                   <div className="min-h-[36px] mb-2"></div>
                   <select
-                    value={leg.bookingClasses.length === 0 ? 'all' : 'custom'}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === 'all') {
-                        // Set all booking classes for all cabins
-                        const allClasses = [
-                          ...getDefaultBookingClasses('COACH'),
-                          ...getDefaultBookingClasses('PREMIUM-COACH'),
-                          ...getDefaultBookingClasses('BUSINESS'),
-                          ...getDefaultBookingClasses('FIRST')
-                        ];
-                        updateLeg(leg.id, 'bookingClasses', [...new Set(allClasses)]);
-                      } else if (value === 'economy') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
-                      } else if (value === 'premium') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('PREMIUM-COACH'));
-                      } else if (value === 'business') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('BUSINESS'));
-                      } else if (value === 'first') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('FIRST'));
-                      } else if (value === 'business_plus') {
-                        const businessClasses = getDefaultBookingClasses('BUSINESS');
-                        const firstClasses = getDefaultBookingClasses('FIRST');
-                        updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
-                      }
-                    }}
+                    value={globalCabinClass}
+                    onChange={(e) => setGlobalCabinClass(e.target.value)}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
                   >
-                    <option value="all">All Booking Classes</option>
-                    <option value="economy">Economy Classes</option>
-                    <option value="premium">Premium Economy Classes</option>
-                    <option value="business">Business Classes</option>
-                    <option value="first">First Class</option>
-                    <option value="business_plus">Business + First</option>
-                    <option value="custom">Custom</option>
+                    <option value="COACH">Cheapest Available</option>
+                    <option value="PREMIUM-COACH">Premium Economy</option>
+                    <option value="BUSINESS">Business Class or Higher</option>
+                    <option value="FIRST">First Class</option>
                   </select>
                 </div>
 
                 {/* Booking Class Codes */}
                 <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-gray-300">Booking Classes</label>
+                  <label className="block text-sm font-medium text-gray-300">Booking Class Selection</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -1038,6 +996,43 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <select
+                    value="all"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === 'all') {
+                        // Set all booking classes for all cabins
+                        const allClasses = [
+                          ...getDefaultBookingClasses('COACH'),
+                          ...getDefaultBookingClasses('PREMIUM-COACH'),
+                          ...getDefaultBookingClasses('BUSINESS'),
+                          ...getDefaultBookingClasses('FIRST')
+                        ];
+                        updateLeg(leg.id, 'bookingClasses', [...new Set(allClasses)]);
+                      } else if (value === 'economy') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
+                      } else if (value === 'premium') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('PREMIUM-COACH'));
+                      } else if (value === 'business') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('BUSINESS'));
+                      } else if (value === 'first') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('FIRST'));
+                      } else if (value === 'business_plus') {
+                        const businessClasses = getDefaultBookingClasses('BUSINESS');
+                        const firstClasses = getDefaultBookingClasses('FIRST');
+                        updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
+                      }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 mb-2"
+                  >
+                    <option value="all">All</option>
+                    <option value="economy">Economy</option>
+                    <option value="premium">Premium Economy</option>
+                    <option value="business">Business</option>
+                    <option value="first">First</option>
+                    <option value="business_plus">Business + First</option>
+                  </select>
+                  <div className="text-xs text-gray-400 mb-2">Booking Classes</div>
                   <div className="min-h-[36px] mb-2">
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                       {leg.bookingClasses.map((bookingClass) => (
