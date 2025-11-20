@@ -6,6 +6,8 @@ import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
 import MileageDealsDropdown from './MileageDealsDropdown';
 import FlightSegmentDetails from './FlightSegmentDetails';
+import { calculateBestMileageForTrip } from '../utils/mileageCalculator';
+import MileageCalculationModal from './MileageCalculationModal';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -153,6 +155,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
   const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
   const [showMileageDropdown, setShowMileageDropdown] = useState<Record<number, boolean>>({});
+  const [showMileageCalculation, setShowMileageCalculation] = useState(false);
 
 
   // Get flight data based on type
@@ -537,11 +540,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             {/* Total Price */}
             {(() => {
-              // Calculate best mileage value from cabin groups
-              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
-              const bestMileageValue = cabinMileageOptions.length > 0
-                ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
-                : null;
+              // Use new intelligent mileage calculator
+              const bestMileageResult = calculateBestMileageForTrip(slices, perCentValue);
+              const bestMileageValue = bestMileageResult?.totalValue || null;
 
               // Parse cash price
               const cashPrice = typeof displayTotal === 'string'
@@ -549,7 +550,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 : displayTotal;
 
               // Show strike-through if mileage is significantly cheaper (more than 10% savings)
-              // Works for ANY match type (exact, partial, or any mileage data)
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
@@ -566,17 +566,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         </div>
                       )}
                     </div>
-                    {showStrikeThrough && bestMileageValue && (
+                    {showStrikeThrough && bestMileageResult && (
                       <button
-                        onClick={() => {
-                          const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
-                          if (dealIndex >= 0) {
-                            setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
-                          }
-                        }}
-                        className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => setShowMileageCalculation(true)}
+                        className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1"
+                        title={`Click to see breakdown\nStrategy: ${bestMileageResult.strategy}\nSegments: ${bestMileageResult.segments.length}`}
                       >
-                        ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
+                        ${bestMileageResult.totalValue.toFixed(2)}
+                        <span className="text-xs font-normal">mileage</span>
+                        {bestMileageResult.strategy === 'pieced' && (
+                          <span className="text-[10px] opacity-70">(pieced)</span>
+                        )}
                       </button>
                     )}
                   </div>
@@ -1470,6 +1470,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           }}
         />
       )}
+
+      {/* Mileage Calculation Modal */}
+      {showMileageCalculation && (() => {
+        const bestMileageResult = calculateBestMileageForTrip(slices, perCentValue);
+        return bestMileageResult ? (
+          <MileageCalculationModal
+            isOpen={showMileageCalculation}
+            onClose={() => setShowMileageCalculation(false)}
+            calculation={bestMileageResult}
+            perCentValue={perCentValue}
+          />
+        ) : null;
+      })()}
 
     </div>
   );
