@@ -74,11 +74,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       departDate: getDefaultDepartDate(),
       cabin: 'COACH',
       bookingClasses: (() => {
-        const businessClasses = getDefaultBookingClasses('BUSINESS');
-        const firstClasses = getDefaultBookingClasses('FIRST');
-        return [...new Set([...businessClasses, ...firstClasses])];
+        // Default to all booking classes
+        const allClasses = [
+          ...getDefaultBookingClasses('COACH'),
+          ...getDefaultBookingClasses('PREMIUM-COACH'),
+          ...getDefaultBookingClasses('BUSINESS'),
+          ...getDefaultBookingClasses('FIRST')
+        ];
+        return [...new Set(allClasses)];
       })(),
-      businessPlus: true,
+      businessPlus: false,
       departureDateType: 'depart',
       departureDateModifier: '0',
       departureDatePreferredTimes: [],
@@ -117,6 +122,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [allAeroCabin, setAllAeroCabin] = useState(true);
+  const [globalCabinClass, setGlobalCabinClass] = useState<string>('COACH');
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
   const [currency, setCurrency] = useState<Currency | null>({ code: 'USD', displayName: 'United States Dollar (USD)' });
 
@@ -193,6 +199,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setStrictLegMatch(searchParams.get('strict_leg_match') === 'true');
       setFetchSummary(searchParams.get('summary') === 'true');
       setAllAeroCabin(searchParams.get('all_aero_cabin') !== 'false');
+      setGlobalCabinClass(searchParams.get('cabin') || 'COACH');
 
       const salesCityCode = searchParams.get('sales_city');
       if (salesCityCode) {
@@ -215,7 +222,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       nonstop: false,
       departDate: legs.length === 1 ? getDefaultReturnDate() : '',
       cabin: legs[0].cabin,
-      bookingClasses: getDefaultBookingClasses(legs[0].cabin),
+      bookingClasses: legs[0].bookingClasses,
       businessPlus: legs[0].businessPlus,
       departureDateType: legs[0].departureDateType,
       departureDateModifier: legs[0].departureDateModifier,
@@ -548,7 +555,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     searchParams.append('origin', firstLeg.origins[0] || '');
     searchParams.append('destination', firstLeg.destinations[0] || '');
     searchParams.append('departDate', firstLeg.departDate);
-    searchParams.append('cabin', firstLeg.cabin);
+    searchParams.append('cabin', globalCabinClass);
     
     if (tripType === 'roundTrip' && validatedLegs[1]) {
       searchParams.append('returnDate', validatedLegs[1].departDate);
@@ -928,43 +935,64 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 />
               </div>
 
-
+              {/* Cabin Class Dropdown */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
+                <select
+                  value={globalCabinClass}
+                  onChange={(e) => setGlobalCabinClass(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                >
+                  <option value="COACH">Cheapest Available</option>
+                  <option value="PREMIUM-COACH">Premium Economy</option>
+                  <option value="BUSINESS">Business Class or Higher</option>
+                  <option value="FIRST">First Class</option>
+                </select>
+              </div>
 
               {/* Cabin Class and Booking Classes Row */}
               <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
-                {/* Cabin Class */}
+                {/* Booking Class Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Booking Class Selection</label>
                   {/* Invisible space reservation for alignment with Booking Classes badges */}
                   <div className="min-h-[36px] mb-2"></div>
                   <select
-                    value={leg.businessPlus ? 'BUSINESS_PLUS' : leg.cabin}
+                    value={leg.bookingClasses.length === 0 ? 'all' : 'custom'}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === 'BUSINESS_PLUS') {
+                      if (value === 'all') {
+                        // Set all booking classes for all cabins
+                        const allClasses = [
+                          ...getDefaultBookingClasses('COACH'),
+                          ...getDefaultBookingClasses('PREMIUM-COACH'),
+                          ...getDefaultBookingClasses('BUSINESS'),
+                          ...getDefaultBookingClasses('FIRST')
+                        ];
+                        updateLeg(leg.id, 'bookingClasses', [...new Set(allClasses)]);
+                      } else if (value === 'economy') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
+                      } else if (value === 'premium') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('PREMIUM-COACH'));
+                      } else if (value === 'business') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('BUSINESS'));
+                      } else if (value === 'first') {
+                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('FIRST'));
+                      } else if (value === 'business_plus') {
                         const businessClasses = getDefaultBookingClasses('BUSINESS');
                         const firstClasses = getDefaultBookingClasses('FIRST');
-                        const combined = [...new Set([...businessClasses, ...firstClasses])];
-                        updateLegMultiple(leg.id, {
-                          businessPlus: true,
-                          cabin: 'BUSINESS',
-                          bookingClasses: combined
-                        });
-                      } else {
-                        updateLegMultiple(leg.id, {
-                          businessPlus: false,
-                          cabin: value,
-                          bookingClasses: getDefaultBookingClasses(value)
-                        });
+                        updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
                       }
                     }}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
                   >
-                    <option value="COACH">Economy</option>
-                    <option value="PREMIUM-COACH">Premium Economy</option>
-                    <option value="BUSINESS">Business</option>
-                    <option value="BUSINESS_PLUS">Business+ Only</option>
-                    <option value="FIRST">First Class</option>
+                    <option value="all">All Booking Classes</option>
+                    <option value="economy">Economy Classes</option>
+                    <option value="premium">Premium Economy Classes</option>
+                    <option value="business">Business Classes</option>
+                    <option value="first">First Class</option>
+                    <option value="business_plus">Business + First</option>
+                    <option value="custom">Custom</option>
                   </select>
                 </div>
 
