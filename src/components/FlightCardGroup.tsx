@@ -9,13 +9,17 @@ interface FlightCardGroupProps {
   similarFlights: (FlightSolution | GroupedFlight)[];
   originTimezone?: string;
   perCentValue?: number;
+  session?: string;
+  solutionSet?: string;
 }
 
 const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   primaryFlight,
   similarFlights,
   originTimezone,
-  perCentValue = 0.015
+  perCentValue = 0.015,
+  session,
+  solutionSet
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -24,9 +28,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     return (
       <>
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
         ) : (
-          <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} />
+          <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
         )}
       </>
     );
@@ -36,9 +40,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     <div className="space-y-2">
       {/* Primary Flight Card */}
       {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-        <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} />
+        <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
       ) : (
-        <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} />
+        <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
       )}
 
       {/* Expand Button */}
@@ -62,9 +66,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           {similarFlights.map((flight, index) => (
             <div key={'id' in flight ? flight.id : `similar-${index}`}>
               {'id' in flight && flight.slices.length >= 3 ? (
-                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} />
+                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} />
+                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
               )}
             </div>
           ))}

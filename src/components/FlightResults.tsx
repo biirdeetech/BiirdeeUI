@@ -140,6 +140,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   originTimezone,
   perCentValue = 0.015
 }) => {
+  // State to track which stop group is expanded (0 = Nonstop is default)
+  const [expandedStopGroup, setExpandedStopGroup] = React.useState<number | null>(0);
+
   console.log('🎯 FlightResults: Rendering with results:', results);
   console.log('🎯 FlightResults: Loading state:', loading);
   console.log('🎯 FlightResults: Error state:', error);
@@ -188,7 +191,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
   // Show results
   const flights = results.solutionList.solutions;
-  let processedFlights = groupFlightsByOutbound(flights);
+  // Disable grouping - show each solution as a separate card (as API returns them)
+  let processedFlights = flights; // groupFlightsByOutbound(flights);
 
   // Group similar flights together by airline + route
   const groupSimilarFlights = (flightList: (FlightSolution | GroupedFlight)[]) => {
@@ -355,6 +359,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             ? firstFlight.currency
             : 'USD';
 
+          const isExpanded = expandedStopGroup === stopCount;
+
           return (
             <React.Fragment key={`stop-group-${stopCount}`}>
               {/* Stop Group Separator */}
@@ -364,11 +370,16 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   flightCount={groupFlights.length}
                   lowestPrice={cheapestPrice}
                   currency={currency}
+                  isExpanded={isExpanded}
+                  onClick={() => {
+                    // Toggle: if already expanded, collapse it; otherwise expand this one
+                    setExpandedStopGroup(isExpanded ? null : stopCount);
+                  }}
                 />
               )}
 
-              {/* Flights in this stop group - with grouping */}
-              {(() => {
+              {/* Flights in this stop group - only show when expanded */}
+              {isExpanded && (() => {
                 // Re-group the flights in this stop category
                 const stopGrouped = groupSimilarFlights(groupFlights);
                 return stopGrouped.map((group, index) => (
@@ -378,6 +389,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                     similarFlights={group.similar}
                     originTimezone={originTimezone}
                     perCentValue={perCentValue}
+                    session={results.session}
+                    solutionSet={results.solutionSet}
                   />
                 ));
               })()}

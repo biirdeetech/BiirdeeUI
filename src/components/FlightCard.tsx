@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap } from 'lucide-react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye } from 'lucide-react';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
 import MileageDealsDropdown from './MileageDealsDropdown';
 import FlightSegmentDetails from './FlightSegmentDetails';
+import FlightSummaryModal from './FlightSummaryModal';
+import MileageSegmentTooltip from './MileageSegmentTooltip';
+import MileageSelector from './MileageSelector';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
   originTimezone?: string;
   perCentValue?: number;
+  session?: string;
+  solutionSet?: string;
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -117,7 +122,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015 }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     const date = new Date(dateStr);
@@ -147,6 +152,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [showReturnDropdown, setShowReturnDropdown] = useState(false);
   const [showAddToProposal, setShowAddToProposal] = useState(false);
   const [selectedMileageFlight, setSelectedMileageFlight] = useState<any>(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  // Track selected mileage program per slice: { sliceIndex: carrierCode }
+  const [selectedMileagePerSlice, setSelectedMileagePerSlice] = useState<Record<number, string | null>>({});
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
@@ -160,12 +168,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     if (isGroupedFlight) {
       const groupedFlight = flight as GroupedFlight;
       const selectedReturn = groupedFlight.returnOptions[selectedReturnIndex];
+      const slices = [groupedFlight.outboundSlice, selectedReturn.returnSlice];
+      
       return {
-        slices: [groupedFlight.outboundSlice, selectedReturn.returnSlice],
+        slices: slices,
         carrier: groupedFlight.carrier,
         isNonstop: groupedFlight.isNonstop && (!selectedReturn.returnSlice?.stops || selectedReturn.returnSlice.stops.length === 0),
         totalAmount: selectedReturn.totalAmount,
-        displayTotal: selectedReturn.displayTotal,
+        displayTotal: selectedReturn.displayTotal, // Use backend's round trip total as-is
         currency: selectedReturn.currency || 'USD',
         pricePerMile: selectedReturn.ext.pricePerMile,
         hasMultipleReturns: groupedFlight.returnOptions.length > 1
@@ -173,12 +183,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     } else {
       const regularFlight = flight as FlightSolution;
       const firstSlice = regularFlight.slices[0];
+      
       return {
         slices: regularFlight.slices,
         carrier: firstSlice.segments[0]?.carrier || { code: '', name: '', shortName: '' },
         isNonstop: regularFlight.slices.every(slice => !slice.stops || slice.stops.length === 0),
         totalAmount: regularFlight.totalAmount,
-        displayTotal: regularFlight.displayTotal,
+        displayTotal: regularFlight.displayTotal, // Use backend's price as-is
         currency: regularFlight.currency || 'USD',
         pricePerMile: regularFlight.ext.pricePerMile,
         hasMultipleReturns: false,
@@ -223,6 +234,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     return uniqueCarriers.size;
   };
 
+  interface SegmentMatch {
+    origin: string;
+    destination: string;
+    cheapestFlight: any | null;
+  }
+
   interface GroupedMileageProgram {
     carrierCode: string;
     carrierName: string;
@@ -231,76 +248,130 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     matchType: 'exact' | 'partial' | 'mixed';
     flights: any[];
     segmentCount: number;
+    segmentMatches: SegmentMatch[];
+    hasIncompleteSegments: boolean;
+    cabin?: string;
   }
 
   const groupMileageByProgram = (breakdown?: any[]): GroupedMileageProgram[] => {
     if (!breakdown || breakdown.length === 0) return [];
 
-    // Collect all flights from all segments and group by carrier
-    const programMap = new Map<string, any[]>();
+    // Group flights by carrier+cabin, then by segment
+    const programMap = new Map<string, Map<string, any[]>>();
 
-    breakdown.forEach(segment => {
+    breakdown.forEach((segment, segmentIndex) => {
       if (!segment.allMatchingFlights || segment.allMatchingFlights.length === 0) return;
+
+      const segmentKey = `${segment.origin}-${segment.destination}`;
 
       segment.allMatchingFlights.forEach((flight: any) => {
         const carrierCode = flight.operatingCarrier || flight.carrierCode;
         if (!carrierCode) return;
 
-        if (!programMap.has(carrierCode)) {
-          programMap.set(carrierCode, []);
+        // Include cabin in the grouping key
+        const cabin = flight.cabin || 'COACH';
+        const programKey = `${carrierCode}-${cabin}`;
+
+        if (!programMap.has(programKey)) {
+          programMap.set(programKey, new Map());
         }
-        programMap.get(carrierCode)!.push(flight);
+
+        const carrierSegments = programMap.get(programKey)!;
+        if (!carrierSegments.has(segmentKey)) {
+          carrierSegments.set(segmentKey, []);
+        }
+
+        carrierSegments.get(segmentKey)!.push({
+          ...flight,
+          segmentIndex,
+          segmentKey,
+          cabin
+        });
       });
     });
 
-    // For each carrier, find the cheapest combination across all segments
+    // For each carrier+cabin combination, find the cheapest flight PER SEGMENT
     const result: GroupedMileageProgram[] = [];
 
-    programMap.forEach((flights, carrierCode) => {
-      // Deduplicate codeshare flights (same route, departure, arrival, mileage)
-      const uniqueFlights = new Map<string, any>();
-      flights.forEach((flight: any) => {
-        const key = `${flight.departure?.iataCode}-${flight.arrival?.iataCode}-${flight.departure?.at}-${flight.arrival?.at}-${flight.mileage}`;
-        if (!uniqueFlights.has(key) ||
-            (flight.flightNumber && uniqueFlights.get(key)?.flightNumber > flight.flightNumber)) {
-          uniqueFlights.set(key, flight);
-        }
-      });
-
-      // Sort all unique flights for this carrier by value (cheapest first)
-      const sortedFlights = Array.from(uniqueFlights.values()).sort((a: any, b: any) => {
-        const aPrice = typeof a.mileagePrice === 'string'
-          ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
-          : (a.mileagePrice || 0);
-        const bPrice = typeof b.mileagePrice === 'string'
-          ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, ''))
-          : (b.mileagePrice || 0);
-        const aValue = (a.mileage || 0) + (aPrice * 100);
-        const bValue = (b.mileage || 0) + (bPrice * 100);
-        return aValue - bValue;
-      });
-
-      // Take the cheapest option (or sum if multiple segments)
+    programMap.forEach((carrierSegments, programKey) => {
+      // Extract carrier and cabin from the key
+      const [carrierCode, cabin] = programKey.split('-');
       let totalMileage = 0;
       let totalPrice = 0;
       let allExactMatch = true;
       let anyExactMatch = false;
-      const carrierName = sortedFlights[0].operatingCarrier || carrierCode;
+      const allFlights: any[] = [];
+      const segmentMatches: SegmentMatch[] = [];
 
-      sortedFlights.forEach((flight: any) => {
-        const price = typeof flight.mileagePrice === 'string'
-          ? parseFloat(flight.mileagePrice.replace(/[^0-9.]/g, ''))
-          : (flight.mileagePrice || 0);
+      // For each segment, find the CHEAPEST flight
+      carrierSegments.forEach((flights, segmentKey) => {
+        // Deduplicate codeshares
+        const uniqueFlights = new Map<string, any>();
+        flights.forEach((flight: any) => {
+          const key = `${flight.departure?.iataCode}-${flight.arrival?.iataCode}-${flight.mileage}`;
+          if (!uniqueFlights.has(key) ||
+              (flight.flightNumber && uniqueFlights.get(key)?.flightNumber > flight.flightNumber)) {
+            uniqueFlights.set(key, flight);
+          }
+        });
 
-        totalMileage += flight.mileage || 0;
-        totalPrice += price;
+        // Find cheapest flight for THIS segment
+        const sortedFlights = Array.from(uniqueFlights.values()).sort((a: any, b: any) => {
+          const aPrice = typeof a.mileagePrice === 'string'
+            ? parseFloat(a.mileagePrice.replace(/[^0-9.]/g, ''))
+            : (a.mileagePrice || 0);
+          const bPrice = typeof b.mileagePrice === 'string'
+            ? parseFloat(b.mileagePrice.replace(/[^0-9.]/g, ''))
+            : (b.mileagePrice || 0);
+          // Prefer cheaper price, then lower mileage
+          if (Math.abs(aPrice - bPrice) > 0.01) {
+            return aPrice - bPrice;
+          }
+          return (a.mileage || 0) - (b.mileage || 0);
+        });
 
-        if (flight.exactMatch) {
-          anyExactMatch = true;
-        } else {
-          allExactMatch = false;
+        const cheapest = sortedFlights[0];
+        if (cheapest) {
+          const price = typeof cheapest.mileagePrice === 'string'
+            ? parseFloat(cheapest.mileagePrice.replace(/[^0-9.]/g, ''))
+            : (cheapest.mileagePrice || 0);
+
+          totalMileage += cheapest.mileage || 0;
+          totalPrice += price;
+          allFlights.push(cheapest);
+
+          segmentMatches.push({
+            origin: cheapest.departure?.iataCode || segmentKey.split('-')[0],
+            destination: cheapest.arrival?.iataCode || segmentKey.split('-')[1],
+            cheapestFlight: cheapest
+          });
+
+          if (cheapest.exactMatch) {
+            anyExactMatch = true;
+          } else {
+            allExactMatch = false;
+          }
         }
       });
+
+      // Check if we have all expected segments (based on breakdown length)
+      const hasIncompleteSegments = carrierSegments.size < breakdown.length;
+
+      // Add missing segments as unmatched
+      if (hasIncompleteSegments) {
+        breakdown.forEach(segment => {
+          const segmentKey = `${segment.origin}-${segment.destination}`;
+          if (!carrierSegments.has(segmentKey)) {
+            segmentMatches.push({
+              origin: segment.origin,
+              destination: segment.destination,
+              cheapestFlight: null
+            });
+          }
+        });
+      }
+
+      const carrierName = allFlights[0]?.operatingCarrier || carrierCode;
 
       result.push({
         carrierCode,
@@ -308,8 +379,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         totalMileage,
         totalPrice,
         matchType: allExactMatch ? 'exact' : anyExactMatch ? 'mixed' : 'partial',
-        flights: sortedFlights,
-        segmentCount: sortedFlights.length
+        flights: allFlights,
+        segmentCount: allFlights.length,
+        segmentMatches,
+        hasIncompleteSegments,
+        cabin
       });
     });
 
@@ -459,10 +533,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     setSelectedReturnIndex(index);
     setShowReturnDropdown(false);
   };
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only open modal if clicking on the card itself, not on buttons or interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') || 
+      target.closest('a') || 
+      target.closest('[role="button"]') ||
+      target.closest('.mileage-selector-container') ||
+      target.closest('[data-dropdown]')
+    ) {
+      return;
+    }
+    setShowSummaryModal(true);
+  };
+
   return (
-    <div className={`bg-gray-900 border-2 rounded-lg hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl ${
-      matchType && matchType !== 'none' ? 'border-gray-600' : 'border-gray-800'
-    }`}>
+    <>
+      <div 
+        className={`bg-gray-900 border-2 rounded-lg hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl ${
+          matchType && matchType !== 'none' ? 'border-gray-600' : 'border-gray-800'
+        }`}
+      >
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
@@ -504,52 +596,81 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 )}
               </div>
             )}
-            {/* Cheapest Mileage Badge - Show for exact match */}
-            {matchType === 'exact' && (() => {
-              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
-              if (cabinMileageOptions.length === 0) return null;
+            {/* Selected Mileage Badges - Show for user-selected programs */}
+            {(() => {
+              const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
+              if (!hasSelectedMileage) return null;
 
-              // Find cheapest option
-              const cheapest = cabinMileageOptions.reduce((min, opt) =>
-                opt.totalValue < min.totalValue ? opt : min
-              , cabinMileageOptions[0]);
+              return slices.map((slice, idx) => {
+                const selectedCarrier = selectedMileagePerSlice[idx];
+                if (!selectedCarrier || !slice.mileageBreakdown) return null;
 
-              return (
-                <div className="px-2 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-400/40 text-orange-300 text-xs font-medium rounded flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase opacity-70">{cheapest.cabin}:</span>
-                  <span className="font-bold">{cheapest.mileage.toLocaleString()}</span>
-                  <span className="text-[10px]">mi</span>
-                  {cheapest.price > 0 && (
-                    <>
-                      <span className="text-[10px]">+</span>
-                      <span className="font-semibold">${cheapest.price.toFixed(2)}</span>
-                    </>
-                  )}
-                </div>
-              );
+                const programs = groupMileageByProgram(slice.mileageBreakdown);
+                const selectedProgram = programs.find(p => p.carrierCode === selectedCarrier);
+                if (!selectedProgram) return null;
+
+                const sliceLabel = slices.length > 1 
+                  ? (idx === 0 ? 'Outbound' : `Return`)
+                  : 'One-way';
+
+                return (
+                  <div key={idx} className="px-2 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/40 text-purple-200 text-xs font-medium rounded flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase opacity-70">{sliceLabel}:</span>
+                    <span className="font-semibold">{selectedProgram.carrierCode}</span>
+                    {selectedProgram.cabin && (
+                      <span className="text-[10px] opacity-70">{selectedProgram.cabin}</span>
+                    )}
+                    <span className="font-bold">{selectedProgram.totalMileage.toLocaleString()}</span>
+                    <span className="text-[10px]">mi</span>
+                    {selectedProgram.totalPrice > 0 && (
+                      <>
+                        <span className="text-[10px]">+</span>
+                        <span className="font-semibold">${selectedProgram.totalPrice.toFixed(0)}</span>
+                      </>
+                    )}
+                  </div>
+                );
+              }).filter(Boolean);
             })()}
           </div>
           <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto h-7">
             {/* Price Per Mile */}
-            <div className="text-xs text-gray-400 flex items-center h-full">
+            {/* <div className="text-xs text-gray-400 flex items-center h-full">
               ${formatPricePerMile(pricePerMile)}/mi
-            </div>
+            </div> */}
 
             {/* Total Price */}
             {(() => {
-              // Calculate best mileage value from cabin groups
-              const cabinMileageOptions = groupMileageByCabin(slices, perCentValue);
-              const bestMileageValue = cabinMileageOptions.length > 0
-                ? Math.min(...cabinMileageOptions.map(opt => opt.totalValue))
-                : null;
+              // Calculate mileage value ONLY if user has selected mileage programs
+              const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
+              
+              let bestMileageValue = null;
+              if (hasSelectedMileage) {
+                // Calculate total from selected programs
+                let totalMileage = 0;
+                let totalPrice = 0;
+                
+                slices.forEach((slice, idx) => {
+                  const selectedCarrier = selectedMileagePerSlice[idx];
+                  if (selectedCarrier && slice.mileageBreakdown) {
+                    const programs = groupMileageByProgram(slice.mileageBreakdown);
+                    const selectedProgram = programs.find(p => p.carrierCode === selectedCarrier);
+                    if (selectedProgram) {
+                      totalMileage += selectedProgram.totalMileage;
+                      totalPrice += selectedProgram.totalPrice;
+                    }
+                  }
+                });
+                
+                if (totalMileage > 0) {
+                  bestMileageValue = (totalMileage * (perCentValue / 100)) + totalPrice;
+                }
+              }
 
-              // Parse cash price
-              const cashPrice = typeof displayTotal === 'string'
-                ? parseFloat(displayTotal.replace(/[^0-9.]/g, ''))
-                : displayTotal;
+              // Get cash price (displayTotal is always a number)
+              const cashPrice = displayTotal;
 
               // Show strike-through if mileage is significantly cheaper (more than 10% savings)
-              // Works for ANY match type (exact, partial, or any mileage data)
               const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
 
               return (
@@ -599,6 +720,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 </div>
               )}
 
+              <button
+                onClick={() => setShowSummaryModal(true)}
+                className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                title="View Flight Details"
+              >
+                <Eye className="h-3 w-3" />
+                Details
+              </button>
               <button
                 onClick={openHacksPage}
                 className="bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
@@ -889,7 +1018,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             <div className="flex flex-col lg:flex-row lg:items-center justify-between text-xs lg:text-sm text-gray-300 mb-3 lg:mb-4 gap-2 lg:gap-4">
               <div className="flex flex-wrap items-center gap-2 lg:gap-4">
                 {/* View Segments Button */}
-                {slice.segments && slice.segments.length > 1 && (
+                {slice.segments && slice.segments.length > 1 && false && (
                   <button
                     onClick={() => {
                       const isCurrentlyExpanded = expandedSegments[sliceIndex];
@@ -918,78 +1047,20 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 )}
                 {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (() => {
                   const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
-                  const anyExpanded = groupedPrograms.some(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
-                  const expandedProgram = groupedPrograms.find(p => expandedSliceAirlines[`${sliceIndex}-${p.carrierCode}`]);
-                  const isDropdownOpen = showMileageDropdown[sliceIndex] || false;
 
                   return groupedPrograms.length > 0 && (
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          setShowMileageDropdown(prev => ({ ...prev, [sliceIndex]: !isDropdownOpen }));
+                    <div className="mileage-selector-container" onClick={(e) => e.stopPropagation()}>
+                      <MileageSelector
+                        programs={groupedPrograms}
+                        selectedProgram={selectedMileagePerSlice[sliceIndex] || null}
+                        onSelect={(carrierCode) => {
+                          setSelectedMileagePerSlice(prev => ({
+                            ...prev,
+                            [sliceIndex]: carrierCode
+                          }));
                         }}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 hover:bg-purple-900/30 border border-purple-500/30 rounded-lg transition-colors text-sm"
-                      >
-                        <span className="text-gray-300 font-medium">Mile Programs Available ({groupedPrograms?.length || '0'})</span>
-                        {expandedProgram && (
-                          <>
-                            <span className="text-gray-500">-</span>
-                            <img
-                              src={`https://www.gstatic.com/flights/airline_logos/35px/${expandedProgram.carrierCode}.png`}
-                              alt={expandedProgram.carrierCode}
-                              className="h-4 w-4 object-contain"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                            <span className={`font-semibold ${
-                              expandedProgram.matchType === 'exact' ? 'text-green-400' :
-                              expandedProgram.matchType === 'partial' ? 'text-purple-300' : 'text-blue-300'
-                            }`}>
-                              {expandedProgram.carrierCode}
-                            </span>
-                          </>
-                        )}
-                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      {isDropdownOpen && (
-                        <div className="absolute left-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-10 min-w-[200px]">
-                          {groupedPrograms.map((program) => {
-                            const airlineKey = `${sliceIndex}-${program.carrierCode}`;
-                            const isSelected = expandedSliceAirlines[airlineKey];
-                            return (
-                              <button
-                                key={program.carrierCode}
-                                onClick={() => {
-                                  setExpandedSliceAirlines({});
-                                  setExpandedSegments({});
-                                  setExpandedSliceAirlines({ [airlineKey]: true });
-                                  setShowMileageDropdown(prev => ({ ...prev, [sliceIndex]: false }));
-                                }}
-                                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                                  isSelected ? 'bg-gray-700' : ''
-                                }`}
-                              >
-                                <img
-                                  src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
-                                  alt={program.carrierCode}
-                                  className="h-4 w-4 object-contain"
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                />
-                                <span className={`font-semibold ${
-                                  program.matchType === 'exact' ? 'text-green-400' :
-                                  program.matchType === 'partial' ? 'text-purple-300' : 'text-blue-300'
-                                }`}>
-                                  {program.carrierCode}
-                                </span>
-                                <span className="text-gray-300">{program.totalMileage.toLocaleString()}</span>
-                                {program.totalPrice > 0 && (
-                                  <span className="text-gray-400 text-xs">+ ${program.totalPrice.toFixed(2)}</span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                        sliceIndex={sliceIndex}
+                      />
                     </div>
                   );
                 })()}
@@ -1176,10 +1247,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   // Calculate total mileage value for comparison with cash price
                   const mileageTotalValue = (altFlight.mileage * (perCentValue / 100)) + priceNum;
 
-                  // Get original flight cash price for this slice
-                  const sliceCashPrice = typeof slice.price === 'string'
-                    ? parseFloat(slice.price.replace(/[^0-9.]/g, ''))
-                    : (slice.price || 0);
+                  // Get cash price for comparison (estimate per-slice for mileage comparison only)
+                  const sliceCashPrice = displayTotal / slices.length;
 
                   // Show savings if mileage is significantly cheaper (more than 15% savings)
                   const mileageSavings = sliceCashPrice > 0 && mileageTotalValue < sliceCashPrice * 0.85
@@ -1460,6 +1529,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       )}
 
     </div>
+
+    {/* Flight Summary Modal */}
+    {showSummaryModal && (
+      <FlightSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        solutionId={
+          flightId || 
+          (isGroupedFlight ? (flight as GroupedFlight).returnOptions[selectedReturnIndex]?.originalFlightId : '') ||
+          ''
+        }
+        session={session}
+        solutionSet={solutionSet}
+      />
+    )}
+    </>
   );
 };
 
