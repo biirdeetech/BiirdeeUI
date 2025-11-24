@@ -813,31 +813,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 {/* Swap Button with Via/Layover */}
                 <div className="relative self-end mb-[2px] overflow-visible">
-                  {/* Via Badge - appears on top of button */}
-                  {leg.vias.length > 0 && (
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-                      {leg.vias.map((via, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-600/90 text-purple-100 rounded text-xs whitespace-nowrap"
-                        >
-                          {via}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const newVias = leg.vias.filter((_, i) => i !== idx);
-                              updateLeg(leg.id, 'vias', newVias);
-                            }}
-                            className="hover:text-white transition-colors"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
                   <div className="relative group/swap">
                     <button
                       type="button"
@@ -848,8 +823,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       <ArrowLeftRight className="h-4 w-4 text-gray-400 transition-colors" />
                     </button>
 
-                    {/* Plus icon button - floats above on hover */}
-                    {leg.vias.length === 0 && showViaInput !== leg.id && (
+                    {/* Plus icon button - floats above on hover - ALWAYS visible when not in input mode */}
+                    {showViaInput !== leg.id && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -877,19 +852,21 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       >
                         <div className="relative w-64">
                           <LocationSearchInputWithCallback
+                            key={`via-input-${leg.id}-${leg.vias.length}`}
                             value={null}
                             onChange={(location) => {
                               if (location.code && !leg.vias.includes(location.code)) {
                                 updateLeg(leg.id, 'vias', [...leg.vias, location.code]);
-                                setShowViaInput(null);
+                                // Don't hide the input, keep it open for adding more
                               }
                             }}
-                            placeholder="Via / Layover"
+                            placeholder="Add via / layover airport"
                           />
                           <button
                             type="button"
                             onClick={() => setShowViaInput(null)}
                             className="absolute -top-2 -right-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white z-10"
+                            title="Close"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -897,6 +874,33 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       </div>
                     )}
                   </div>
+
+                  {/* Via Badges - displayed below the swap button with better spacing */}
+                  {leg.vias.length > 0 && (
+                    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 flex flex-wrap gap-1.5 justify-center z-20 min-w-max">
+                      {leg.vias.map((via, idx) => (
+                        <div
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 text-purple-300 rounded-lg text-xs font-medium whitespace-nowrap transition-all"
+                        >
+                          <span className="text-[10px] uppercase text-purple-400/70 font-semibold">Via</span>
+                          <span className="font-bold text-sm">{via}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newVias = leg.vias.filter((_, i) => i !== idx);
+                              updateLeg(leg.id, 'vias', newVias);
+                            }}
+                            className="hover:text-white hover:bg-purple-600/40 rounded-full p-0.5 transition-colors"
+                            title="Remove"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 overflow-visible">
