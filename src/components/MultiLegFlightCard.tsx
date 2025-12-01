@@ -9,9 +9,12 @@ interface MultiLegFlightCardProps {
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
+  v2EnrichmentData?: Map<string, any[]>;
+  onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
+  enrichingAirlines?: Set<string>;
 }
 
-const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet }) => {
+const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set() }) => {
   const { slices, totalAmount, displayTotal, currency, ext } = flight;
   const firstSlice = slices[0];
   const carrier = firstSlice.segments[0]?.carrier || { code: '', name: '', shortName: '' };

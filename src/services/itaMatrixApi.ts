@@ -36,6 +36,7 @@ class ITAMatrixService {
   private summaryUrl = 'https://content-alkalimatrix-pa.googleapis.com/v1/summarize';
   private locationBaseUrl = 'https://content-alkalimatrix-pa.googleapis.com';
   private apiKey = 'AIzaSyBH1mte6BdKzvf0c2mYprkyvfHCRWmfX7g';
+  private backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
   private sessionInfo: SessionInfo | null = null;
 
   static getInstance(): ITAMatrixService {
@@ -457,6 +458,129 @@ class ITAMatrixService {
       console.error('❌ ITAMatrixService: Geo search failed:', error);
       throw error;
     }
+  }
+
+  async enrichWithV2Mileage(params: FlightSearchParams, programs: string[]): Promise<any> {
+    console.log('🌟 ITAMatrixService: Enriching with v2 mileage for programs:', programs);
+
+    try {
+      // Build the v2 payload based on the original search params
+      const v2Payload = this.buildV2Payload(params, programs);
+      console.log('📡 ITAMatrixService V2: Request payload:', JSON.stringify(v2Payload, null, 2));
+
+      const url = `${this.backendUrl}/api/v2/flights/ita-matrix`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(v2Payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ ITAMatrixService V2: API request failed:', response.status, errorText);
+        throw new Error(`V2 API request failed: ${response.status}`);
+      }
+
+      // Handle NDJSON streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No reader available for response body');
+      }
+
+      const decoder = new TextDecoder();
+      const enrichmentData: any[] = [];
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const data = JSON.parse(line);
+              enrichmentData.push(data);
+              console.log('📦 ITAMatrixService V2: Received enrichment data:', data);
+            } catch (e) {
+              console.warn('⚠️ ITAMatrixService V2: Failed to parse line:', line);
+            }
+          }
+        }
+      }
+
+      console.log('✅ ITAMatrixService V2: Enrichment complete, received', enrichmentData.length, 'items');
+      return enrichmentData;
+    } catch (error) {
+      console.error('❌ ITAMatrixService V2: Enrichment failed:', error);
+      throw error;
+    }
+  }
+
+  private buildV2Payload(params: FlightSearchParams, programs: string[]): any {
+    // Determine trip type
+    const isRoundTrip = params.slices && params.slices.length === 2 && 
+                       params.slices[0].origins[0] === params.slices[1].destinations[0];
+    const tripType = isRoundTrip ? 'round-trip' : 'one-way';
+
+    // Build slices for v2 payload
+    const slices = (params.slices || []).map(slice => ({
+      origin: slice.origins,
+      dest: slice.destinations,
+      routing: slice.via || '',
+      ext: '',
+      routingRet: '',
+      extRet: '',
+      dates: {
+        searchDateType: 'specific',
+        departureDate: slice.departDate,
+        departureDateType: 'depart',
+        departureDateModifier: '0',
+        departureDatePreferredTimes: [],
+        returnDate: isRoundTrip && params.slices && params.slices[1] ? params.slices[1].departDate : slice.departDate,
+        returnDateType: 'depart',
+        returnDateModifier: '0',
+        returnDatePreferredTimes: []
+      }
+    }));
+
+    return {
+      type: tripType,
+      slices: slices,
+      options: {
+        cabin: params.cabin || 'COACH',
+        stops: params.maxStops !== undefined ? String(params.maxStops) : '-1',
+        extraStops: '-1',
+        allowAirportChanges: 'true',
+        showOnlyAvailable: 'true',
+        pageSize: 50,
+        pageNum: 1,
+        aero: true,
+        programs: programs, // Key: Use provided programs for enrichment
+        ita_flow: false, // Only get enrichment data, not ITA flights
+        airlines: '',
+        alliances: '',
+        exclude: [],
+        currencyCode: params.currency || 'USD',
+        salesCity: {
+          code: params.sales_city || 'NYC'
+        }
+      },
+      pax: {
+        adults: String(params.passengers || 1),
+        seniors: '0',
+        youth: '0',
+        children: '0',
+        infantsInSeat: '0',
+        infantsOnLap: '0'
+      }
+    };
   }
 }
 

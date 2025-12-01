@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code } from 'lucide-react';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
@@ -9,6 +9,8 @@ import FlightSegmentDetails from './FlightSegmentDetails';
 import FlightSummaryModal from './FlightSummaryModal';
 import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
+import V2EnrichmentViewer from './V2EnrichmentViewer';
+import AwardCards from './AwardCards';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -16,6 +18,9 @@ interface FlightCardProps {
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
+  v2EnrichmentData?: Map<string, any[]>;
+  onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
+  enrichingAirlines?: Set<string>;
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -77,6 +82,55 @@ const groupMileageFlights = (flights: any[]) => {
   });
 };
 
+// Helper to group similar award options for cleaner display (similar to groupMileageFlights)
+const groupAwardOptions = (awards: any[]) => {
+  const groups = new Map<string, any[]>();
+
+  awards.forEach((award) => {
+    const itinerary = award.itineraries?.[0];
+    if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return;
+    
+    const firstSegment = itinerary.segments[0];
+    const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+    
+    const route = `${firstSegment.departure?.iataCode}-${lastSegment.arrival?.iataCode}`;
+    const depTime = firstSegment.departure?.at ? new Date(firstSegment.departure.at).toISOString().slice(11, 16) : '';
+    const arrTime = lastSegment.arrival?.at ? new Date(lastSegment.arrival.at).toISOString().slice(11, 16) : '';
+    const duration = itinerary.duration || '';
+    const layovers = itinerary.layovers?.map((l: any) => l.airport?.code || l.airport?.iataCode).join(',') || '';
+    
+    // Group by: route + times + duration + cabin + miles + tax
+    const groupKey = `${route}|${depTime}|${arrTime}|${duration}|${award.cabin}|${award.miles}|${award.tax}|${layovers}`;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
+    }
+    groups.get(groupKey)!.push(award);
+  });
+
+  // Convert to grouped structure
+  return Array.from(groups.values()).map(groupAwards => {
+    if (groupAwards.length === 1) {
+      return {
+        primary: groupAwards[0],
+        alternatives: []
+      };
+    }
+
+    // Sort by value (cheapest first)
+    groupAwards.sort((a, b) => {
+      const aValue = (a.miles * 0.015) + a.tax;
+      const bValue = (b.miles * 0.015) + b.tax;
+      return aValue - bValue;
+    });
+
+    return {
+      primary: groupAwards[0],
+      alternatives: groupAwards.slice(1)
+    };
+  });
+};
+
 // Helper to group mileage options by cabin and find best value per cabin
 const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   const cabinGroups = new Map<string, { mileage: number; price: number; totalValue: number }>();
@@ -122,7 +176,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set() }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     const date = new Date(dateStr);
@@ -155,12 +209,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   // Track selected mileage program per slice: { sliceIndex: carrierCode }
   const [selectedMileagePerSlice, setSelectedMileagePerSlice] = useState<Record<number, string | null>>({});
+  const [selectedAwardPerSlice, setSelectedAwardPerSlice] = useState<Record<number, string | null>>({});
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
+  const [expandedAwardGroups, setExpandedAwardGroups] = useState<Record<string, boolean>>({});
+  const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
   const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
   const [showMileageDropdown, setShowMileageDropdown] = useState<Record<number, boolean>>({});
+  const [mileageAwardTab, setMileageAwardTab] = useState<Record<number, 'aero' | 'award'>>({});
 
 
   // Get flight data based on type
@@ -212,6 +270,299 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     sliceCount: slices.length,
     flightId
   });
+
+  // Check if this airline is currently being enriched
+  const isEnriching = enrichingAirlines.has(carrier.code);
+
+  // Find v2 enrichment data for this flight's carrier AND cabin
+  const findV2Enrichment = () => {
+    if (!v2EnrichmentData || v2EnrichmentData.size === 0 || !carrier.code) return null;
+    
+    // Get enrichment data for this carrier from the Map
+    const carrierEnrichment = v2EnrichmentData.get(carrier.code);
+    if (!carrierEnrichment || carrierEnrichment.length === 0) return null;
+    
+    // Get current flight's cabin class (normalized)
+    const currentFlightCabin = slices[0]?.cabins?.[0] || 'COACH';
+    const normalizeCabin = (cabin: string) => {
+      const c = cabin.toUpperCase();
+      if (c.includes('BUSINESS') || c === 'J') return 'BUSINESS';
+      if (c.includes('FIRST') || c === 'F') return 'FIRST';
+      if (c.includes('PREMIUM') || c === 'W') return 'PREMIUM';
+      return 'COACH';
+    };
+    const currentCabinNormalized = normalizeCabin(currentFlightCabin);
+    
+    console.log(`🔍 FlightCard: Looking for enrichment - Carrier: ${carrier.code}, Cabin: ${currentCabinNormalized}`);
+    
+    // Look for enrichment data - find solutions with mileage data matching BOTH carrier AND cabin
+    let bestEnrichment: any = null;
+    let bestValue = Infinity;
+
+    for (const enrichment of carrierEnrichment) {
+      // New format: awardtool-direct
+      if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
+        const flightData = enrichment.data;
+        const itineraries = flightData.itineraries || [];
+        
+        // Extract carrier from first segment
+        let enrichmentCarrier: string | null = null;
+        if (itineraries.length > 0 && itineraries[0].segments && itineraries[0].segments.length > 0) {
+          enrichmentCarrier = itineraries[0].segments[0].carrierCode || 
+                             itineraries[0].segments[0].operating?.carrierCode;
+        }
+        
+        if (!enrichmentCarrier || enrichmentCarrier !== carrier.code) {
+          continue; // Skip if carrier doesn't match
+        }
+        
+        // Check awardtool cabin prices
+        const awardtool = flightData.awardtool;
+        if (awardtool && awardtool.cabinPrices) {
+          // Map cabin names: Business -> BUSINESS, Economy -> COACH, Premium Economy -> PREMIUM
+          const cabinMap: Record<string, string> = {
+            'Business': 'BUSINESS',
+            'Economy': 'COACH',
+            'Premium Economy': 'PREMIUM'
+          };
+          
+          // Find matching cabin in awardtool data
+          for (const [cabinName, cabinData] of Object.entries(awardtool.cabinPrices)) {
+            const normalizedCabinName = cabinMap[cabinName] || cabinName.toUpperCase();
+            const cabin = cabinData as any; // Type assertion for awardtool cabin data
+            
+            if (normalizedCabinName === currentCabinNormalized && cabin.miles > 0) {
+              const mileage = cabin.miles;
+              const tax = cabin.tax || 0;
+              const mileageValue = (mileage * perCentValue);
+              const totalValue = mileageValue + tax;
+              
+              if (totalValue < bestValue || !bestEnrichment) {
+                bestValue = totalValue;
+                bestEnrichment = {
+                  program: enrichmentCarrier,
+                  mileage: mileage,
+                  price: tax,
+                  priceFormatted: `USD ${tax.toFixed(2)}`,
+                  cabin: normalizedCabinName,
+                  matchType: 'exact-match',
+                  fullyEnriched: true,
+                  transferOptions: cabin.transfer_options || [],
+                  segments: cabin.segments || [],
+                  seats: cabin.seats || 0
+                };
+                console.log(`✅ FlightCard: Found awardtool enrichment - ${enrichmentCarrier} ${normalizedCabinName}: ${mileage} miles + $${tax}`);
+              }
+            }
+          }
+        }
+      }
+      // Old format: ita-matrix-enriched
+      else if (enrichment.type === 'solution' && enrichment.totalMileage && enrichment.totalMileage > 0) {
+        const itinerary = enrichment.itinerary;
+        if (itinerary && itinerary.slices) {
+          for (const slice of itinerary.slices) {
+            if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
+              for (const breakdown of slice.mileageBreakdown) {
+                if (breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0) {
+                  const mileageFlight = breakdown.allMatchingFlights[0];
+                  const enrichmentCarrier = mileageFlight.carrierCode || mileageFlight.operatingCarrier;
+                  const enrichmentCabin = normalizeCabin(mileageFlight.cabin || mileageFlight.cabinClass || 'COACH');
+                  
+                  // Match BOTH carrier AND cabin
+                  if (enrichmentCarrier === carrier.code && enrichmentCabin === currentCabinNormalized) {
+                    // Calculate total value (mileage * perCentValue + cash price)
+                    const mileageValue = (enrichment.totalMileage * perCentValue);
+                    const cashPrice = parseFloat(enrichment.totalMileagePrice || 0);
+                    const totalValue = mileageValue + cashPrice;
+                    
+                    if (totalValue < bestValue || !bestEnrichment) {
+                      bestValue = totalValue;
+                      bestEnrichment = {
+                        program: enrichmentCarrier,
+                        mileage: enrichment.totalMileage,
+                        price: enrichment.totalMileagePrice || 0,
+                        priceFormatted: typeof enrichment.totalMileagePrice === 'number' 
+                          ? `USD ${enrichment.totalMileagePrice.toFixed(2)}`
+                          : enrichment.totalMileagePrice,
+                        cabin: enrichmentCabin,
+                        matchType: enrichment.itinerary?.slices?.[0]?.matchType || 'partial-match',
+                        fullyEnriched: enrichment.fullyEnriched || false
+                      };
+                      console.log(`✅ FlightCard: Found matching enrichment - ${enrichmentCarrier} ${enrichmentCabin}: ${enrichment.totalMileage} miles + ${enrichment.totalMileagePrice}`);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if (!bestEnrichment) {
+      console.log(`⚠️ FlightCard: No enrichment found for ${carrier.code} ${currentCabinNormalized}`);
+    }
+    
+    return bestEnrichment;
+  };
+
+  const v2Enrichment = findV2Enrichment();
+  const hasV2Enrichment = v2Enrichment !== null;
+  
+  // Helper to deduplicate award options - preserve all unique combinations
+  const deduplicateAwardOptions = (options: any[]): any[] => {
+    const uniqueMap = new Map<string, any>();
+    
+    options.forEach((award) => {
+      const itinerary = award.itineraries?.[0];
+      if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return;
+      
+      const firstSegment = itinerary.segments[0];
+      const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+      
+      // Create unique key: include flight numbers to distinguish different flights with same route/time
+      const depTime = firstSegment.departure?.at ? new Date(firstSegment.departure.at).toISOString().slice(11, 16) : '';
+      const arrTime = lastSegment.arrival?.at ? new Date(lastSegment.arrival.at).toISOString().slice(11, 16) : '';
+      const duration = itinerary.duration || '';
+      const origin = firstSegment.departure?.iataCode || '';
+      const dest = lastSegment.arrival?.iataCode || '';
+      const airline = firstSegment.carrierCode || '';
+      
+      // Include flight numbers in the key to distinguish different flights
+      const flightNumbers = itinerary.segments.map((seg: any) => `${seg.carrierCode}${seg.number}`).join('-');
+      
+      // Key includes: origin-dest-depTime-arrTime-duration-miles-tax-cabin-airline-flightNumbers
+      // This ensures we keep different cabin options for the same flight, and different flights with same route
+      const uniqueKey = `${origin}-${dest}-${depTime}-${arrTime}-${duration}-${award.miles}-${award.tax}-${award.cabin}-${airline}-${flightNumbers}`;
+      
+      // Keep the first occurrence (or prefer one with more seats)
+      if (!uniqueMap.has(uniqueKey) || (award.seats > 0 && (uniqueMap.get(uniqueKey)?.seats || 0) < award.seats)) {
+        uniqueMap.set(uniqueKey, award);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
+  // Extract ALL award options from v2 enrichment data
+  const getAllAwardOptions = (): any[] => {
+    if (!v2EnrichmentData || v2EnrichmentData.size === 0 || !carrier.code) return [];
+    
+    const carrierEnrichment = v2EnrichmentData.get(carrier.code);
+    if (!carrierEnrichment || carrierEnrichment.length === 0) return [];
+    
+    const awardOptions: any[] = [];
+    
+    carrierEnrichment.forEach((enrichment: any) => {
+      // New format: awardtool-direct
+      if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
+        const flightData = enrichment.data;
+        const awardtool = flightData.awardtool;
+        
+        if (awardtool && awardtool.cabinPrices) {
+          // Extract all cabin options from this solution
+          Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
+            if (cabinData.miles > 0) {
+              // Generate unique ID that includes cabin to distinguish different cabin options from same flight
+              const uniqueId = flightData.id 
+                ? `${flightData.id}_${cabinName.toUpperCase().replace(/\s+/g, '_')}`
+                : `${enrichment.segment?.origin}-${enrichment.segment?.destination}-${cabinName}-${Date.now()}`;
+              
+              awardOptions.push({
+                id: uniqueId,
+                miles: cabinData.miles,
+                tax: cabinData.tax || 0,
+                cabin: cabinName,
+                segments: cabinData.segments || [],
+                transferOptions: cabinData.transfer_options || [],
+                seats: cabinData.seats || 0,
+                itineraries: flightData.itineraries || [],
+                price: flightData.price,
+                data: flightData,
+                enrichment: enrichment,
+                // Store enrichment segment metadata for filtering
+                enrichmentOrigin: enrichment.segment?.origin,
+                enrichmentDestination: enrichment.segment?.destination
+              });
+            }
+          });
+        }
+      }
+    });
+    
+    // Deduplicate before returning
+    return deduplicateAwardOptions(awardOptions);
+  };
+  
+  const allAwardOptions = getAllAwardOptions();
+  const hasAwardOptions = allAwardOptions.length > 0;
+  
+  // Check if enrichment exists for this carrier (regardless of cabin match)
+  // Used to determine if we should show the "Miles" button
+  const hasAnyEnrichmentForCarrier = v2EnrichmentData && v2EnrichmentData.has(carrier.code);
+
+  // Set default selected award to cheapest for each slice if not already selected
+  useEffect(() => {
+    if (hasAwardOptions && allAwardOptions.length > 0 && slices.length > 0) {
+      slices.forEach((slice, sliceIndex) => {
+        // Skip if already selected for this slice
+        if (selectedAwardPerSlice[sliceIndex]) return;
+
+        // Filter award options for this slice
+        const sliceAwardOptions = allAwardOptions.filter(award => {
+          // First check enrichment segment metadata (more reliable for route matching)
+          if (award.enrichmentOrigin && award.enrichmentDestination) {
+            if (award.enrichmentOrigin === slice.origin.code &&
+                award.enrichmentDestination === slice.destination.code) {
+              return true;
+            }
+          }
+          
+          // Fallback to itinerary segments if metadata not available
+          const itinerary = award.itineraries?.[0];
+          if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
+          const firstSegment = itinerary.segments[0];
+          const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+          return firstSegment.departure?.iataCode === slice.origin.code &&
+                 lastSegment.arrival?.iataCode === slice.destination.code;
+        });
+
+        if (sliceAwardOptions.length > 0) {
+          const cheapest = [...sliceAwardOptions].sort((a, b) => {
+            const aValue = (a.miles * perCentValue) + a.tax;
+            const bValue = (b.miles * perCentValue) + b.tax;
+            return aValue - bValue;
+          })[0];
+          
+          if (cheapest) {
+            setSelectedAwardPerSlice(prev => {
+              // Only set if not already set for this slice
+              if (prev[sliceIndex]) return prev;
+              return { ...prev, [sliceIndex]: cheapest.id };
+            });
+          }
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allAwardOptions.length, hasAwardOptions, slices.length]);
+  
+  // Check if we have aero mileage options
+  const hasAeroMileage = slices.some(slice => slice.mileageBreakdown && slice.mileageBreakdown.length > 0);
+  
+  console.log('🌟 FlightCard: V2 enrichment check - Carrier:', carrier.code, 'HasAny:', hasAnyEnrichmentForCarrier, 'HasMatch:', hasV2Enrichment, 'AwardOptions:', allAwardOptions.length, 'HasAero:', hasAeroMileage);
+
+  // Handle enrichment button click
+  const handleEnrichClick = async () => {
+    if (!onEnrichFlight || !carrier.code || isEnriching || hasV2Enrichment) return;
+    
+    try {
+      await onEnrichFlight(flight, carrier.code);
+    } catch (error) {
+      console.error('Failed to enrich flight:', error);
+    }
+  };
 
   const formatMileagePrice = (price: number | string): string => {
     if (typeof price === 'string') {
@@ -663,15 +1014,59 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 });
                 
                 if (totalMileage > 0) {
-                  bestMileageValue = (totalMileage * (perCentValue / 100)) + totalPrice;
+                  bestMileageValue = (totalMileage * perCentValue) + totalPrice;
+                }
+              }
+
+              // Calculate best award value if available - use selected award per slice or find cheapest
+              let bestAwardValue = null;
+              if (hasAwardOptions && allAwardOptions.length > 0) {
+                // Check if any slice has a selected award
+                let selectedAward: any = null;
+                for (let idx = 0; idx < slices.length; idx++) {
+                  const selectedAwardId = selectedAwardPerSlice[idx];
+                  if (selectedAwardId) {
+                    const sliceAwardOptions = allAwardOptions.filter(award => {
+                      // First check enrichment segment metadata (more reliable for route matching)
+                      if (award.enrichmentOrigin && award.enrichmentDestination) {
+                        if (award.enrichmentOrigin === slices[idx].origin.code &&
+                            award.enrichmentDestination === slices[idx].destination.code) {
+                          return true;
+                        }
+                      }
+                      
+                      // Fallback to itinerary segments if metadata not available
+                      const itinerary = award.itineraries?.[0];
+                      if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
+                      const firstSegment = itinerary.segments[0];
+                      const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+                      return firstSegment.departure?.iataCode === slices[idx].origin.code &&
+                             lastSegment.arrival?.iataCode === slices[idx].destination.code;
+                    });
+                    selectedAward = sliceAwardOptions.find(a => a.id === selectedAwardId);
+                    if (selectedAward) break;
+                  }
+                }
+                
+                // Use selected award or find cheapest
+                const bestAward = selectedAward || [...allAwardOptions].sort((a, b) => {
+                  const aValue = (a.miles * perCentValue) + a.tax;
+                  const bValue = (b.miles * perCentValue) + b.tax;
+                  return aValue - bValue;
+                })[0];
+                if (bestAward) {
+                  bestAwardValue = (bestAward.miles * perCentValue) + bestAward.tax;
                 }
               }
 
               // Get cash price (displayTotal is always a number)
               const cashPrice = displayTotal;
 
-              // Show strike-through if mileage is significantly cheaper (more than 10% savings)
-              const showStrikeThrough = bestMileageValue && bestMileageValue < cashPrice * 0.90;
+              // Show strike-through if mileage or award is significantly cheaper (more than 10% savings)
+              const bestAlternativeValue = bestMileageValue && bestAwardValue
+                ? Math.min(bestMileageValue, bestAwardValue)
+                : bestMileageValue || bestAwardValue;
+              const showStrikeThrough = bestAlternativeValue && bestAlternativeValue < cashPrice * 0.90;
 
               return (
                 <div className="flex items-center gap-2 h-full">
@@ -683,17 +1078,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       </div>
                     )}
                   </div>
-                  {showStrikeThrough && bestMileageValue && (
+                  {showStrikeThrough && bestAlternativeValue && (
                     <button
                       onClick={() => {
-                        const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
-                        if (dealIndex >= 0) {
-                          setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                        // Expand the slice with the best alternative
+                        if (bestMileageValue && (!bestAwardValue || bestMileageValue <= bestAwardValue)) {
+                          const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
+                          if (dealIndex >= 0) {
+                            setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
+                          }
+                        } else if (bestAwardValue) {
+                          // Expand first slice and show award tab
+                          const firstSliceIndex = 0;
+                          setExpandedSlices(prev => ({ ...prev, [firstSliceIndex]: true }));
+                          setMileageAwardTab(prev => ({ ...prev, [firstSliceIndex]: 'award' }));
                         }
                       }}
                       className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      ${bestMileageValue.toFixed(2)} <span className="text-xs font-normal">mileage cash</span>
+                      ${bestAlternativeValue.toFixed(2)} <span className="text-xs font-normal">
+                        {bestMileageValue && bestAwardValue
+                          ? (bestMileageValue <= bestAwardValue ? 'mileage' : 'award')
+                          : (bestMileageValue ? 'mileage' : 'award')
+                        } cash
+                      </span>
                     </button>
                   )}
                 </div>
@@ -701,6 +1109,102 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             })()}
           </div>
         </div>
+
+        {/* Loading Award Info - Show when enrichment is in progress for this airline */}
+        {isEnriching && !hasV2Enrichment && (
+          <div className="mt-2 px-3 py-2 bg-gradient-to-r from-yellow-500/5 to-amber-500/5 border border-yellow-400/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-yellow-400 animate-[pulse_1.5s_ease-in-out_infinite]" />
+              <div className="text-sm font-medium text-yellow-400">
+                Fetching awards...
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* V2 Mileage Enrichment - Display best award if available */}
+        {hasAwardOptions && slices.length > 0 && (() => {
+          // Get best award for the first slice (outbound)
+          const firstSlice = slices[0];
+          const sliceAwardOptions = allAwardOptions.filter(award => {
+            // First check enrichment segment metadata (more reliable for route matching)
+            if (award.enrichmentOrigin && award.enrichmentDestination) {
+              if (award.enrichmentOrigin === firstSlice.origin.code &&
+                  award.enrichmentDestination === firstSlice.destination.code) {
+                return true;
+              }
+            }
+            
+            // Fallback to itinerary segments if metadata not available
+            const itinerary = award.itineraries?.[0];
+            if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
+            const firstSegment = itinerary.segments[0];
+            const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+            return firstSegment.departure?.iataCode === firstSlice.origin.code &&
+                   lastSegment.arrival?.iataCode === firstSlice.destination.code;
+          });
+
+          if (sliceAwardOptions.length === 0) return null;
+
+          // Get best award for this slice
+          const bestAward = [...sliceAwardOptions].sort((a, b) => {
+            const aValue = (a.miles * perCentValue) + a.tax;
+            const bValue = (b.miles * perCentValue) + b.tax;
+            return aValue - bValue;
+          })[0];
+
+          if (!bestAward) return null;
+
+          const cashValue = (bestAward.miles * perCentValue) + bestAward.tax;
+
+          return (
+            <div className="mt-2 px-4 py-3 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-purple-400" />
+                  <div>
+                    <div className="text-xs font-medium text-gray-300">Best Award Available</div>
+                    <div className="text-[10px] text-gray-500 uppercase">{bestAward.cabin} • {sliceAwardOptions.length} options</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-purple-300">
+                      {bestAward.miles.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      miles
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-green-400">
+                      + ${bestAward.tax.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      taxes/fees
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-purple-200">
+                      ${cashValue.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-gray-400">
+                      total value
+                    </div>
+                  </div>
+                  {/* View JSON Button - Development Tool */}
+                  <button
+                    onClick={() => setShowV2EnrichmentViewer(true)}
+                    className="p-1.5 hover:bg-purple-500/20 rounded transition-colors"
+                    title="View V2 Enrichment JSON"
+                  >
+                    <Code className="h-4 w-4 text-purple-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Action Buttons Row */}
         <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
@@ -728,6 +1232,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <Eye className="h-3 w-3" />
                 Details
               </button>
+
+              {/* Mileage Enrichment Button - Only show if no enrichment data exists for this carrier at all */}
+              {onEnrichFlight && !hasAnyEnrichmentForCarrier && !isEnriching && (
+                <button
+                  onClick={handleEnrichClick}
+                  className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 hover:text-amber-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                  title="Find Award Availability"
+                >
+                  <Award className="h-3 w-3" />
+                  Find Awards
+                </button>
+              )}
+
               <button
                 onClick={openHacksPage}
                 className="bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
@@ -944,7 +1461,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                 {hasNextSegment && (
                                   <div className="flex-1 relative">
                                     <div className={`border-t-2 ${
-                                      stopIdx < slice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                      slice.stops && stopIdx < slice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
                                     }`}></div>
                                     <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
                                       {formatDuration(segmentTimes[nextFlightIdx].duration)}
@@ -1005,7 +1522,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </div>
                   )}
                   {/* Arrival flight number - last segment - only show for connecting flights */}
-                  {(!slice.stops || slice.stops.length > 0) && slice.flights && slice.flights.length > 0 && slice.flights[slice.flights.length - 1] && (
+                  {(slice.stops && slice.stops.length > 0) && slice.flights && slice.flights.length > 0 && slice.flights[slice.flights.length - 1] && (
                     <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                       {slice.flights[slice.flights.length - 1]}
                     </div>
@@ -1078,437 +1595,589 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
-            {/* Expanded Mileage Alternatives - Per Airline */}
-            {slice.mileageBreakdown && (() => {
-              const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
-
-              return groupedPrograms.map((program) => {
-                const airlineKey = `${sliceIndex}-${program.carrierCode}`;
-                if (!expandedSliceAirlines[airlineKey]) {
-                  return null;
-                }
-
-                // Get flights for THIS airline only
-                const allFlights: any[] = [];
-                slice.mileageBreakdown.forEach(breakdown => {
-                  if (breakdown.allMatchingFlights) {
-                    breakdown.allMatchingFlights.forEach((flight: any) => {
-                      // Filter by carrier code
-                      if (flight.carrierCode === program.carrierCode) {
-                        allFlights.push(flight);
-                      }
-                    });
+            {/* Mileage Options Section - Combined Aero and Award with Tabs */}
+            {((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
+              // Check if we have award options for this slice
+              const sliceAwardOptions = hasAwardOptions ? allAwardOptions.filter(award => {
+                // First check enrichment segment metadata (more reliable for route matching)
+                if (award.enrichmentOrigin && award.enrichmentDestination) {
+                  if (award.enrichmentOrigin === slice.origin.code &&
+                      award.enrichmentDestination === slice.destination.code) {
+                    return true;
                   }
-                });
+                }
+                
+                // Fallback to itinerary segments if metadata not available
+                const itinerary = award.itineraries?.[0];
+                if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
+                const firstSegment = itinerary.segments[0];
+                const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+                const awardOrigin = firstSegment.departure?.iataCode;
+                const awardDest = lastSegment.arrival?.iataCode;
+                return awardOrigin === slice.origin.code && awardDest === slice.destination.code;
+              }) : [];
 
-              if (allFlights.length === 0) {
-                return null;
+              const hasAeroForSlice = slice.mileageBreakdown && slice.mileageBreakdown.length > 0;
+              const hasAwardForSlice = sliceAwardOptions.length > 0;
+              
+              if (!hasAeroForSlice && !hasAwardForSlice) return null;
+
+              // Determine active tab
+              const activeTab = mileageAwardTab[sliceIndex] || (hasAeroForSlice ? 'aero' : 'award');
+              const showAeroTab = activeTab === 'aero';
+              const showAwardTab = activeTab === 'award';
+
+              // Calculate best values for comparison
+              let bestAeroValue: number | null = null;
+              let bestAwardValue: number | null = null;
+              
+              if (hasAeroForSlice) {
+                const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+                if (groupedPrograms.length > 0) {
+                  // Get cheapest aero option
+                  const cheapestAero = groupedPrograms.reduce((best, program) => {
+                    const value = (program.totalMileage * perCentValue) + program.totalPrice;
+                    const bestValue = best ? (best.totalMileage * perCentValue) + best.totalPrice : Infinity;
+                    return value < bestValue ? program : best;
+                  }, null as any);
+                  if (cheapestAero) {
+                    bestAeroValue = (cheapestAero.totalMileage * perCentValue) + cheapestAero.totalPrice;
+                  }
+                }
+              }
+              
+              if (hasAwardForSlice) {
+                // Use selected award if available, otherwise find the absolute cheapest award across ALL options (all cabins)
+                const selectedAwardId = selectedAwardPerSlice[sliceIndex];
+                let bestAward = selectedAwardId 
+                  ? sliceAwardOptions.find(a => a.id === selectedAwardId)
+                  : null;
+                
+                if (!bestAward) {
+                  bestAward = [...sliceAwardOptions].sort((a, b) => {
+                    const aValue = (a.miles * perCentValue) + a.tax;
+                    const bValue = (b.miles * perCentValue) + b.tax;
+                    return aValue - bValue;
+                  })[0];
+                }
+                
+                if (bestAward) {
+                  bestAwardValue = (bestAward.miles * perCentValue) + bestAward.tax;
+                }
               }
 
-              // Sort by time proximity
-              const originalTime = new Date(slice.departure).getTime();
-              const sortedFlights = allFlights.sort((a, b) => {
-                const aTime = new Date(a.departure.at).getTime();
-                const bTime = new Date(b.departure.at).getTime();
-                const aDiff = Math.abs(aTime - originalTime);
-                const bDiff = Math.abs(bTime - originalTime);
-                return aDiff - bDiff;
-              });
+              // Determine which to show (cheapest, or both if same value)
+              const showBoth = bestAeroValue !== null && bestAwardValue !== null && Math.abs(bestAeroValue - bestAwardValue) < 0.01;
+              const showAero = showBoth || (bestAeroValue !== null && (bestAwardValue === null || bestAeroValue <= bestAwardValue));
+              const showAward = showBoth || (bestAwardValue !== null && (bestAeroValue === null || bestAwardValue < bestAeroValue));
 
-              // Filter by time proximity
-              let activeTab = sliceAlternativeTabs[airlineKey] || 'best-match';
-              const bestMatchFlights = sortedFlights.filter(f => {
-                const flightTime = new Date(f.departure.at).getTime();
-                const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
-                return diffMinutes <= 300;
-              });
-              const timeInsensitiveFlights = sortedFlights.filter(f => {
-                const flightTime = new Date(f.departure.at).getTime();
-                const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
-                return diffMinutes > 300;
-              });
-
-              // Auto-switch tabs if empty
-              if (activeTab === 'best-match' && bestMatchFlights.length === 0 && timeInsensitiveFlights.length > 0) {
-                activeTab = 'time-insensitive';
-              } else if (activeTab === 'time-insensitive' && timeInsensitiveFlights.length === 0 && bestMatchFlights.length > 0) {
-                activeTab = 'best-match';
-              }
-
-              const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
-
-                return (
-                  <div key={airlineKey} className="mt-3 bg-purple-900/10 p-3 rounded border border-purple-500/20">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
-                          alt={program.carrierCode}
-                          className="h-5 w-5 object-contain"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                        <span className="text-sm font-semibold text-white">{program.carrierCode} Mileage Options</span>
-                        <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setExpandedSliceAirlines(prev => {
-                            const newState = { ...prev };
-                            delete newState[airlineKey];
-                            return newState;
-                          });
-                        }}
-                        className="text-xs text-gray-400 hover:text-gray-300 transition-colors px-2 py-1 hover:bg-gray-800/50 rounded"
-                      >
-                        Collapse
-                      </button>
+              return (
+                <div key={`mileage-options-${sliceIndex}`} className="mt-4 bg-gray-800/30 p-3 rounded border border-gray-700/50">
+                  {/* Header: Mileage Options with Tabs */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-semibold text-white">Mileage Options</span>
                     </div>
-
-                  {/* Tabs */}
-                  <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
-                    <button
-                      onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'best-match'})}
-                      disabled={bestMatchFlights.length === 0}
-                      className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                        bestMatchFlights.length === 0
-                          ? 'text-gray-600 cursor-not-allowed opacity-50'
-                          : (sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match'
-                          ? 'text-green-400 bg-gray-800/50'
-                          : 'text-gray-400 hover:text-gray-300 cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Zap className="h-3 w-3" />
-                        <span>Within 5hr</span>
-                        <span className="text-[10px]">({bestMatchFlights.length})</span>
+                    {hasAeroForSlice && hasAwardForSlice && (
+                      <div className="flex border border-gray-700/50 bg-gray-800/30 rounded overflow-hidden">
+                        <button
+                          onClick={() => setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'aero'})}
+                          className={`px-3 py-1.5 text-xs font-medium transition-all ${
+                            activeTab === 'aero'
+                              ? 'bg-gray-700/50 text-orange-400'
+                              : 'text-gray-400 hover:text-gray-300'
+                          }`}
+                        >
+                          Aero
+                        </button>
+                        <button
+                          onClick={() => setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'award'})}
+                          className={`px-3 py-1.5 text-xs font-medium transition-all ${
+                            activeTab === 'award'
+                              ? 'bg-gray-700/50 text-purple-400'
+                              : 'text-gray-400 hover:text-gray-300'
+                          }`}
+                        >
+                          Award Tools
+                        </button>
                       </div>
-                      {(sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match' && bestMatchFlights.length > 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => timeInsensitiveFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'time-insensitive'})}
-                      disabled={timeInsensitiveFlights.length === 0}
-                      className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
-                        timeInsensitiveFlights.length === 0
-                          ? 'text-gray-600 cursor-not-allowed opacity-50'
-                          : sliceAlternativeTabs[airlineKey] === 'time-insensitive'
-                          ? 'text-blue-400 bg-gray-800/50'
-                          : 'text-gray-400 hover:text-gray-300 cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Clock className="h-3 w-3" />
-                        <span>5hr+</span>
-                        <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
-                      </div>
-                      {sliceAlternativeTabs[airlineKey] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                      )}
-                    </button>
+                    )}
                   </div>
 
-                  {/* Flight List */}
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {filteredFlights.length === 0 ? (
-                      <div className="text-center py-6 text-gray-500 text-sm">No flights in this time range</div>
-                    ) : (
-                      groupMileageFlights(filteredFlights.slice(0, 15)).map((group, groupIndex) => {
-                        const altFlight = group.primary;
-                        const altIndex = groupIndex;
-                        const alternativeKey = `${sliceIndex}-${airlineKey}-${groupIndex}`;
-                        const showAlternatives = showAlternativeTimes[alternativeKey] || false;
-                  // Calculate time difference
-                  const flightTime = new Date(altFlight.departure.at).getTime();
-                  const originalTime = new Date(slice.departure).getTime();
-                  const diffMinutes = Math.round((flightTime - originalTime) / (1000 * 60));
-                  const timeDiffText = diffMinutes === 0 ? 'Same time' :
-                    diffMinutes > 0 ? `+${diffMinutes}m` : `${diffMinutes}m`;
-
-                  // Check if within tolerance
-                  const isWithinTolerance = Math.abs(diffMinutes) <= 960 && altFlight.timeComparison?.withinTolerance;
-
-                  const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
-
-                  // Calculate duration
-                  const depTime = new Date(altFlight.departure.at);
-                  const arrTime = new Date(altFlight.arrival.at);
-                  const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
-                  const durationHrs = Math.floor(durationMinutes / 60);
-                  const durationMins = durationMinutes % 60;
-
-                  // Calculate mileage value - use proper per-mile calculation
-                  const priceNum = typeof altFlight.mileagePrice === 'string'
-                    ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
-                    : altFlight.mileagePrice;
-                  const perMile = altFlight.mileage > 0 ? (priceNum / altFlight.mileage) : 0;
-
-                  // Calculate total mileage value for comparison with cash price
-                  const mileageTotalValue = (altFlight.mileage * (perCentValue / 100)) + priceNum;
-
-                  // Get cash price for comparison (estimate per-slice for mileage comparison only)
-                  const sliceCashPrice = displayTotal / slices.length;
-
-                  // Show savings if mileage is significantly cheaper (more than 15% savings)
-                  const mileageSavings = sliceCashPrice > 0 && mileageTotalValue < sliceCashPrice * 0.85
-                    ? sliceCashPrice - mileageTotalValue
-                    : 0;
-
-                  // Use component-level formatters that respect origin timezone
-                  const formatTime = formatTimeInOriginTZ;
-                  const formatDate = formatDateInOriginTZ;
-
-                  // Format times in origin timezone
-                  const depTimeFormatted = formatTimeInOriginTZ(altFlight.departure.at);
-                  const depDateFormatted = formatDateInOriginTZ(altFlight.departure.at);
-                  const arrTimeFormatted = formatTimeInOriginTZ(altFlight.arrival.at);
-                  const arrDateFormatted = formatDateInOriginTZ(altFlight.arrival.at);
-
-                  const isNonstop = !altFlight.stops || altFlight.stops.length === 0;
-
-                  return (
-                    <div
-                      key={altIndex}
-                      className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700 transition-all duration-200 p-3"
-                    >
-                      {/* Header: Flight Number + Mileage + Add Button */}
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
-                            alt={altFlight.carrierCode}
-                            className="h-5 w-5 object-contain"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                          <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
-                          <span className="text-xs text-gray-400">{carrierName}</span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-2">
-                            <div className="bg-orange-500/15 border border-orange-400/40 rounded px-2 py-1">
-                              {altFlight.cabin && (
-                                <>
-                                  <span className="text-[10px] text-orange-400/70 uppercase">{altFlight.cabin}:</span>
-                                  <span className="text-xs text-orange-400/60"> </span>
-                                </>
-                              )}
-                              <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
-                              <span className="text-[10px] text-orange-400/70"> mi</span>
-                              <span className="text-xs text-orange-400/60"> + </span>
-                              <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setSelectedMileageFlight(altFlight);
-                                setShowAddToProposal(true);
-                              }}
-                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
-                            >
-                              <Plus className="h-3 w-3" />
-                              Add
-                            </button>
-                          </div>
-                          <div className="flex flex-col items-end gap-0.5">
-                            {mileageSavings > 0 ? (
-                              <>
-                                <div className="text-[10px] text-gray-400 line-through">
-                                  Cash: ${sliceCashPrice.toFixed(2)}
-                                </div>
-                                <div className="text-[10px] font-semibold text-green-400">
-                                  Save ${mileageSavings.toFixed(2)} with miles!
-                                </div>
-                              </>
-                            ) : (
-                              <div className="text-[10px] text-orange-400/80">
-                                Total Value: ${mileageTotalValue.toFixed(2)}
-                              </div>
-                            )}
+                  {/* Show best options summary */}
+                  {(showAero || showAward) && (
+                    <div className="mb-3 space-y-2">
+                      {showAero && bestAeroValue !== null && (
+                        <div className="p-2 bg-orange-500/10 rounded border border-orange-400/30">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-orange-300 font-medium">Best Aero:</span>
+                            <span className="text-xs font-bold text-orange-300">${bestAeroValue.toFixed(2)}</span>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Flight Route: Departure → Layover → Arrival */}
-                      <div className="flex items-center gap-3">
-                        {/* Departure */}
-                        <div className="text-center min-w-[70px]">
-                          <div className="text-lg font-semibold text-white">{depTimeFormatted}</div>
-                          <div className="text-xs text-gray-400">{depDateFormatted}</div>
-                          <div className="text-sm font-medium text-gray-200">{altFlight.departure.iataCode}</div>
-                          {altFlight.cabin && (
-                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
-                          )}
+                      )}
+                      {showAward && bestAwardValue !== null && (
+                        <div className="p-2 bg-purple-500/10 rounded border border-purple-400/30">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-purple-300 font-medium">Best Award:</span>
+                            <span className="text-xs font-bold text-purple-300">${bestAwardValue.toFixed(2)}</span>
+                          </div>
                         </div>
+                      )}
+                    </div>
+                  )}
 
-                        {/* Flight Line with Layovers */}
-                        <div className="flex-1 px-2">
-                          {isNonstop ? (
-                            // Nonstop flight
-                            <div>
-                              <div className="flex items-center gap-1 relative">
-                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
-                                <Plane className="h-3 w-3 text-emerald-400" />
-                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                  {/* Aero Tab Content */}
+                  {showAeroTab && hasAeroForSlice && slice.mileageBreakdown && (
+                    <>
+                      {groupMileageByProgram(slice.mileageBreakdown).map((program) => {
+                        const airlineKey = `${sliceIndex}-${program.carrierCode}`;
+                        if (!expandedSliceAirlines[airlineKey]) {
+                          return null;
+                        }
+
+                        // Get flights for THIS airline only
+                        const allFlights: any[] = [];
+                        slice.mileageBreakdown!.forEach(breakdown => {
+                          if (breakdown.allMatchingFlights) {
+                            breakdown.allMatchingFlights.forEach((flight: any) => {
+                              // Filter by carrier code
+                              if (flight.carrierCode === program.carrierCode) {
+                                allFlights.push(flight);
+                              }
+                            });
+                          }
+                        });
+
+                        if (allFlights.length === 0) {
+                          return null;
+                        }
+
+                        // Sort by time proximity
+                        const originalTime = new Date(slice.departure).getTime();
+                        const sortedFlights = allFlights.sort((a, b) => {
+                          const aTime = new Date(a.departure.at).getTime();
+                          const bTime = new Date(b.departure.at).getTime();
+                          const aDiff = Math.abs(aTime - originalTime);
+                          const bDiff = Math.abs(bTime - originalTime);
+                          return aDiff - bDiff;
+                        });
+
+                        // Filter by time proximity
+                        let activeTab = sliceAlternativeTabs[airlineKey] || 'best-match';
+                        const bestMatchFlights = sortedFlights.filter(f => {
+                          const flightTime = new Date(f.departure.at).getTime();
+                          const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+                          return diffMinutes <= 300;
+                        });
+                        const timeInsensitiveFlights = sortedFlights.filter(f => {
+                          const flightTime = new Date(f.departure.at).getTime();
+                          const diffMinutes = Math.abs((flightTime - originalTime) / (1000 * 60));
+                          return diffMinutes > 300;
+                        });
+
+                        // Auto-switch tabs if empty
+                        if (activeTab === 'best-match' && bestMatchFlights.length === 0 && timeInsensitiveFlights.length > 0) {
+                          activeTab = 'time-insensitive';
+                        } else if (activeTab === 'time-insensitive' && timeInsensitiveFlights.length === 0 && bestMatchFlights.length > 0) {
+                          activeTab = 'best-match';
+                        }
+
+                        const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
+
+                        return (
+                          <div key={airlineKey} className="mt-3 bg-purple-900/10 p-3 rounded border border-purple-500/20">
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={`https://www.gstatic.com/flights/airline_logos/35px/${program.carrierCode}.png`}
+                                  alt={program.carrierCode}
+                                  className="h-5 w-5 object-contain"
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                                <span className="text-sm font-semibold text-white">{program.carrierCode} Mileage Options</span>
+                                <span className="text-xs text-gray-400">({sortedFlights.length} flights)</span>
                               </div>
-                              <div className="text-center text-xs text-gray-200 mt-1">
-                                <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                {durationHrs}h {durationMins}m
-                              </div>
+                              <button
+                                onClick={() => {
+                                  setExpandedSliceAirlines(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[airlineKey];
+                                    return newState;
+                                  });
+                                }}
+                                className="text-xs text-gray-400 hover:text-gray-300 transition-colors px-2 py-1 hover:bg-gray-800/50 rounded"
+                              >
+                                Collapse
+                              </button>
                             </div>
-                          ) : (
-                            // Flight with stops
-                            <div>
-                              <div className="flex items-center gap-1 relative">
-                                <div className="flex-1 border-t-2 border-gray-600"></div>
-                                {altFlight.stops && altFlight.stops.map((stop: any, idx: number) => (
-                                  <React.Fragment key={idx}>
-                                    <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded">
-                                      <span className="text-[9px] text-gray-300 font-medium">
-                                        {typeof stop === 'string' ? stop : (stop.code || stop.iataCode || 'N/A')}
-                                      </span>
-                                    </div>
-                                    {idx < altFlight.stops.length - 1 && (
-                                      <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                                {altFlight.stops && altFlight.stops.length > 0 && (
-                                  <div className="flex-1 border-t-2 border-gray-600"></div>
+
+                            {/* Tabs */}
+                            <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
+                              <button
+                                onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'best-match'})}
+                                disabled={bestMatchFlights.length === 0}
+                                className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
+                                  bestMatchFlights.length === 0
+                                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                                    : (sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match'
+                                    ? 'text-green-400 bg-gray-800/50'
+                                    : 'text-gray-400 hover:text-gray-300 cursor-pointer'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <Zap className="h-3 w-3" />
+                                  <span>Within 5hr</span>
+                                  <span className="text-[10px]">({bestMatchFlights.length})</span>
+                                </div>
+                                {(sliceAlternativeTabs[airlineKey] || 'best-match') === 'best-match' && bestMatchFlights.length > 0 && (
+                                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
                                 )}
-                              </div>
-                              <div className="text-center text-xs text-gray-200 mt-1">
-                                <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                {durationHrs}h {durationMins}m • {altFlight.numberOfStops} stop{altFlight.numberOfStops !== 1 ? 's' : ''}
-                              </div>
+                              </button>
+                              <button
+                                onClick={() => timeInsensitiveFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'time-insensitive'})}
+                                disabled={timeInsensitiveFlights.length === 0}
+                                className={`flex-1 px-3 py-2 text-xs font-medium transition-all relative ${
+                                  timeInsensitiveFlights.length === 0
+                                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                                    : sliceAlternativeTabs[airlineKey] === 'time-insensitive'
+                                    ? 'text-blue-400 bg-gray-800/50'
+                                    : 'text-gray-400 hover:text-gray-300 cursor-pointer'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <Clock className="h-3 w-3" />
+                                  <span>5hr+</span>
+                                  <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
+                                </div>
+                                {sliceAlternativeTabs[airlineKey] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
+                                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                                )}
+                              </button>
                             </div>
-                          )}
-                        </div>
 
-                        {/* Arrival */}
-                        <div className="text-center min-w-[70px]">
-                          <div className="text-lg font-semibold text-white">{arrTimeFormatted}</div>
-                          <div className="text-xs text-gray-400">{arrDateFormatted}</div>
-                          <div className="text-sm font-medium text-gray-200">{altFlight.arrival.iataCode}</div>
-                          {altFlight.cabin && (
-                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
-                          )}
-                        </div>
-                      </div>
+                            {/* Flight List */}
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                              {filteredFlights.length === 0 ? (
+                                <div className="text-center py-6 text-gray-500 text-sm">No flights in this time range</div>
+                              ) : (
+                                groupMileageFlights(filteredFlights.slice(0, 15)).map((group, groupIndex) => {
+                                  const altFlight = group.primary;
+                                  const altIndex = groupIndex;
+                                  const alternativeKey = `${sliceIndex}-${airlineKey}-${groupIndex}`;
+                                  const showAlternatives = showAlternativeTimes[alternativeKey] || false;
+                                  
+                                  // Calculate time difference
+                                  const flightTime = new Date(altFlight.departure.at).getTime();
+                                  const originalTime = new Date(slice.departure).getTime();
+                                  const diffMinutes = Math.round((flightTime - originalTime) / (1000 * 60));
 
-                      {/* Alternative Times Button */}
-                      {group.alternativeTimes.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                          <button
-                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [alternativeKey]: !showAlternatives}))}
-                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
-                          >
-                            <span className="text-xs font-medium text-gray-300">
-                              {group.alternativeTimes.length} alternative time{group.alternativeTimes.length !== 1 ? 's' : ''}
-                            </span>
-                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
-                          </button>
+                                  const carrierName = altFlight.operatingCarrier || altFlight.carrierCode;
 
-                          {/* Alternative Times List */}
-                          {showAlternatives && (
-                            <div className="mt-2 space-y-2">
-                              {group.alternativeTimes.map((altTime: any, altTimeIdx: number) => {
-                                const altDepTime = formatTimeInOriginTZ(altTime.departure.at);
-                                const altDepDate = formatDateInOriginTZ(altTime.departure.at);
-                                const altArrTime = formatTimeInOriginTZ(altTime.arrival.at);
-                                const altArrDate = formatDateInOriginTZ(altTime.arrival.at);
+                                  // Calculate duration
+                                  const depTime = new Date(altFlight.departure.at);
+                                  const arrTime = new Date(altFlight.arrival.at);
+                                  const durationMinutes = Math.round((arrTime.getTime() - depTime.getTime()) / (1000 * 60));
+                                  const durationHrs = Math.floor(durationMinutes / 60);
+                                  const durationMins = durationMinutes % 60;
 
-                                return (
-                                  <div
-                                    key={altTimeIdx}
-                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
-                                  >
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <div className="text-xs">
-                                        <div className="text-white font-medium">{altDepTime}</div>
-                                        <div className="text-gray-400">{altDepDate}</div>
-                                      </div>
-                                      <div className="text-gray-500">→</div>
-                                      <div className="text-xs">
-                                        <div className="text-white font-medium">{altArrTime}</div>
-                                        <div className="text-gray-400">{altArrDate}</div>
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedMileageFlight(altTime);
-                                        setShowAddToProposal(true);
-                                      }}
-                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                  // Calculate mileage value - use proper per-mile calculation
+                                  const priceNum = typeof altFlight.mileagePrice === 'string'
+                                    ? parseFloat(altFlight.mileagePrice.replace(/[^0-9.]/g, ''))
+                                    : altFlight.mileagePrice;
+
+                                  // Calculate total mileage value for comparison with cash price
+                                  const mileageTotalValue = (altFlight.mileage * perCentValue) + priceNum;
+
+                                  // Get cash price for comparison (estimate per-slice for mileage comparison only)
+                                  const sliceCashPrice = displayTotal / slices.length;
+
+                                  // Show savings if mileage is significantly cheaper (more than 15% savings)
+                                  const mileageSavings = sliceCashPrice > 0 && mileageTotalValue < sliceCashPrice * 0.85
+                                    ? sliceCashPrice - mileageTotalValue
+                                    : 0;
+
+                                  // Format times in origin timezone
+                                  const depTimeFormatted = formatTimeInOriginTZ(altFlight.departure.at);
+                                  const depDateFormatted = formatDateInOriginTZ(altFlight.departure.at);
+                                  const arrTimeFormatted = formatTimeInOriginTZ(altFlight.arrival.at);
+                                  const arrDateFormatted = formatDateInOriginTZ(altFlight.arrival.at);
+
+                                  const isNonstop = !altFlight.stops || altFlight.stops.length === 0;
+
+                                  return (
+                                    <div
+                                      key={altIndex}
+                                      className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700 transition-all duration-200 p-3"
                                     >
-                                      <Plus className="h-3 w-3" />
-                                      Add
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Alternative Carriers Button */}
-                      {group.alternativeCarriers.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                          <button
-                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [`${alternativeKey}-carriers`]: !showAlternativeTimes[`${alternativeKey}-carriers`]}))}
-                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
-                          >
-                            <span className="text-xs font-medium text-gray-300">
-                              {group.alternativeCarriers.length} alternative carrier{group.alternativeCarriers.length !== 1 ? 's' : ''}
-                            </span>
-                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternativeTimes[`${alternativeKey}-carriers`] ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Alternative Carriers List */}
-                          {showAlternativeTimes[`${alternativeKey}-carriers`] && (
-                            <div className="mt-2 space-y-2">
-                              {group.alternativeCarriers.map((altCarrier: any, altCarrierIdx: number) => {
-                                return (
-                                  <div
-                                    key={altCarrierIdx}
-                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
-                                  >
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <img
-                                        src={`https://www.gstatic.com/flights/airline_logos/35px/${altCarrier.carrierCode}.png`}
-                                        alt={altCarrier.carrierCode}
-                                        className="h-5 w-5 object-contain"
-                                      />
-                                      <div className="text-xs">
-                                        <div className="text-white font-medium">{altCarrier.flightNumber}</div>
-                                        <div className="text-gray-400">{altCarrier.carrierCode}</div>
+                                      {/* Header: Flight Number + Mileage + Add Button */}
+                                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-700">
+                                        <div className="flex items-center gap-2">
+                                          <img
+                                            src={`https://www.gstatic.com/flights/airline_logos/35px/${altFlight.carrierCode}.png`}
+                                            alt={altFlight.carrierCode}
+                                            className="h-5 w-5 object-contain"
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                          />
+                                          <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
+                                          <span className="text-xs text-gray-400">{carrierName}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1">
+                                          <div className="flex items-center gap-2">
+                                            <div className="bg-orange-500/15 border border-orange-400/40 rounded px-2 py-1">
+                                              {altFlight.cabin && (
+                                                <>
+                                                  <span className="text-[10px] text-orange-400/70 uppercase">{altFlight.cabin}:</span>
+                                                  <span className="text-xs text-orange-400/60"> </span>
+                                                </>
+                                              )}
+                                              <span className="text-xs font-bold text-orange-300">{altFlight.mileage.toLocaleString()}</span>
+                                              <span className="text-[10px] text-orange-400/70"> mi</span>
+                                              <span className="text-xs text-orange-400/60"> + </span>
+                                              <span className="text-xs font-semibold text-orange-300">${priceNum.toFixed(2)}</span>
+                                            </div>
+                                            <button
+                                              onClick={() => {
+                                                setSelectedMileageFlight(altFlight);
+                                                setShowAddToProposal(true);
+                                              }}
+                                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                            >
+                                              <Plus className="h-3 w-3" />
+                                              Add
+                                            </button>
+                                          </div>
+                                          <div className="flex flex-col items-end gap-0.5">
+                                            {mileageSavings > 0 ? (
+                                              <>
+                                                <div className="text-[10px] text-gray-400 line-through">
+                                                  Cash: ${sliceCashPrice.toFixed(2)}
+                                                </div>
+                                                <div className="text-[10px] font-semibold text-green-400">
+                                                  Save ${mileageSavings.toFixed(2)} with miles!
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <div className="text-[10px] text-orange-400/80">
+                                                Total Value: ${mileageTotalValue.toFixed(2)}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
                                       </div>
+
+                                      {/* Flight Route: Departure → Layover → Arrival */}
+                                      <div className="flex items-center gap-3">
+                                        {/* Departure */}
+                                        <div className="text-center min-w-[70px]">
+                                          <div className="text-lg font-semibold text-white">{depTimeFormatted}</div>
+                                          <div className="text-xs text-gray-400">{depDateFormatted}</div>
+                                          <div className="text-sm font-medium text-gray-200">{altFlight.departure.iataCode}</div>
+                                          {altFlight.cabin && (
+                                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
+                                          )}
+                                        </div>
+
+                                        {/* Flight Line with Layovers */}
+                                        <div className="flex-1 px-2">
+                                          {isNonstop ? (
+                                            // Nonstop flight
+                                            <div>
+                                              <div className="flex items-center gap-1 relative">
+                                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                                                <Plane className="h-3 w-3 text-emerald-400" />
+                                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                                              </div>
+                                              <div className="text-center text-xs text-gray-200 mt-1">
+                                                <Clock className="h-2.5 w-2.5 inline mr-1" />
+                                                {durationHrs}h {durationMins}m
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            // Flight with stops
+                                            <div>
+                                              <div className="flex items-center gap-1 relative">
+                                                <div className="flex-1 border-t-2 border-gray-600"></div>
+                                                {altFlight.stops && altFlight.stops.map((stop: any, idx: number) => (
+                                                  <React.Fragment key={idx}>
+                                                    <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded">
+                                                      <span className="text-[9px] text-gray-300 font-medium">
+                                                        {typeof stop === 'string' ? stop : (stop.code || stop.iataCode || 'N/A')}
+                                                      </span>
+                                                    </div>
+                                                    {idx < altFlight.stops.length - 1 && (
+                                                      <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                                                    )}
+                                                  </React.Fragment>
+                                                ))}
+                                                {altFlight.stops && altFlight.stops.length > 0 && (
+                                                  <div className="flex-1 border-t-2 border-gray-600"></div>
+                                                )}
+                                              </div>
+                                              <div className="text-center text-xs text-gray-200 mt-1">
+                                                <Clock className="h-2.5 w-2.5 inline mr-1" />
+                                                {durationHrs}h {durationMins}m • {altFlight.numberOfStops} stop{altFlight.numberOfStops !== 1 ? 's' : ''}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Arrival */}
+                                        <div className="text-center min-w-[70px]">
+                                          <div className="text-lg font-semibold text-white">{arrTimeFormatted}</div>
+                                          <div className="text-xs text-gray-400">{arrDateFormatted}</div>
+                                          <div className="text-sm font-medium text-gray-200">{altFlight.arrival.iataCode}</div>
+                                          {altFlight.cabin && (
+                                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Alternative Times Button */}
+                                      {group.alternativeTimes.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-gray-700">
+                                          <button
+                                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [alternativeKey]: !showAlternatives}))}
+                                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
+                                          >
+                                            <span className="text-xs font-medium text-gray-300">
+                                              {group.alternativeTimes.length} alternative time{group.alternativeTimes.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
+                                          </button>
+
+                                          {/* Alternative Times List */}
+                                          {showAlternatives && (
+                                            <div className="mt-2 space-y-2">
+                                              {group.alternativeTimes.map((altTime: any, altTimeIdx: number) => {
+                                                const altDepTime = formatTimeInOriginTZ(altTime.departure.at);
+                                                const altDepDate = formatDateInOriginTZ(altTime.departure.at);
+                                                const altArrTime = formatTimeInOriginTZ(altTime.arrival.at);
+                                                const altArrDate = formatDateInOriginTZ(altTime.arrival.at);
+
+                                                return (
+                                                  <div
+                                                    key={altTimeIdx}
+                                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
+                                                  >
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                      <div className="text-xs">
+                                                        <div className="text-white font-medium">{altDepTime}</div>
+                                                        <div className="text-gray-400">{altDepDate}</div>
+                                                      </div>
+                                                      <div className="text-gray-500">→</div>
+                                                      <div className="text-xs">
+                                                        <div className="text-white font-medium">{altArrTime}</div>
+                                                        <div className="text-gray-400">{altArrDate}</div>
+                                                      </div>
+                                                    </div>
+                                                    <button
+                                                      onClick={() => {
+                                                        setSelectedMileageFlight(altTime);
+                                                        setShowAddToProposal(true);
+                                                      }}
+                                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                                    >
+                                                      <Plus className="h-3 w-3" />
+                                                      Add
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Alternative Carriers Button */}
+                                      {group.alternativeCarriers.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-gray-700">
+                                          <button
+                                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [`${alternativeKey}-carriers`]: !showAlternativeTimes[`${alternativeKey}-carriers`]}))}
+                                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
+                                          >
+                                            <span className="text-xs font-medium text-gray-300">
+                                              {group.alternativeCarriers.length} alternative carrier{group.alternativeCarriers.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternativeTimes[`${alternativeKey}-carriers`] ? 'rotate-180' : ''}`} />
+                                          </button>
+
+                                          {/* Alternative Carriers List */}
+                                          {showAlternativeTimes[`${alternativeKey}-carriers`] && (
+                                            <div className="mt-2 space-y-2">
+                                              {group.alternativeCarriers.map((altCarrier: any, altCarrierIdx: number) => {
+                                                return (
+                                                  <div
+                                                    key={altCarrierIdx}
+                                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
+                                                  >
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                      <img
+                                                        src={`https://www.gstatic.com/flights/airline_logos/35px/${altCarrier.carrierCode}.png`}
+                                                        alt={altCarrier.carrierCode}
+                                                        className="h-5 w-5 object-contain"
+                                                      />
+                                                      <div className="text-xs">
+                                                        <div className="text-white font-medium">{altCarrier.flightNumber}</div>
+                                                        <div className="text-gray-400">{altCarrier.carrierCode}</div>
+                                                      </div>
+                                                    </div>
+                                                    <button
+                                                      onClick={() => {
+                                                        setSelectedMileageFlight(altCarrier);
+                                                        setShowAddToProposal(true);
+                                                      }}
+                                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                                    >
+                                                      <Plus className="h-3 w-3" />
+                                                      Add
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        setSelectedMileageFlight(altCarrier);
-                                        setShowAddToProposal(true);
-                                      }}
-                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                      Add
-                                    </button>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })
+                              )}
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-                  </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Award Tools Tab Content */}
+                  {showAwardTab && hasAwardForSlice && (
+                    <AwardCards
+                      awardOptions={sliceAwardOptions}
+                      perCentValue={perCentValue}
+                      onAdd={(award) => {
+                        setSelectedMileageFlight({
+                          ...award,
+                          carrierCode: carrier.code,
+                          mileage: award.miles,
+                          mileagePrice: award.tax,
+                          cabin: award.cabin
+                        });
+                        setShowAddToProposal(true);
+                      }}
+                      onSelect={(awardId) => {
+                        setSelectedAwardPerSlice({ ...selectedAwardPerSlice, [sliceIndex]: awardId });
+                      }}
+                      selectedAwardId={selectedAwardPerSlice[sliceIndex]}
+                      formatTimeInOriginTZ={formatTimeInOriginTZ}
+                      formatDateInOriginTZ={formatDateInOriginTZ}
+                      originTimezone={originTimezone}
+                      groupAwards={groupAwardOptions}
+                    />
+                  )}
                 </div>
               );
-              });
             })()}
           </div>
         ))}
@@ -1529,6 +2198,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       )}
 
     </div>
+
+    {/* V2 Enrichment JSON Viewer - Development Tool */}
+    {showV2EnrichmentViewer && (
+      <V2EnrichmentViewer
+        enrichmentData={v2EnrichmentData}
+        carrierCode={carrier.code}
+        onClose={() => setShowV2EnrichmentViewer(false)}
+      />
+    )}
 
     {/* Flight Summary Modal */}
     {showSummaryModal && (

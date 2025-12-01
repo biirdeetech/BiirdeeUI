@@ -1,10 +1,11 @@
-import React from 'react';
-import { Loader, AlertCircle, Plane } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader, AlertCircle, Plane, Code } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
 import FlightCardGroup from './FlightCardGroup';
 import Pagination from './Pagination';
 import StopGroupSeparator from './StopGroupSeparator';
+import V2EnrichmentViewer from './V2EnrichmentViewer';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 
 interface FlightResultsProps {
@@ -19,6 +20,9 @@ interface FlightResultsProps {
   pageSize?: number;
   originTimezone?: string;
   perCentValue?: number;
+  v2EnrichmentData?: Map<string, any[]>;
+  onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
+  enrichingAirlines?: Set<string>;
 }
 
 const groupFlightsByOutbound = (flights: FlightSolution[]): (FlightSolution | GroupedFlight)[] => {
@@ -138,10 +142,69 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   currentPage = 1,
   pageSize = 25,
   originTimezone,
-  perCentValue = 0.015
+  perCentValue = 0.015,
+  v2EnrichmentData = new Map(),
+  onEnrichFlight,
+  enrichingAirlines = new Set()
 }) => {
-  // State to track which stop group is expanded (0 = Nonstop is default)
-  const [expandedStopGroup, setExpandedStopGroup] = React.useState<number | null>(0);
+  // ALL HOOKS MUST BE CALLED AT THE TOP, BEFORE ANY EARLY RETURNS
+  // State to track which stop group is expanded - will be initialized after we know available groups
+  const [expandedStopGroup, setExpandedStopGroup] = useState<number | null>(null);
+  const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
+
+  // Calculate sortedStopCounts at the top level using useMemo (safe for all states)
+  const sortedStopCounts = useMemo(() => {
+    if (!results || !results.solutionList || !results.solutionList.solutions || results.solutionList.solutions.length === 0) {
+      return [];
+    }
+
+    const flights = results.solutionList.solutions;
+    const processedFlights = flights;
+
+    // Group flights by stop count
+    const groups = new Map<number, { flights: any[], cheapestPrice: number }>();
+
+    processedFlights.forEach(flight => {
+      // Determine max stops in the flight
+      let maxStops = 0;
+      if ('id' in flight) {
+        maxStops = Math.max(...flight.slices.map(slice => slice.stops?.length || 0));
+      } else {
+        maxStops = Math.max(...(flight.outboundSlice.stops?.length ? [flight.outboundSlice.stops.length] : [0]));
+      }
+
+      // Get price for comparison
+      const flightPrice = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
+
+      if (!groups.has(maxStops)) {
+        groups.set(maxStops, { flights: [], cheapestPrice: flightPrice });
+      }
+
+      const group = groups.get(maxStops)!;
+      group.flights.push(flight);
+
+      // Track the cheapest price in this group
+      if (flightPrice < group.cheapestPrice) {
+        group.cheapestPrice = flightPrice;
+      }
+    });
+
+    return Array.from(groups.keys()).sort((a, b) => a - b);
+  }, [results]);
+
+  // Ensure at least one group is always open - initialize with first available (nonstop > 1 stop > 2 stops > 3 stops)
+  useEffect(() => {
+    if (sortedStopCounts.length > 0) {
+      // If no group is open, open the first available (lowest stop count = nonstop)
+      if (expandedStopGroup === null) {
+        setExpandedStopGroup(sortedStopCounts[0]);
+      }
+      // If the currently open group no longer exists (e.g., after filtering), open the first available
+      else if (!sortedStopCounts.includes(expandedStopGroup)) {
+        setExpandedStopGroup(sortedStopCounts[0]);
+      }
+    }
+  }, [sortedStopCounts, expandedStopGroup]);
 
   console.log('🎯 FlightResults: Rendering with results:', results);
   console.log('🎯 FlightResults: Loading state:', loading);
@@ -323,7 +386,6 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   };
 
   const stopGroups = groupByStops(processedFlights);
-  const sortedStopCounts = Array.from(stopGroups.keys()).sort((a, b) => a - b);
 
   return (
     <div className="space-y-6">
@@ -340,11 +402,27 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             `${processedFlights.length} flight${processedFlights.length !== 1 ? 's' : ''} found`
           )}
         </h2>
-        {results.solutionList.minPrice && (
-          <div className="text-sm text-gray-400">
-            From {results.solutionList.minPrice}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {results.solutionList.minPrice && (
+            <div className="text-sm text-gray-400">
+              From {results.solutionList.minPrice}
+            </div>
+          )}
+          {/* V2 Enrichment JSON Viewer Button - Development Tool */}
+          {v2EnrichmentData.size > 0 && (
+            <button
+              onClick={() => setShowV2EnrichmentViewer(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm font-medium transition-colors border border-purple-500/30"
+              title="View V2 Enrichment JSON Data"
+            >
+              <Code className="h-4 w-4" />
+              <span>View V2 Data</span>
+              <span className="text-xs bg-purple-500/30 px-1.5 py-0.5 rounded">
+                {v2EnrichmentData.size}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Flight Cards - Grouped by Stops */}
@@ -372,8 +450,20 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   currency={currency}
                   isExpanded={isExpanded}
                   onClick={() => {
-                    // Toggle: if already expanded, collapse it; otherwise expand this one
-                    setExpandedStopGroup(isExpanded ? null : stopCount);
+                    // If clicking the currently expanded group
+                    if (isExpanded) {
+                      // Find other available groups
+                      const otherGroups = sortedStopCounts.filter(count => count !== stopCount);
+                      // Only allow switching if there's another group to open
+                      if (otherGroups.length > 0) {
+                        // Open the next available group (prefer lower stop count = nonstop)
+                        setExpandedStopGroup(otherGroups[0]);
+                      }
+                      // If this is the only group, do nothing (prevent closing - at least one must stay open)
+                    } else {
+                      // Opening a different group - automatically close previous and open this one
+                      setExpandedStopGroup(stopCount);
+                    }
                   }}
                 />
               )}
@@ -391,6 +481,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                     perCentValue={perCentValue}
                     session={results.session}
                     solutionSet={results.solutionSet}
+                    v2EnrichmentData={v2EnrichmentData}
+                    onEnrichFlight={onEnrichFlight}
+                    enrichingAirlines={enrichingAirlines}
                   />
                 ));
               })()}
@@ -407,6 +500,14 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           totalCount={results.solutionCount}
           onPageChange={onPageChange}
           onPageSizeChange={onPageSizeChange}
+        />
+      )}
+
+      {/* V2 Enrichment JSON Viewer Modal */}
+      {showV2EnrichmentViewer && (
+        <V2EnrichmentViewer
+          enrichmentData={v2EnrichmentData}
+          onClose={() => setShowV2EnrichmentViewer(false)}
         />
       )}
     </div>

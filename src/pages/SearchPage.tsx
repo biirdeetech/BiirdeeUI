@@ -4,12 +4,14 @@ import { FlightSearchParams, FlightSliceParams, SearchResponse } from '../types/
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
+import ITAMatrixService from '../services/itaMatrixApi';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
 import FlightFilters, { FlightFilterState } from '../components/FlightFilters';
 import StreamingProgress from '../components/StreamingProgress';
 import { useAuth } from '../hooks/useAuth';
+import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 
 const SearchPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -41,6 +43,10 @@ const SearchPage: React.FC = () => {
   const [streamComplete, setStreamComplete] = useState(false);
   const [originTimezone, setOriginTimezone] = useState<string | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [v2EnrichmentData, setV2EnrichmentData] = useState<Map<string, any[]>>(new Map());
+  const [enrichingAirlines, setEnrichingAirlines] = useState<Set<string>>(new Set());
+  const enrichmentTriggeredRef = useRef(false);
+  const enrichmentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [perCentValue, setPerCentValue] = useState(0.015);
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
@@ -87,14 +93,42 @@ const SearchPage: React.FC = () => {
         const validOrigins = origins.filter(o => o.trim());
         const validDestinations = destinations.filter(d => d.trim());
         
+        const cabin = (searchParams.get(`leg${i}_cabin`) || searchParams.get(`cabin${i}`) as any) || 'COACH';
+        const bookingClassSelection = searchParams.get(`leg${i}_bookingClassSelection`) || 'all';
+        
+        // Generate ext from booking class selection if not provided
+        let ext = searchParams.get(`leg${i}_ext`) || '';
+        if (!ext && cabin) {
+          // Generate ext based on booking class selection
+          let bookingClasses: string[] = [];
+          if (bookingClassSelection === 'all') {
+            // Use all booking classes for the selected cabin
+            bookingClasses = getDefaultBookingClasses(cabin);
+          } else if (bookingClassSelection === 'economy') {
+            bookingClasses = getDefaultBookingClasses('COACH');
+          } else if (bookingClassSelection === 'premium') {
+            bookingClasses = getDefaultBookingClasses('PREMIUM-COACH');
+          } else if (bookingClassSelection === 'business') {
+            bookingClasses = getDefaultBookingClasses('BUSINESS');
+          } else if (bookingClassSelection === 'first') {
+            bookingClasses = getDefaultBookingClasses('FIRST');
+          } else if (bookingClassSelection === 'business_plus') {
+            bookingClasses = [...getDefaultBookingClasses('BUSINESS'), ...getDefaultBookingClasses('FIRST')];
+          } else {
+            // Default to cabin's booking classes
+            bookingClasses = getDefaultBookingClasses(cabin);
+          }
+          ext = bookingClassesToExt(bookingClasses);
+        }
+        
         const slice: FlightSliceParams = {
           origins: validOrigins,
           destinations: validDestinations,
           departDate: searchParams.get(`leg${i}_departDate`) || searchParams.get(`departDate${i}`) || '',
-          cabin: (searchParams.get(`leg${i}_cabin`) || searchParams.get(`cabin${i}`) as any) || 'COACH',
+          cabin: cabin,
           via: searchParams.get(`leg${i}_via`) || '',
           nonstop: searchParams.get(`leg${i}_nonstop`) === 'true',
-          ext: searchParams.get(`leg${i}_ext`) || '',
+          ext: ext,
           // Date controls
           departureDateType: (searchParams.get(`leg${i}_departureDateType`) as 'depart' | 'arrive') || 'depart',
           departureDateModifier: (searchParams.get(`leg${i}_departureDateModifier`) as '0' | '1' | '10' | '11' | '2' | '22') || '0',
@@ -148,6 +182,29 @@ const SearchPage: React.FC = () => {
       const firstLegCabin = (searchParams.get('leg0_cabin') || searchParams.get('cabin')) as any || 'COACH';
       const firstOrigins = searchParams.get('leg0_origins')?.split(',').filter(o => o.trim()) || [searchParams.get('origin') || 'SFO'];
       const firstDestinations = searchParams.get('leg0_destinations')?.split(',').filter(d => d.trim()) || [searchParams.get('destination') || 'CDG'];
+      const firstBookingClassSelection = searchParams.get('leg0_bookingClassSelection') || 'all';
+      
+      // Generate ext from booking class selection if not provided
+      let firstExt = searchParams.get('leg0_ext') || '';
+      if (!firstExt && firstLegCabin) {
+        let bookingClasses: string[] = [];
+        if (firstBookingClassSelection === 'all') {
+          bookingClasses = getDefaultBookingClasses(firstLegCabin);
+        } else if (firstBookingClassSelection === 'economy') {
+          bookingClasses = getDefaultBookingClasses('COACH');
+        } else if (firstBookingClassSelection === 'premium') {
+          bookingClasses = getDefaultBookingClasses('PREMIUM-COACH');
+        } else if (firstBookingClassSelection === 'business') {
+          bookingClasses = getDefaultBookingClasses('BUSINESS');
+        } else if (firstBookingClassSelection === 'first') {
+          bookingClasses = getDefaultBookingClasses('FIRST');
+        } else if (firstBookingClassSelection === 'business_plus') {
+          bookingClasses = [...getDefaultBookingClasses('BUSINESS'), ...getDefaultBookingClasses('FIRST')];
+        } else {
+          bookingClasses = getDefaultBookingClasses(firstLegCabin);
+        }
+        firstExt = bookingClassesToExt(bookingClasses);
+      }
       
       slices.push({
         origins: firstOrigins,
@@ -156,7 +213,7 @@ const SearchPage: React.FC = () => {
         cabin: firstLegCabin,
         via: searchParams.get('leg0_via') || '',
         nonstop: searchParams.get('leg0_nonstop') === 'true',
-        ext: searchParams.get('leg0_ext') || '',
+        ext: firstExt,
         departureDateType: (searchParams.get('leg0_departureDateType') as 'depart' | 'arrive') || 'depart',
         departureDateModifier: (searchParams.get('leg0_departureDateModifier') as '0' | '1' | '10' | '11' | '2' | '22') || '0',
         departureDatePreferredTimes: searchParams.get('leg0_departureDatePreferredTimes')?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [],
@@ -173,6 +230,29 @@ const SearchPage: React.FC = () => {
         const secondLegCabin = (searchParams.get('leg1_cabin') || searchParams.get('cabin')) as any || firstLegCabin;
         const secondOrigins = searchParams.get('leg1_origins')?.split(',').filter(o => o.trim()) || firstDestinations;
         const secondDestinations = searchParams.get('leg1_destinations')?.split(',').filter(d => d.trim()) || firstOrigins;
+        const secondBookingClassSelection = searchParams.get('leg1_bookingClassSelection') || 'all';
+        
+        // Generate ext from booking class selection if not provided
+        let secondExt = searchParams.get('leg1_ext') || '';
+        if (!secondExt && secondLegCabin) {
+          let bookingClasses: string[] = [];
+          if (secondBookingClassSelection === 'all') {
+            bookingClasses = getDefaultBookingClasses(secondLegCabin);
+          } else if (secondBookingClassSelection === 'economy') {
+            bookingClasses = getDefaultBookingClasses('COACH');
+          } else if (secondBookingClassSelection === 'premium') {
+            bookingClasses = getDefaultBookingClasses('PREMIUM-COACH');
+          } else if (secondBookingClassSelection === 'business') {
+            bookingClasses = getDefaultBookingClasses('BUSINESS');
+          } else if (secondBookingClassSelection === 'first') {
+            bookingClasses = getDefaultBookingClasses('FIRST');
+          } else if (secondBookingClassSelection === 'business_plus') {
+            bookingClasses = [...getDefaultBookingClasses('BUSINESS'), ...getDefaultBookingClasses('FIRST')];
+          } else {
+            bookingClasses = getDefaultBookingClasses(secondLegCabin);
+          }
+          secondExt = bookingClassesToExt(bookingClasses);
+        }
         
         slices.push({
           origins: secondOrigins,
@@ -181,7 +261,7 @@ const SearchPage: React.FC = () => {
           cabin: secondLegCabin,
           via: searchParams.get('leg1_via') || '',
           nonstop: searchParams.get('leg1_nonstop') === 'true',
-          ext: searchParams.get('leg1_ext') || '',
+          ext: secondExt,
           departureDateType: (searchParams.get('leg1_departureDateType') as 'depart' | 'arrive') || 'depart',
           departureDateModifier: (searchParams.get('leg1_departureDateModifier') as '0' | '1' | '10' | '11' | '2' | '22') || '0',
           departureDatePreferredTimes: searchParams.get('leg1_departureDatePreferredTimes')?.split(',').map(t => parseInt(t)).filter(t => !isNaN(t)) || [],
@@ -383,6 +463,11 @@ const SearchPage: React.FC = () => {
       // Cache the results for this page
       flightCache.set(extractedParams, currentPage, finalResults);
       console.log(`💾 SearchPage: Cached results for page ${currentPage}`);
+      
+      // Reset enrichment trigger flag for new search
+      if (currentPage === 1) {
+        enrichmentTriggeredRef.current = false;
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('❌ SearchPage: Search failed:', errorMessage);
@@ -393,6 +478,328 @@ const SearchPage: React.FC = () => {
       setIsStreaming(false);
     }
   };
+
+  // Handle on-demand v2 enrichment for specific flight
+  const handleEnrichFlight = async (flight: any, carrierCode: string) => {
+    console.log('🌟 SearchPage: Starting v2 enrichment for carrier:', carrierCode);
+    
+    // Mark airline as enriching
+    setEnrichingAirlines(prev => new Set(prev).add(carrierCode));
+    
+    try {
+      const enrichmentData = await ITAMatrixService.enrichWithV2Mileage(extractedParams, [carrierCode]);
+      
+      // Parse enrichment data and store by carrier (same logic as auto-enrichment)
+      const carrierMap = new Map<string, any[]>();
+      
+      enrichmentData.forEach((item: any) => {
+        // New format: awardtool-direct
+        if (item.type === 'solution' && item.provider === 'awardtool-direct' && item.data) {
+          const flightData = item.data;
+          const itineraries = flightData.itineraries || [];
+          
+          // Extract carrier from first segment
+          itineraries.forEach((itinerary: any) => {
+            const segments = itinerary.segments || [];
+            segments.forEach((segment: any) => {
+              const carrier = segment.carrierCode || segment.operating?.carrierCode;
+              if (carrier && carrier.length === 2) {
+                if (!carrierMap.has(carrier)) {
+                  carrierMap.set(carrier, []);
+                }
+                carrierMap.get(carrier)!.push(item);
+              }
+            });
+          });
+        }
+        // Old format: ita-matrix-enriched
+        else if (item.type === 'solution' && item.itinerary?.slices) {
+          item.itinerary.slices.forEach((slice: any) => {
+            if (slice.mileageBreakdown) {
+              slice.mileageBreakdown.forEach((breakdown: any) => {
+                if (breakdown.allMatchingFlights) {
+                  breakdown.allMatchingFlights.forEach((flight: any) => {
+                    const carrier = flight.carrierCode || flight.operatingCarrier;
+                    if (carrier) {
+                      if (!carrierMap.has(carrier)) {
+                        carrierMap.set(carrier, []);
+                      }
+                      carrierMap.get(carrier)!.push(item);
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+      
+      // Merge with existing enrichment data
+      setV2EnrichmentData(prev => {
+        const newMap = new Map(prev);
+        carrierMap.forEach((data, carrier) => {
+          if (newMap.has(carrier)) {
+            // Merge arrays, avoiding duplicates
+            const existing = newMap.get(carrier)!;
+            const merged = [...existing];
+            data.forEach(item => {
+              if (!existing.some(existingItem => existingItem.id === item.id || 
+                  (item.data && existingItem.data && item.data.id === existingItem.data.id))) {
+                merged.push(item);
+              }
+            });
+            newMap.set(carrier, merged);
+          } else {
+            newMap.set(carrier, data);
+          }
+        });
+        return newMap;
+      });
+      
+      console.log('✅ SearchPage: V2 enrichment complete for', carrierCode);
+      return enrichmentData;
+    } catch (enrichError) {
+      console.error('⚠️ SearchPage: V2 enrichment failed for', carrierCode, ':', enrichError);
+      throw enrichError;
+    } finally {
+      // Remove from enriching set
+      setEnrichingAirlines(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(carrierCode);
+        return newSet;
+      });
+    }
+  };
+
+  // Auto-enrichment effect - runs AFTER search completes, streaming stops, and 2 second delay
+  useEffect(() => {
+    const autoEnrichEnabled = import.meta.env.VITE_AUTO_ENRICH_TOP5 === 'true';
+    
+    // Clear any pending timeout if component unmounts or dependencies change
+    if (enrichmentTimeoutRef.current) {
+      clearTimeout(enrichmentTimeoutRef.current);
+      enrichmentTimeoutRef.current = null;
+    }
+    
+    // Don't trigger if:
+    // - Auto-enrichment disabled
+    // - No results yet
+    // - Still loading
+    // - Still streaming
+    // - Already enriching
+    // - Already triggered for this search
+    if (!autoEnrichEnabled || !results || loading || isStreaming || enrichingAirlines.size > 0 || enrichmentTriggeredRef.current) {
+      return;
+    }
+    
+    // Only enrich on first page load with fresh results
+    const currentPage = extractedParams.pageNum || 1;
+    if (currentPage !== 1 || !results.solutionList?.solutions?.length) {
+      return;
+    }
+    
+    // Check if we already have enrichment data (avoid re-enriching)
+    if (v2EnrichmentData.size > 0) {
+      enrichmentTriggeredRef.current = true;
+      return;
+    }
+    
+    // Wait 2 seconds after search/streaming completes before triggering enrichment
+    console.log('⏳ SearchPage: Waiting 2 seconds after search completion before auto-enrichment...');
+    
+    enrichmentTimeoutRef.current = setTimeout(() => {
+      console.log('🌟 SearchPage: Auto-enrichment enabled, extracting top 5 airlines');
+    
+    const extractTop5Airlines = (searchResponse: SearchResponse): string[] => {
+      if (!searchResponse.solutionList?.solutions) return [];
+      
+      const selectionMode = import.meta.env.VITE_TOP5_SELECTION_CRITERIA || 'price'; // 'price' or 'miles'
+      console.log('🎯 SearchPage: Top 5 selection mode:', selectionMode);
+      
+      // Create map of airline -> best flight info
+      interface AirlineBestFlight {
+        price: number;
+        stops: number;
+        mileageValue: number; // For miles mode
+        solution: any; // Reference to solution
+      }
+      
+      const airlineBestFlights = new Map<string, AirlineBestFlight>();
+      
+      searchResponse.solutionList.solutions.forEach(solution => {
+        solution.slices.forEach(slice => {
+          slice.segments?.forEach(segment => {
+            const code = segment.carrier?.code;
+            if (code && code.length === 2) {
+              const price = solution.displayTotal || solution.totalAmount || 0;
+              const stops = Math.max(...solution.slices.map(s => s.stops?.length || 0));
+              
+              // Calculate mileage value if available (from aero enrichment)
+              let mileageValue = Infinity;
+              if (solution.totalMileage && solution.totalMileage > 0) {
+                const mileageCash = (solution.totalMileage * (perCentValue / 100));
+                const mileagePrice = parseFloat(solution.totalMileagePrice || 0);
+                mileageValue = mileageCash + mileagePrice;
+              }
+              
+              const existing = airlineBestFlights.get(code);
+              if (!existing) {
+                airlineBestFlights.set(code, { price, stops, mileageValue, solution });
+              } else {
+                // Determine if this flight is better based on selection mode
+                let isBetter = false;
+                
+                if (selectionMode === 'miles') {
+                  // Miles mode: prefer fewer stops, then best mileage value (or price if no miles)
+                  if (stops < existing.stops) {
+                    isBetter = true;
+                  } else if (stops === existing.stops) {
+                    // Within same stop category, compare mileage value
+                    if (mileageValue !== Infinity && existing.mileageValue !== Infinity) {
+                      isBetter = mileageValue < existing.mileageValue;
+                    } else if (mileageValue !== Infinity) {
+                      isBetter = true; // Has miles, existing doesn't
+                    } else if (existing.mileageValue === Infinity) {
+                      isBetter = price < existing.price; // Neither has miles, use price
+                    }
+                  }
+                } else {
+                  // Price mode: prefer fewer stops, then lowest price
+                  if (stops < existing.stops) {
+                    isBetter = true;
+                  } else if (stops === existing.stops) {
+                    isBetter = price < existing.price;
+                  }
+                }
+                
+                if (isBetter) {
+                  airlineBestFlights.set(code, { price, stops, mileageValue, solution });
+                }
+              }
+            }
+          });
+        });
+      });
+      
+      // Sort airlines by their best flights
+      const top5 = Array.from(airlineBestFlights.entries())
+        .sort((a, b) => {
+          const flightA = a[1];
+          const flightB = b[1];
+          
+          // First priority: fewer stops (nonstop -> 1 stop -> 2 stops)
+          if (flightA.stops !== flightB.stops) {
+            return flightA.stops - flightB.stops;
+          }
+          
+          // Within same stop category, sort by selection criteria
+          if (selectionMode === 'miles') {
+            // Prefer mileage value if available
+            if (flightA.mileageValue !== Infinity && flightB.mileageValue !== Infinity) {
+              return flightA.mileageValue - flightB.mileageValue;
+            }
+            if (flightA.mileageValue !== Infinity) return -1;
+            if (flightB.mileageValue !== Infinity) return 1;
+            // Both don't have miles, fall back to price
+            return flightA.price - flightB.price;
+          } else {
+            // Price mode: sort by price
+            return flightA.price - flightB.price;
+          }
+        })
+        .slice(0, 5)
+        .map(([code]) => code);
+      
+      console.log(`🎯 SearchPage: Extracted top 5 airlines (${selectionMode} mode):`, top5);
+      return top5;
+    };
+
+    const enrichTop5 = async () => {
+      const top5Airlines = extractTop5Airlines(results);
+      
+      if (top5Airlines.length === 0) return;
+      
+      // Mark all airlines as enriching
+      setEnrichingAirlines(new Set(top5Airlines));
+      
+      try {
+        console.log(`🌟 SearchPage: Auto-enriching ${top5Airlines.length} airlines in batch...`);
+        // Single request with all 5 airlines
+        const enrichmentData = await ITAMatrixService.enrichWithV2Mileage(extractedParams, top5Airlines);
+        
+        // Parse enrichment data and store by carrier
+        // Handle both old format (ita-matrix-enriched) and new format (awardtool-direct)
+        const carrierMap = new Map<string, any[]>();
+        
+        enrichmentData.forEach((item: any) => {
+          // New format: awardtool-direct
+          if (item.type === 'solution' && item.provider === 'awardtool-direct' && item.data) {
+            const flightData = item.data;
+            const itineraries = flightData.itineraries || [];
+            
+            // Extract carrier from first segment
+            itineraries.forEach((itinerary: any) => {
+              const segments = itinerary.segments || [];
+              segments.forEach((segment: any) => {
+                const carrier = segment.carrierCode || segment.operating?.carrierCode;
+                if (carrier && carrier.length === 2) {
+                  if (!carrierMap.has(carrier)) {
+                    carrierMap.set(carrier, []);
+                  }
+                  carrierMap.get(carrier)!.push(item);
+                }
+              });
+            });
+          }
+          // Old format: ita-matrix-enriched
+          else if (item.type === 'solution' && item.itinerary?.slices) {
+            item.itinerary.slices.forEach((slice: any) => {
+              if (slice.mileageBreakdown) {
+                slice.mileageBreakdown.forEach((breakdown: any) => {
+                  if (breakdown.allMatchingFlights) {
+                    breakdown.allMatchingFlights.forEach((flight: any) => {
+                      const carrier = flight.carrierCode || flight.operatingCarrier;
+                      if (carrier) {
+                        if (!carrierMap.has(carrier)) {
+                          carrierMap.set(carrier, []);
+                        }
+                        carrierMap.get(carrier)!.push(item);
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
+        
+        // Store all enrichment data
+        setV2EnrichmentData(carrierMap);
+        console.log(`✅ SearchPage: Auto-enrichment complete for ${carrierMap.size} carriers`);
+        // Mark as triggered to prevent re-triggering
+        enrichmentTriggeredRef.current = true;
+      } catch (enrichError) {
+        console.error(`⚠️ SearchPage: Auto-enrichment failed (non-fatal):`, enrichError);
+        // Mark as triggered even on error to prevent retry loops
+        enrichmentTriggeredRef.current = true;
+      } finally {
+        // Clear enriching state
+        setEnrichingAirlines(new Set());
+        enrichmentTimeoutRef.current = null;
+      }
+    };
+    
+    enrichTop5();
+    }, 2000); // Wait 2 seconds after search/streaming completes
+    
+    // Cleanup function
+    return () => {
+      if (enrichmentTimeoutRef.current) {
+        clearTimeout(enrichmentTimeoutRef.current);
+        enrichmentTimeoutRef.current = null;
+      }
+    };
+  }, [results, loading, isStreaming, extractedParams.pageNum]); // Run when results change, loading stops, and streaming completes
 
   // Filter and sort flights
   const applyFilters = (flights: SearchResponse, filterState: FlightFilterState, perCent: number): SearchResponse => {
@@ -747,6 +1154,9 @@ const SearchPage: React.FC = () => {
               pageSize={extractedParams.pageSize || 25}
               originTimezone={originTimezone}
               perCentValue={perCentValue}
+              v2EnrichmentData={v2EnrichmentData}
+              onEnrichFlight={handleEnrichFlight}
+              enrichingAirlines={enrichingAirlines}
             />
           </div>
         </div>

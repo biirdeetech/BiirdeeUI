@@ -51,7 +51,9 @@ interface BiirdeeRequest {
 
 class BiirdeeService {
   private static instance: BiirdeeService;
-  private baseUrl = 'https://nodejs-production-ae342.up.railway.app/api/v3/flights/ita-matrix';
+  private baseUrl = import.meta.env.VITE_BACKEND_URL 
+    ? `${import.meta.env.VITE_BACKEND_URL}/api/v3/flights/ita-matrix`
+    : 'https://nodejs-production-ae342.up.railway.app/api/v3/flights/ita-matrix';
 
   static getInstance(): BiirdeeService {
     if (!BiirdeeService.instance) {

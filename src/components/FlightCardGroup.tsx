@@ -11,6 +11,9 @@ interface FlightCardGroupProps {
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
+  v2EnrichmentData?: Map<string, any[]>;
+  onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
+  enrichingAirlines?: Set<string>;
 }
 
 const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
@@ -19,7 +22,10 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   originTimezone,
   perCentValue = 0.015,
   session,
-  solutionSet
+  solutionSet,
+  v2EnrichmentData = new Map(),
+  onEnrichFlight,
+  enrichingAirlines = new Set()
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -28,9 +34,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     return (
       <>
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         ) : (
-          <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+          <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         )}
       </>
     );
@@ -40,9 +46,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     <div className="space-y-2">
       {/* Primary Flight Card */}
       {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-        <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+        <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
       ) : (
-        <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+        <FlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
       )}
 
       {/* Expand Button */}
@@ -66,9 +72,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           {similarFlights.map((flight, index) => (
             <div key={'id' in flight ? flight.id : `similar-${index}`}>
               {'id' in flight && flight.slices.length >= 3 ? (
-                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} />
+                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               )}
             </div>
           ))}
