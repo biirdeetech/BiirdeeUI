@@ -117,7 +117,9 @@ class BiirdeeService {
           biirdeeSlice.routing = 'N';
         }
 
-        if (slice.ext) {
+        // Always include ext if it exists (even if empty string, as it might be intentionally set)
+        // The ext parameter should be generated from bookingClassSelection if not provided
+        if (slice.ext !== undefined && slice.ext !== null) {
           biirdeeSlice.ext = slice.ext;
         }
 

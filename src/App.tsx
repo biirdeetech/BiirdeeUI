@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { NotificationProvider } from './hooks/useNotification';
+import { ProposalProvider } from './contexts/ProposalContext';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import HacksPage from './pages/HacksPage';
@@ -63,7 +64,8 @@ function App() {
     <ErrorBoundary>
       <NotificationProvider>
         <AuthProvider>
-          <Router>
+          <ProposalProvider>
+            <Router>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
@@ -84,6 +86,7 @@ function App() {
               <Route path="*" element={<Navigate to="/sign-in" replace />} />
             </Routes>
           </Router>
+          </ProposalProvider>
         </AuthProvider>
       </NotificationProvider>
     </ErrorBoundary>

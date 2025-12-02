@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, FileText, Plus, Loader, Search, User, Mail } from 'lucide-react';
+import { X, Save, FileText, Plus, Loader, Search, User, Mail, ChevronDown, Plane, Award } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useNotification } from '../hooks/useNotification';
 import { FlightSolution, GroupedFlight } from '../types/flight';
 import ClientSelectionDropdown from './ClientSelectionDropdown';
+import { useProposalContext } from '../contexts/ProposalContext';
 
 interface Proposal {
   id: string;
@@ -27,16 +28,19 @@ interface Client {
 interface AddToProposalModalProps {
   flight: FlightSolution | GroupedFlight;
   selectedMileageFlight?: any;
+  pendingItems?: Array<{type: 'flight' | 'aero' | 'award', id: string, data: any}>;
   perCentValue?: number;
   onClose: () => void;
+  onItemRemoved?: (itemId: string) => void;
 }
 
-const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selectedMileageFlight, perCentValue = 0.015, onClose }) => {
+const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selectedMileageFlight, pendingItems = [], perCentValue = 0.015, onClose, onItemRemoved, flightCardId = '' }) => {
   const { user, profile } = useAuth();
   const { showNotification } = useNotification();
+  const { getProposalCount, addToProposal, lastSelectedProposalId, setLastSelectedProposalId } = useProposalContext();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedProposalId, setSelectedProposalId] = useState('');
+  const [selectedProposalId, setSelectedProposalId] = useState(lastSelectedProposalId || '');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,6 +48,8 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
   const [selectedPrice, setSelectedPrice] = useState(0);
   const [proposalSearchQuery, setProposalSearchQuery] = useState('');
   const [showCreateProposal, setShowCreateProposal] = useState(false);
+  const [existingProposalOptions, setExistingProposalOptions] = useState<any[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
   // New proposal form data
   const [newProposalData, setNewProposalData] = useState({
@@ -62,6 +68,49 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
   useEffect(() => {
     setSelectedPrice(flightPrice);
   }, [flightPrice]);
+
+  // Initialize selectedProposalId from context if available
+  useEffect(() => {
+    if (lastSelectedProposalId && !selectedProposalId) {
+      setSelectedProposalId(lastSelectedProposalId);
+    }
+  }, [lastSelectedProposalId]);
+
+  // Update context when proposal selection changes
+  useEffect(() => {
+    if (selectedProposalId) {
+      setLastSelectedProposalId(selectedProposalId);
+    }
+  }, [selectedProposalId, setLastSelectedProposalId]);
+
+  // Fetch existing proposal options when a proposal is selected
+  useEffect(() => {
+    const fetchProposalOptions = async () => {
+      if (!selectedProposalId) {
+        setExistingProposalOptions([]);
+        return;
+      }
+
+      setLoadingOptions(true);
+      try {
+        const { data, error } = await supabase
+          .from('proposal_options')
+          .select('*')
+          .eq('proposal_id', selectedProposalId)
+          .order('option_number', { ascending: true });
+
+        if (error) throw error;
+        setExistingProposalOptions(data || []);
+      } catch (error) {
+        console.error('Error fetching proposal options:', error);
+        setExistingProposalOptions([]);
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+
+    fetchProposalOptions();
+  }, [selectedProposalId]);
 
   // Fetch user's proposals and clients
   useEffect(() => {
@@ -118,10 +167,13 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
       proposal.name.toLowerCase().includes(searchText) ||
       proposal.first_name.toLowerCase().includes(searchText) ||
       proposal.last_name.toLowerCase().includes(searchText) ||
-      proposal.email.toLowerCase().includes(searchText) ||
+      (proposal.email && proposal.email.toLowerCase().includes(searchText)) ||
       `${proposal.first_name} ${proposal.last_name}`.toLowerCase().includes(searchText)
     );
-  });
+  }).map(proposal => ({
+    ...proposal,
+    itemCount: getProposalCount(proposal.id)
+  }));
 
   const handleCreateClient = async (clientData: any) => {
     if (!user) throw new Error('User not authenticated');
@@ -195,6 +247,8 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
 
   const addFlightToProposal = async (proposalId: string) => {
     try {
+      setSaving(true);
+      
       // Get the next option number for this proposal
       const { data: existingOptions } = await supabase
         .from('proposal_options')
@@ -203,41 +257,162 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
         .order('option_number', { ascending: false })
         .limit(1);
 
-      const nextOptionNumber = (existingOptions?.[0]?.option_number || 0) + 1;
+      let nextOptionNumber = (existingOptions?.[0]?.option_number || 0) + 1;
 
-      // Prepare flight data - include mileage info if selected
-      const flightDataToSave = selectedMileageFlight
-        ? {
+      // Prepare items to add - use pendingItems if available, otherwise fallback to single item
+      const itemsToAdd = pendingItems.length > 0 ? pendingItems : [
+        selectedMileageFlight 
+          ? { type: 'aero' as const, id: 'single', data: selectedMileageFlight }
+          : { type: 'flight' as const, id: 'flight', data: flight }
+      ];
+
+      // Add all items to proposal
+      const itemsToInsert = itemsToAdd.map((item) => {
+        let flightDataToSave: any;
+        
+        if (item.type === 'flight') {
+          flightDataToSave = item.data;
+        } else if (item.type === 'aero' || item.type === 'award') {
+          // Mileage/award option - attach to base flight
+          flightDataToSave = {
             ...flight,
-            selectedMileageOption: selectedMileageFlight,
+            selectedMileageOption: item.data,
             mileageDetails: {
-              carrier: selectedMileageFlight.carrierCode,
-              mileage: selectedMileageFlight.mileage,
-              mileagePrice: selectedMileageFlight.mileagePrice,
-              totalValue: (selectedMileageFlight.mileage * perCentValue) + parseFloat(selectedMileageFlight.mileagePrice || 0)
+              carrier: item.data.carrierCode,
+              mileage: item.data.mileage || item.data.miles,
+              mileagePrice: item.data.mileagePrice || item.data.tax,
+              totalValue: ((item.data.mileage || item.data.miles) * perCentValue) + parseFloat((item.data.mileagePrice || item.data.tax || 0).toString())
             }
-          }
-        : flight;
+          };
+        }
 
-      // Add flight to proposal
-      const { error } = await supabase
-        .from('proposal_options')
-        .insert({
+        return {
           proposal_id: proposalId,
           flight_data: flightDataToSave,
           agent_notes: agentNotes,
           selected_price: selectedPrice,
-          option_number: nextOptionNumber,
+          option_number: nextOptionNumber++,
           is_hidden: false
+        };
+      });
+
+      // Group items: flight + its mileage options as one entry
+      const flightItem = itemsToAdd.find(item => item.type === 'flight');
+      const mileageItems = itemsToAdd.filter(item => item.type === 'aero' || item.type === 'award');
+      
+      if (flightItem) {
+        // Single entry with flight + all mileage options nested
+        const flightDataToSave = {
+          ...flightItem.data,
+          mileageOptions: mileageItems.map(item => ({
+            type: item.type,
+            data: item.data,
+            mileageDetails: {
+              carrier: item.data.carrierCode,
+              mileage: item.data.mileage || item.data.miles,
+              mileagePrice: item.data.mileagePrice || item.data.tax,
+              totalValue: ((item.data.mileage || item.data.miles) * perCentValue) + parseFloat((item.data.mileagePrice || item.data.tax || 0).toString())
+            }
+          }))
+        };
+
+        const { error } = await supabase
+          .from('proposal_options')
+          .insert({
+            proposal_id: proposalId,
+            flight_data: flightDataToSave,
+            agent_notes: agentNotes,
+            selected_price: selectedPrice,
+            option_number: nextOptionNumber,
+            is_hidden: false
+          });
+
+        if (error) throw error;
+        
+        // Track in context
+        if (flightCardId) {
+          const itemIds = new Set(['flight', ...mileageItems.map(item => item.id)]);
+          addToProposal(flightCardId, proposalId, itemIds);
+        }
+
+        // Refresh existing options to show the newly added item
+        const { data: refreshedOptions, error: refreshError } = await supabase
+          .from('proposal_options')
+          .select('*')
+          .eq('proposal_id', proposalId)
+          .order('option_number', { ascending: true });
+
+        if (!refreshError && refreshedOptions) {
+          setExistingProposalOptions(refreshedOptions);
+        }
+      } else if (mileageItems.length > 0) {
+        // Only mileage items (shouldn't happen, but handle it)
+        const itemsToInsert = mileageItems.map((item) => ({
+          proposal_id: proposalId,
+          flight_data: {
+            ...flight,
+            selectedMileageOption: item.data,
+            mileageDetails: {
+              carrier: item.data.carrierCode,
+              mileage: item.data.mileage || item.data.miles,
+              mileagePrice: item.data.mileagePrice || item.data.tax,
+              totalValue: ((item.data.mileage || item.data.miles) * perCentValue) + parseFloat((item.data.mileagePrice || item.data.tax || 0).toString())
+            }
+          },
+          agent_notes: agentNotes,
+          selected_price: selectedPrice,
+          option_number: nextOptionNumber++,
+          is_hidden: false
+        }));
+
+        const { error } = await supabase
+          .from('proposal_options')
+          .insert(itemsToInsert);
+
+        if (error) throw error;
+
+        // Refresh existing options
+        const { data: refreshedOptions } = await supabase
+          .from('proposal_options')
+          .select('*')
+          .eq('proposal_id', proposalId)
+          .order('option_number', { ascending: true });
+        
+        if (refreshedOptions) {
+          setExistingProposalOptions(refreshedOptions);
+        }
+      }
+
+      // Refresh existing options one more time to ensure we have the latest
+      const { data: finalOptions } = await supabase
+        .from('proposal_options')
+        .select('*')
+        .eq('proposal_id', proposalId)
+        .order('option_number', { ascending: true });
+      
+      if (finalOptions) {
+        setExistingProposalOptions(finalOptions);
+      }
+
+      showNotification('success', 'Items Added to Proposal', `Flight and ${mileageItems.length} mileage option${mileageItems.length !== 1 ? 's' : ''} added successfully`);
+      
+      // Clear pending items after successful save so they don't show in "New Items to Add"
+      if (onItemRemoved) {
+        const itemsToRemove = flightItem 
+          ? ['flight', ...mileageItems.map(item => item.id)]
+          : mileageItems.map(item => item.id);
+        itemsToRemove.forEach(id => {
+          onItemRemoved(id);
         });
-
-      if (error) throw error;
-
-      onClose();
-      showNotification('success', 'Flight Added to Proposal', 'Flight option has been added successfully');
+      }
+      
+      // Don't close the modal - keep it open so user can see all items including the newly added one
+      // The modal will show existing items in "Already in Proposal" and empty "New Items to Add"
     } catch (error) {
-      console.error('Error adding flight to proposal:', error);
-      alert('Failed to add flight to proposal');
+      console.error('Error adding items to proposal:', error);
+      alert('Failed to add items to proposal');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -284,86 +459,174 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
     );
   }
 
+  // Group items: flight + mileage options
+  const flightItem = pendingItems.find(item => item.type === 'flight') || (!selectedMileageFlight && pendingItems.length === 0 ? { type: 'flight' as const, id: 'flight', data: flight } : null);
+  const mileageItems = pendingItems.length > 0 
+    ? pendingItems.filter(item => item.type === 'aero' || item.type === 'award')
+    : selectedMileageFlight 
+      ? [{ type: 'aero' as const, id: 'single', data: selectedMileageFlight }]
+      : [];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-gray-800/50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Modern Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-800/50 bg-gray-900/50">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <Plus className="h-5 w-5 text-white" />
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl shadow-lg">
+              <Plus className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-white">Add to Proposal</h3>
-              <p className="text-sm text-gray-400">{getFlightSummary()}</p>
+              <h3 className="text-lg font-semibold text-white">Add to Proposal</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{getFlightSummary()}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 transition-colors"
+            className="text-gray-400 hover:text-white hover:bg-gray-800/50 p-1.5 rounded-lg transition-colors"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Flight Summary */}
-          <div className="bg-gray-850 border border-gray-700 rounded-lg p-4">
-            <h4 className="text-lg font-medium text-white mb-2">Flight Summary</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-400">Route:</span>
-                <span className="text-white ml-2">{getFlightSummary()}</span>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Existing Proposal Items */}
+          {selectedProposalId && existingProposalOptions.length > 0 && (
+            <div className="bg-gray-800/20 border border-gray-700/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Already in Proposal ({existingProposalOptions.length})</h4>
+                {loadingOptions && <Loader className="h-4 w-4 text-gray-400 animate-spin" />}
               </div>
-              <div>
-                <span className="text-gray-400">Original Price:</span>
-                <span className="text-white ml-2">{formatPrice(flightPrice)}</span>
-              </div>
-            </div>
-            {selectedMileageFlight && (
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-400/30 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-orange-500/70 uppercase font-medium">Mileage Option Selected</span>
-                      <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-sm font-bold text-orange-300">{selectedMileageFlight.mileage?.toLocaleString()}</span>
-                        <span className="text-xs text-orange-400">miles</span>
-                        <span className="text-xs text-orange-400"> + </span>
-                        <span className="text-sm font-semibold text-orange-300">
-                          ${typeof selectedMileageFlight.mileagePrice === 'string'
-                            ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, '')).toFixed(2)
-                            : selectedMileageFlight.mileagePrice?.toFixed(2)}
-                        </span>
+              {existingProposalOptions.map((option, idx) => {
+                const flightData = option.flight_data;
+                const isGrouped = 'outboundSlice' in flightData;
+                const summary = isGrouped
+                  ? `${flightData.outboundSlice.origin.code} ⇄ ${flightData.outboundSlice.destination.code}`
+                  : flightData.slices?.length === 1
+                    ? `${flightData.slices[0].origin.code} → ${flightData.slices[flightData.slices.length - 1].destination.code}`
+                    : `${flightData.slices[0].origin.code} ⇄ ${flightData.slices[flightData.slices.length - 1].destination.code}`;
+                const price = flightData.displayTotal || 0;
+                const mileageOptions = flightData.mileageOptions || [];
+
+                return (
+                  <div key={option.id || idx} className="bg-gray-900/30 border border-gray-700/20 rounded-lg p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-green-500/10 p-2 rounded-lg border border-green-500/20">
+                        <Plane className="h-3.5 w-3.5 text-green-400" />
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs text-orange-500/70 uppercase font-medium">Total Value</span>
-                      <div className="text-lg font-bold text-orange-300">
-                        ${((selectedMileageFlight.mileage * perCentValue) +
-                          (typeof selectedMileageFlight.mileagePrice === 'string'
-                            ? parseFloat(selectedMileageFlight.mileagePrice.replace(/[^0-9.]/g, ''))
-                            : selectedMileageFlight.mileagePrice)).toFixed(2)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-green-300">Option {option.option_number}</span>
+                          <span className="text-sm font-semibold text-white truncate">{summary}</span>
+                        </div>
+                        <div className="text-xs font-medium text-gray-400">{formatPrice(price)}</div>
+                        {mileageOptions.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-gray-700/20">
+                            <div className="text-xs text-gray-500 mb-1">{mileageOptions.length} mileage option{mileageOptions.length !== 1 ? 's' : ''}</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* New Items to Add */}
+          {flightItem && (
+            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 space-y-3">
+              <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">New Items to Add</h4>
+              {/* Main Flight */}
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
+                  <Plane className="h-4 w-4 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-blue-300 uppercase tracking-wide">Main Flight</span>
+                      <span className="text-sm font-semibold text-white truncate">{getFlightSummary()}</span>
+                    </div>
+                    {onItemRemoved && (
+                      <button
+                        onClick={() => onItemRemoved('flight')}
+                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1 hover:bg-red-500/10 rounded transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-sm font-medium text-gray-300">{formatPrice(flightPrice)}</div>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Mileage Options Nested */}
+              {mileageItems.length > 0 && (
+                <div className="ml-11 space-y-2 pt-2 border-t border-gray-700/30">
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Mileage Options ({mileageItems.length})</div>
+                  {mileageItems.map((item, idx) => {
+                    const mileage = item.data.mileage || item.data.miles;
+                    const price = item.data.mileagePrice || item.data.tax;
+                    const totalValue = (mileage * perCentValue) + parseFloat((price || 0).toString());
+                    const carrier = item.data.carrierCode || 'N/A';
+                    
+                    return (
+                      <div key={item.id || idx} className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-3 flex items-center justify-between group hover:border-gray-600/50 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`p-1.5 rounded ${
+                            item.type === 'aero' 
+                              ? 'bg-orange-500/10 border border-orange-500/20' 
+                              : 'bg-purple-500/10 border border-purple-500/20'
+                          }`}>
+                            <Award className={`h-3.5 w-3.5 ${item.type === 'aero' ? 'text-orange-400' : 'text-purple-400'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-white">{carrier}</span>
+                              {item.data.cabin && (
+                                <span className="text-xs text-gray-400">{item.data.cabin}</span>
+                              )}
+                            </div>
+                            <div className="flex items-baseline gap-1.5 text-xs">
+                              <span className="text-gray-400">{mileage?.toLocaleString()}</span>
+                              <span className="text-gray-500">mi</span>
+                              <span className="text-gray-600 mx-1">+</span>
+                              <span className="text-gray-400">${typeof price === 'string' ? parseFloat(price.replace(/[^0-9.]/g, '')).toFixed(2) : price?.toFixed(2)}</span>
+                              <span className="text-gray-600 mx-1">=</span>
+                              <span className="text-white font-semibold">${totalValue.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {onItemRemoved && (
+                          <button
+                            onClick={() => onItemRemoved(item.id)}
+                            className="text-red-400 hover:text-red-300 text-xs px-2 py-1 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add to Existing Proposal */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-4">Add to Existing Proposal</h4>
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wide">Select Proposal</h4>
             
             {/* Proposal Search */}
-            <div className="relative mb-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 value={proposalSearchQuery}
                 onChange={(e) => setProposalSearchQuery(e.target.value)}
-                placeholder="Search proposals by name or client..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500"
+                placeholder="Search proposals..."
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm"
               />
             </div>
 
@@ -376,13 +639,18 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
             ) : (
               <select
                 value={selectedProposalId}
-                onChange={(e) => setSelectedProposalId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedProposalId(e.target.value);
+                  if (e.target.value) {
+                    setLastSelectedProposalId(e.target.value);
+                  }
+                }}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-blue-500"
               >
                 <option value="">Choose a proposal...</option>
                 {filteredProposals.map((proposal) => (
                   <option key={proposal.id} value={proposal.id}>
-                    {proposal.name} - {proposal.first_name} {proposal.last_name} ({proposal.status})
+                    {proposal.name} - {proposal.first_name} {proposal.last_name} ({proposal.status}){proposal.itemCount > 0 ? ` - ${proposal.itemCount} item${proposal.itemCount !== 1 ? 's' : ''} added` : ''}
                   </option>
                 ))}
               </select>

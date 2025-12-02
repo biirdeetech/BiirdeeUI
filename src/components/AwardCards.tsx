@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Clock, Plane, ChevronDown } from 'lucide-react';
+import FlightSegmentViewer from './FlightSegmentViewer';
 
 interface AwardOption {
   id: string;
@@ -24,6 +25,9 @@ interface AwardCardsProps {
   formatDateInOriginTZ: (dateStr: string) => string;
   originTimezone?: string;
   groupAwards?: (awards: AwardOption[]) => Array<{ primary: AwardOption; alternatives: AwardOption[] }>;
+  addedItems?: Set<string>;
+  hoveredAddButton?: string | null;
+  setHoveredAddButton?: (id: string | null) => void;
 }
 
 // Map cabin names to display format
@@ -45,7 +49,10 @@ const AwardCards: React.FC<AwardCardsProps> = ({
   formatTimeInOriginTZ,
   formatDateInOriginTZ,
   originTimezone,
-  groupAwards
+  groupAwards,
+  addedItems = new Set(),
+  hoveredAddButton = null,
+  setHoveredAddButton
 }) => {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -53,8 +60,40 @@ const AwardCards: React.FC<AwardCardsProps> = ({
     return null;
   }
 
+  // Group awards by cabin
+  const awardsByCabin = new Map<string, AwardOption[]>();
+  awardOptions.forEach(award => {
+    const cabinKey = award.cabin.toUpperCase();
+    if (!awardsByCabin.has(cabinKey)) {
+      awardsByCabin.set(cabinKey, []);
+    }
+    awardsByCabin.get(cabinKey)!.push(award);
+  });
+
+  // Define cabin order (premium first, then economy)
+  const cabinOrder = ['FIRST', 'BUSINESS', 'PREMIUM_ECONOMY', 'PREMIUM', 'ECONOMY', 'COACH'];
+  const availableCabins = Array.from(awardsByCabin.keys()).sort((a, b) => {
+    const aIndex = cabinOrder.indexOf(a) !== -1 ? cabinOrder.indexOf(a) : 999;
+    const bIndex = cabinOrder.indexOf(b) !== -1 ? cabinOrder.indexOf(b) : 999;
+    return aIndex - bIndex;
+  });
+
+  // Initialize active cabin tab to first available cabin
+  const [activeCabinTab, setActiveCabinTab] = useState<string>('');
+
+  // Set default active tab when availableCabins changes
+  useEffect(() => {
+    if (availableCabins.length > 0 && (!activeCabinTab || !availableCabins.includes(activeCabinTab))) {
+      setActiveCabinTab(availableCabins[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableCabins.length, awardOptions.length]); // Update when cabin availability changes
+
+  // Get awards for active cabin
+  const activeCabinAwards = activeCabinTab ? awardsByCabin.get(activeCabinTab) || [] : [];
+
   // Sort by best value (miles * perCentValue + tax) - perCentValue is already in decimal form (0.015 = 1.5 cents)
-  const sortedAwards = [...awardOptions].sort((a, b) => {
+  const sortedAwards = [...activeCabinAwards].sort((a, b) => {
     const aValue = (a.miles * perCentValue) + a.tax;
     const bValue = (b.miles * perCentValue) + b.tax;
     return aValue - bValue;
@@ -68,7 +107,38 @@ const AwardCards: React.FC<AwardCardsProps> = ({
   const effectiveSelectedId = selectedAwardId ?? defaultSelectedId;
 
   return (
-    <div className="space-y-3 max-h-96 overflow-y-auto">
+    <div className="space-y-3">
+      {/* Cabin Tabs */}
+      {availableCabins.length > 1 && (
+        <div className="flex gap-2 border-b border-gray-700 pb-2 mb-3 overflow-x-auto">
+          {availableCabins.map((cabinKey) => {
+            const cabinAwards = awardsByCabin.get(cabinKey) || [];
+            const cabinDisplay = cabinDisplayMap[cabinKey] || cabinKey;
+            const isActive = activeCabinTab === cabinKey;
+            
+            return (
+              <button
+                key={cabinKey}
+                onClick={() => setActiveCabinTab(cabinKey)}
+                className={`px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                  isActive
+                    ? cabinKey === 'BUSINESS' || cabinKey === 'FIRST'
+                      ? 'bg-purple-500/20 text-purple-300 border-b-2 border-purple-400'
+                      : cabinKey === 'PREMIUM' || cabinKey === 'PREMIUM_ECONOMY'
+                      ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-400'
+                      : 'bg-gray-700/50 text-gray-300 border-b-2 border-gray-500'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                {cabinDisplay} ({cabinAwards.length})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Awards List */}
+      <div className="max-h-96 overflow-y-auto space-y-3">
       {groupedAwards.map((group, groupIndex) => {
         const award = group.primary;
         const groupKey = `award-group-${groupIndex}`;
@@ -171,10 +241,30 @@ const AwardCards: React.FC<AwardCardsProps> = ({
                   </div>
                   <button
                     onClick={() => onAdd(award)}
-                    className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                    onMouseEnter={() => {
+                      const awardId = `award-${award.id}`;
+                      if (addedItems.has(awardId) && setHoveredAddButton) {
+                        setHoveredAddButton(awardId);
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredAddButton && setHoveredAddButton(null)}
+                    className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                      addedItems.has(`award-${award.id}`)
+                        ? 'bg-green-500/20 hover:bg-red-500/20 text-green-300 hover:text-red-300 border-green-400/30 hover:border-red-400/30'
+                        : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                    }`}
                   >
-                    <Plus className="h-3 w-3" />
-                    Add
+                    {addedItems.has(`award-${award.id}`) ? (
+                      <>
+                        <span className="text-[10px]">✓</span>
+                        {hoveredAddButton === `award-${award.id}` ? 'Remove' : 'Added'}
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </>
+                    )}
                   </button>
                 </div>
                 <div className="text-[10px] text-gray-400">
@@ -184,47 +274,35 @@ const AwardCards: React.FC<AwardCardsProps> = ({
               </div>
             </div>
 
-            {/* Flight Details */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-4 text-xs text-gray-400">
-                <div className="flex items-center gap-1">
-                  <Plane className="h-3 w-3" />
-                  <span>{firstSegment?.departure?.iataCode}</span>
-                  <span className="text-gray-600">→</span>
-                  <span>{lastSegment?.arrival?.iataCode}</span>
-                </div>
-                {depTime && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{depTime} {depDate}</span>
-                    <span className="text-gray-600">→</span>
-                    <span>{arrTime}</span>
-                  </div>
-                )}
-              </div>
+            {/* Flight Route Details */}
+            <div className="mt-3 pt-3 border-t border-gray-700">
+              <FlightSegmentViewer
+                segments={segments.map(seg => ({
+                  carrierCode: seg.carrierCode,
+                  number: seg.number,
+                  departure: seg.departure,
+                  arrival: seg.arrival,
+                  cabin: award.cabin,
+                  duration: seg.duration
+                }))}
+                layovers={itinerary?.layovers || []}
+                formatTime={formatTimeInOriginTZ}
+                formatDate={formatDateInOriginTZ}
+                showCabin={true}
+                compact={false}
+              />
 
               {/* Transfer Options */}
               {award.transferOptions && award.transferOptions.length > 0 && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">Transfer:</span>
-                  {award.transferOptions.map((option: any, idx: number) => (
-                    <span key={idx} className="text-purple-400">
-                      {option.program} ({option.points?.toLocaleString() || 'N/A'})
-                      {idx < award.transferOptions.length - 1 && ','}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Stops/Layovers */}
-              {itinerary?.layovers && itinerary.layovers.length > 0 && (
-                <div className="text-xs text-gray-500">
-                  {itinerary.layovers.map((layover: any, idx: number) => (
-                    <span key={idx}>
-                      {layover.airport?.code} ({Math.round(layover.durationMinutes / 60)}h {layover.durationMinutes % 60}m)
-                      {idx < itinerary.layovers.length - 1 && ', '}
-                    </span>
-                  ))}
+                <div className="mt-3 pt-3 border-t border-gray-700/50 flex items-center gap-2 text-xs">
+                  <span className="text-gray-500 font-medium">Transfer Partners:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {award.transferOptions.map((option: any, idx: number) => (
+                      <span key={idx} className="px-2 py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-400/30">
+                        {option.program} ({option.points?.toLocaleString() || 'N/A'} pts)
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -276,13 +354,10 @@ const AwardCards: React.FC<AwardCardsProps> = ({
                               />
                             )}
                             <div className="flex flex-col flex-1">
-                              <div className="flex items-center gap-2">
-                                {altSegments.map((seg: any, idx: number) => (
-                                  <span key={idx} className="text-xs font-semibold text-white">
-                                    {seg.carrierCode}{seg.number}
-                                    {idx < altSegments.length - 1 && <span className="text-gray-500 mx-1">→</span>}
-                                  </span>
-                                ))}
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-semibold text-white">
+                                  {altFirstSegment?.departure?.iataCode} → {altLastSegment?.arrival?.iataCode}
+                                </span>
                                 <span className={`px-1.5 py-0.5 text-[9px] font-medium ${
                                   altAward.cabin.toUpperCase() === 'BUSINESS' || altAward.cabin.toUpperCase() === 'FIRST'
                                     ? 'text-purple-300'
@@ -305,10 +380,30 @@ const AwardCards: React.FC<AwardCardsProps> = ({
                             </div>
                             <button
                               onClick={() => onAdd(altAward)}
-                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                              onMouseEnter={() => {
+                                const awardId = `award-${altAward.id}`;
+                                if (addedItems.has(awardId) && setHoveredAddButton) {
+                                  setHoveredAddButton(awardId);
+                                }
+                              }}
+                              onMouseLeave={() => setHoveredAddButton && setHoveredAddButton(null)}
+                              className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                                addedItems.has(`award-${altAward.id}`)
+                                  ? 'bg-green-500/20 hover:bg-red-500/20 text-green-300 hover:text-red-300 border-green-400/30 hover:border-red-400/30'
+                                  : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                              }`}
                             >
-                              <Plus className="h-3 w-3" />
-                              Add
+                              {addedItems.has(`award-${altAward.id}`) ? (
+                                <>
+                                  <span className="text-[10px]">✓</span>
+                                  {hoveredAddButton === `award-${altAward.id}` ? 'Remove' : 'Added'}
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-3 w-3" />
+                                  Add
+                                </>
+                              )}
                             </button>
                           </div>
                         </div>
@@ -321,6 +416,7 @@ const AwardCards: React.FC<AwardCardsProps> = ({
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

@@ -98,12 +98,18 @@ const SearchPage: React.FC = () => {
         
         // Generate ext from booking class selection if not provided
         let ext = searchParams.get(`leg${i}_ext`) || '';
-        if (!ext && cabin) {
+        // Always generate ext if it's empty or not provided, and we have a cabin
+        if ((!ext || ext.trim() === '') && cabin) {
           // Generate ext based on booking class selection
           let bookingClasses: string[] = [];
           if (bookingClassSelection === 'all') {
-            // Use all booking classes for the selected cabin
-            bookingClasses = getDefaultBookingClasses(cabin);
+            // When 'all' is selected, include booking classes for all cabins
+            bookingClasses = [
+              ...getDefaultBookingClasses('COACH'),
+              ...getDefaultBookingClasses('PREMIUM-COACH'),
+              ...getDefaultBookingClasses('BUSINESS'),
+              ...getDefaultBookingClasses('FIRST')
+            ];
           } else if (bookingClassSelection === 'economy') {
             bookingClasses = getDefaultBookingClasses('COACH');
           } else if (bookingClassSelection === 'premium') {
@@ -186,10 +192,17 @@ const SearchPage: React.FC = () => {
       
       // Generate ext from booking class selection if not provided
       let firstExt = searchParams.get('leg0_ext') || '';
-      if (!firstExt && firstLegCabin) {
+      // Always generate ext if it's empty or not provided, and we have a cabin
+      if ((!firstExt || firstExt.trim() === '') && firstLegCabin) {
         let bookingClasses: string[] = [];
         if (firstBookingClassSelection === 'all') {
-          bookingClasses = getDefaultBookingClasses(firstLegCabin);
+          // When 'all' is selected, include booking classes for all cabins
+          bookingClasses = [
+            ...getDefaultBookingClasses('COACH'),
+            ...getDefaultBookingClasses('PREMIUM-COACH'),
+            ...getDefaultBookingClasses('BUSINESS'),
+            ...getDefaultBookingClasses('FIRST')
+          ];
         } else if (firstBookingClassSelection === 'economy') {
           bookingClasses = getDefaultBookingClasses('COACH');
         } else if (firstBookingClassSelection === 'premium') {
@@ -201,6 +214,7 @@ const SearchPage: React.FC = () => {
         } else if (firstBookingClassSelection === 'business_plus') {
           bookingClasses = [...getDefaultBookingClasses('BUSINESS'), ...getDefaultBookingClasses('FIRST')];
         } else {
+          // Fallback to cabin's booking classes
           bookingClasses = getDefaultBookingClasses(firstLegCabin);
         }
         firstExt = bookingClassesToExt(bookingClasses);
@@ -234,10 +248,17 @@ const SearchPage: React.FC = () => {
         
         // Generate ext from booking class selection if not provided
         let secondExt = searchParams.get('leg1_ext') || '';
-        if (!secondExt && secondLegCabin) {
+        // Always generate ext if it's empty or not provided, and we have a cabin
+        if ((!secondExt || secondExt.trim() === '') && secondLegCabin) {
           let bookingClasses: string[] = [];
           if (secondBookingClassSelection === 'all') {
-            bookingClasses = getDefaultBookingClasses(secondLegCabin);
+            // When 'all' is selected, include booking classes for all cabins
+            bookingClasses = [
+              ...getDefaultBookingClasses('COACH'),
+              ...getDefaultBookingClasses('PREMIUM-COACH'),
+              ...getDefaultBookingClasses('BUSINESS'),
+              ...getDefaultBookingClasses('FIRST')
+            ];
           } else if (secondBookingClassSelection === 'economy') {
             bookingClasses = getDefaultBookingClasses('COACH');
           } else if (secondBookingClassSelection === 'premium') {
@@ -249,6 +270,7 @@ const SearchPage: React.FC = () => {
           } else if (secondBookingClassSelection === 'business_plus') {
             bookingClasses = [...getDefaultBookingClasses('BUSINESS'), ...getDefaultBookingClasses('FIRST')];
           } else {
+            // Fallback to cabin's booking classes
             bookingClasses = getDefaultBookingClasses(secondLegCabin);
           }
           secondExt = bookingClassesToExt(bookingClasses);
@@ -574,6 +596,11 @@ const SearchPage: React.FC = () => {
   // Auto-enrichment effect - runs AFTER search completes, streaming stops, and 2 second delay
   useEffect(() => {
     const autoEnrichEnabled = import.meta.env.VITE_AUTO_ENRICH_TOP5 === 'true';
+    // Check award enabled toggle from URL params (defaults to true if not set)
+    const awardEnabledFromUrl = searchParams.get('awardEnabled');
+    const awardEnabled = awardEnabledFromUrl === null 
+      ? (import.meta.env.VITE_AWARD_ENABLED === undefined || import.meta.env.VITE_AWARD_ENABLED === '' ? true : import.meta.env.VITE_AWARD_ENABLED === 'true')
+      : awardEnabledFromUrl === 'true';
     
     // Clear any pending timeout if component unmounts or dependencies change
     if (enrichmentTimeoutRef.current) {
@@ -583,12 +610,13 @@ const SearchPage: React.FC = () => {
     
     // Don't trigger if:
     // - Auto-enrichment disabled
+    // - Award enabled toggle is off
     // - No results yet
     // - Still loading
     // - Still streaming
     // - Already enriching
     // - Already triggered for this search
-    if (!autoEnrichEnabled || !results || loading || isStreaming || enrichingAirlines.size > 0 || enrichmentTriggeredRef.current) {
+    if (!autoEnrichEnabled || !awardEnabled || !results || loading || isStreaming || enrichingAirlines.size > 0 || enrichmentTriggeredRef.current) {
       return;
     }
     
@@ -608,7 +636,7 @@ const SearchPage: React.FC = () => {
     console.log('⏳ SearchPage: Waiting 2 seconds after search completion before auto-enrichment...');
     
     enrichmentTimeoutRef.current = setTimeout(() => {
-      console.log('🌟 SearchPage: Auto-enrichment enabled, extracting top 5 airlines');
+      console.log('🌟 SearchPage: Auto-enrichment enabled (awardEnabled:', awardEnabled, '), extracting top 5 airlines');
     
     const extractTop5Airlines = (searchResponse: SearchResponse): string[] => {
       if (!searchResponse.solutionList?.solutions) return [];
@@ -799,7 +827,7 @@ const SearchPage: React.FC = () => {
         enrichmentTimeoutRef.current = null;
       }
     };
-  }, [results, loading, isStreaming, extractedParams.pageNum]); // Run when results change, loading stops, and streaming completes
+  }, [results, loading, isStreaming, extractedParams.pageNum, searchParams]); // Run when results change, loading stops, streaming completes, or search params change
 
   // Filter and sort flights
   const applyFilters = (flights: SearchResponse, filterState: FlightFilterState, perCent: number): SearchResponse => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code } from 'lucide-react';
+import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
@@ -11,6 +12,7 @@ import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
 import AwardCards from './AwardCards';
+import { useProposalContext } from '../contexts/ProposalContext';
 
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
@@ -207,6 +209,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [showAddToProposal, setShowAddToProposal] = useState(false);
   const [selectedMileageFlight, setSelectedMileageFlight] = useState<any>(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set()); // Track multiple added items: 'flight', 'aero-{id}', 'award-{id}'
+  const [hoveredAddButton, setHoveredAddButton] = useState<string | null>(null); // Track hover state for "Replace" text
+  const [pendingItems, setPendingItems] = useState<Array<{type: 'flight' | 'aero' | 'award', id: string, data: any}>>([]); // Track all items pending to be added to proposal
   // Track selected mileage program per slice: { sliceIndex: carrierCode }
   const [selectedMileagePerSlice, setSelectedMileagePerSlice] = useState<Record<number, string | null>>({});
   const [selectedAwardPerSlice, setSelectedAwardPerSlice] = useState<Record<number, string | null>>({});
@@ -219,6 +224,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [showAlternativeTimes, setShowAlternativeTimes] = useState<Record<string, boolean>>({});
   const [showMileageDropdown, setShowMileageDropdown] = useState<Record<number, boolean>>({});
   const [mileageAwardTab, setMileageAwardTab] = useState<Record<number, 'aero' | 'award'>>({});
+  const [aeroCabinTabs, setAeroCabinTabs] = useState<Record<string, string>>({}); // airlineKey -> cabin
+  const [expandedMileageOptions, setExpandedMileageOptions] = useState<Record<number, boolean>>({}); // sliceIndex -> expanded
 
 
   // Get flight data based on type
@@ -262,6 +269,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   };
 
   const { slices, carrier, isNonstop, totalAmount, displayTotal, currency, pricePerMile, hasMultipleReturns, flightId, totalMileage, totalMileagePrice, matchType, mileageDeals, fullyEnriched } = getFlightData();
+  const { addToProposal: addToProposalContext, removeFromProposal } = useProposalContext();
+  const flightCardId = flightId || `flight-${Date.now()}`;
   const isPremium = PREMIUM_CARRIERS.includes(carrier.code);
 
   console.log('🎴 FlightCard: Rendering flight with', { 
@@ -1253,11 +1262,57 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 Hacks
               </button>
               <button
-                onClick={() => setShowAddToProposal(true)}
-                className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
+                onClick={() => {
+                  if (addedItems.has('flight')) {
+                    // Remove flight and all associated mileage/awards
+                    const newSet = new Set(addedItems);
+                    newSet.delete('flight');
+                    // Remove all aero and award items for this flight
+                    Array.from(newSet).forEach(item => {
+                      if (item.startsWith('aero-') || item.startsWith('award-')) {
+                        newSet.delete(item);
+                      }
+                    });
+                    setAddedItems(newSet);
+                    setPendingItems(prev => prev.filter(item => item.type !== 'flight' && !item.id.startsWith('aero-') && !item.id.startsWith('award-')));
+                    setShowAddToProposal(false);
+                    setSelectedMileageFlight(null);
+                  } else {
+                    // Add flight
+                    setAddedItems(prev => new Set(prev).add('flight'));
+                    setPendingItems(prev => {
+                      // Remove any existing flight entry and add new one
+                      const filtered = prev.filter(item => item.type !== 'flight');
+                      return [...filtered, { type: 'flight', id: 'flight', data: flight }];
+                    });
+                    setShowAddToProposal(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (addedItems.has('flight')) {
+                    setHoveredAddButton('flight');
+                  } else if (addedItems.size > 0) {
+                    setHoveredAddButton('flight');
+                  }
+                }}
+                onMouseLeave={() => setHoveredAddButton(null)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1 ${
+                  addedItems.has('flight')
+                    ? 'bg-green-500/20 hover:bg-red-500/20 text-green-400 hover:text-red-400 border border-green-500/30 hover:border-red-500/30'
+                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300'
+                }`}
               >
-                <Plus className="h-3 w-3" />
-                Add to proposal
+                {addedItems.has('flight') ? (
+                  <>
+                    <span className="text-xs">✓</span>
+                    {hoveredAddButton === 'flight' ? 'Remove' : 'Added'}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3 w-3" />
+                    {hoveredAddButton === 'flight' && addedItems.size > 0 ? 'Replace' : 'Add to proposal'}
+                  </>
+                )}
               </button>
         </div>
       </div>
@@ -1666,66 +1721,61 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 }
               }
 
-              // Determine which to show (cheapest, or both if same value)
-              const showBoth = bestAeroValue !== null && bestAwardValue !== null && Math.abs(bestAeroValue - bestAwardValue) < 0.01;
-              const showAero = showBoth || (bestAeroValue !== null && (bestAwardValue === null || bestAeroValue <= bestAwardValue));
-              const showAward = showBoth || (bestAwardValue !== null && (bestAeroValue === null || bestAwardValue < bestAeroValue));
+
+              const isExpanded = expandedMileageOptions[sliceIndex] || false;
 
               return (
-                <div key={`mileage-options-${sliceIndex}`} className="mt-4 bg-gray-800/30 p-3 rounded border border-gray-700/50">
-                  {/* Header: Mileage Options with Tabs */}
-                  <div className="flex items-center justify-between mb-3">
+                <div key={`mileage-options-${sliceIndex}`} className="mt-3">
+                  {/* Header: Collapsible Mileage Options */}
+                  <button
+                    onClick={() => setExpandedMileageOptions(prev => ({ ...prev, [sliceIndex]: !prev[sliceIndex] }))}
+                    className="w-full flex items-center justify-between p-2.5 bg-gray-800/30 hover:bg-gray-800/50 rounded border border-gray-700/50 transition-all group"
+                  >
                     <div className="flex items-center gap-2">
+                      <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                       <Award className="h-4 w-4 text-gray-400" />
                       <span className="text-sm font-semibold text-white">Mileage Options</span>
+                      {hasAeroForSlice && hasAwardForSlice && (
+                        <div className="flex border border-gray-700/50 bg-gray-800/30 rounded overflow-hidden ml-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'aero'});
+                            }}
+                            className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                              activeTab === 'aero'
+                                ? 'bg-gray-700/50 text-orange-400'
+                                : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                          >
+                            Aero
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'award'});
+                            }}
+                            className={`px-2.5 py-1 text-xs font-medium transition-all ${
+                              activeTab === 'award'
+                                ? 'bg-gray-700/50 text-purple-400'
+                                : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                          >
+                            Award Tools
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    {hasAeroForSlice && hasAwardForSlice && (
-                      <div className="flex border border-gray-700/50 bg-gray-800/30 rounded overflow-hidden">
-                        <button
-                          onClick={() => setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'aero'})}
-                          className={`px-3 py-1.5 text-xs font-medium transition-all ${
-                            activeTab === 'aero'
-                              ? 'bg-gray-700/50 text-orange-400'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          Aero
-                        </button>
-                        <button
-                          onClick={() => setMileageAwardTab({...mileageAwardTab, [sliceIndex]: 'award'})}
-                          className={`px-3 py-1.5 text-xs font-medium transition-all ${
-                            activeTab === 'award'
-                              ? 'bg-gray-700/50 text-purple-400'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          Award Tools
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    {!hasAeroForSlice || !hasAwardForSlice ? (
+                      <span className="text-xs text-gray-500">
+                        {hasAeroForSlice ? 'Aero' : 'Award Tools'}
+                      </span>
+                    ) : null}
+                  </button>
 
-                  {/* Show best options summary */}
-                  {(showAero || showAward) && (
-                    <div className="mb-3 space-y-2">
-                      {showAero && bestAeroValue !== null && (
-                        <div className="p-2 bg-orange-500/10 rounded border border-orange-400/30">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-orange-300 font-medium">Best Aero:</span>
-                            <span className="text-xs font-bold text-orange-300">${bestAeroValue.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      )}
-                      {showAward && bestAwardValue !== null && (
-                        <div className="p-2 bg-purple-500/10 rounded border border-purple-400/30">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-purple-300 font-medium">Best Award:</span>
-                            <span className="text-xs font-bold text-purple-300">${bestAwardValue.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Content: Only show when expanded */}
+                  {isExpanded && (
+                    <div className="mt-2 bg-gray-800/20 p-3 rounded border border-gray-700/30">
 
                   {/* Aero Tab Content */}
                   {showAeroTab && hasAeroForSlice && slice.mileageBreakdown && (
@@ -1785,6 +1835,40 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                         const filteredFlights = activeTab === 'best-match' ? bestMatchFlights : timeInsensitiveFlights;
 
+                        // Group flights by cabin
+                        const flightsByCabin = new Map<string, any[]>();
+                        filteredFlights.forEach(flight => {
+                          const cabin = (flight.cabin || 'COACH').toUpperCase();
+                          if (!flightsByCabin.has(cabin)) {
+                            flightsByCabin.set(cabin, []);
+                          }
+                          flightsByCabin.get(cabin)!.push(flight);
+                        });
+
+                        // Define cabin order (premium first, then economy)
+                        const cabinOrder = ['FIRST', 'BUSINESS', 'PREMIUM_ECONOMY', 'PREMIUM', 'ECONOMY', 'COACH'];
+                        const availableCabins = Array.from(flightsByCabin.keys()).sort((a, b) => {
+                          const aIndex = cabinOrder.indexOf(a) !== -1 ? cabinOrder.indexOf(a) : 999;
+                          const bIndex = cabinOrder.indexOf(b) !== -1 ? cabinOrder.indexOf(b) : 999;
+                          return aIndex - bIndex;
+                        });
+
+                        // Get active cabin tab (default to first available)
+                        const activeCabinTab = aeroCabinTabs[airlineKey] || availableCabins[0] || '';
+                        const cabinDisplayMap: Record<string, string> = {
+                          'COACH': 'Economy',
+                          'ECONOMY': 'Economy',
+                          'PREMIUM': 'Premium Economy',
+                          'PREMIUM_ECONOMY': 'Premium Economy',
+                          'BUSINESS': 'Business',
+                          'FIRST': 'First'
+                        };
+
+                        // Get flights for active cabin (or all if no cabin tabs needed)
+                        const activeCabinFlights = availableCabins.length > 1 && activeCabinTab 
+                          ? flightsByCabin.get(activeCabinTab) || [] 
+                          : filteredFlights;
+
                         return (
                           <div key={airlineKey} className="mt-3 bg-purple-900/10 p-3 rounded border border-purple-500/20">
                             {/* Header */}
@@ -1813,7 +1897,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               </button>
                             </div>
 
-                            {/* Tabs */}
+                            {/* Time-based Tabs */}
                             <div className="flex border-b border-gray-700/50 bg-gray-800/30 rounded-t-lg overflow-hidden mb-3">
                               <button
                                 onClick={() => bestMatchFlights.length > 0 && setSliceAlternativeTabs({...sliceAlternativeTabs, [airlineKey]: 'best-match'})}
@@ -1857,12 +1941,41 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               </button>
                             </div>
 
+                            {/* Cabin Tabs */}
+                            {availableCabins.length > 1 && (
+                              <div className="flex gap-2 border-b border-gray-700/50 pb-2 mb-3 overflow-x-auto">
+                                {availableCabins.map((cabinKey) => {
+                                  const cabinFlights = flightsByCabin.get(cabinKey) || [];
+                                  const cabinDisplay = cabinDisplayMap[cabinKey] || cabinKey;
+                                  const isActive = activeCabinTab === cabinKey;
+                                  
+                                  return (
+                                    <button
+                                      key={cabinKey}
+                                      onClick={() => setAeroCabinTabs({...aeroCabinTabs, [airlineKey]: cabinKey})}
+                                      className={`px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                                        isActive
+                                          ? cabinKey === 'BUSINESS' || cabinKey === 'FIRST'
+                                            ? 'bg-purple-500/20 text-purple-300 border-b-2 border-purple-400'
+                                            : cabinKey === 'PREMIUM' || cabinKey === 'PREMIUM_ECONOMY'
+                                            ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-400'
+                                            : 'bg-gray-700/50 text-gray-300 border-b-2 border-gray-500'
+                                          : 'text-gray-400 hover:text-gray-300'
+                                      }`}
+                                    >
+                                      {cabinDisplay} ({cabinFlights.length})
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                             {/* Flight List */}
                             <div className="space-y-3 max-h-96 overflow-y-auto">
-                              {filteredFlights.length === 0 ? (
-                                <div className="text-center py-6 text-gray-500 text-sm">No flights in this time range</div>
+                              {activeCabinFlights.length === 0 ? (
+                                <div className="text-center py-6 text-gray-500 text-sm">No flights in this cabin</div>
                               ) : (
-                                groupMileageFlights(filteredFlights.slice(0, 15)).map((group, groupIndex) => {
+                                groupMileageFlights(activeCabinFlights.slice(0, 15)).map((group, groupIndex) => {
                                   const altFlight = group.primary;
                                   const altIndex = groupIndex;
                                   const alternativeKey = `${sliceIndex}-${airlineKey}-${groupIndex}`;
@@ -1898,13 +2011,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                     ? sliceCashPrice - mileageTotalValue
                                     : 0;
 
-                                  // Format times in origin timezone
-                                  const depTimeFormatted = formatTimeInOriginTZ(altFlight.departure.at);
-                                  const depDateFormatted = formatDateInOriginTZ(altFlight.departure.at);
-                                  const arrTimeFormatted = formatTimeInOriginTZ(altFlight.arrival.at);
-                                  const arrDateFormatted = formatDateInOriginTZ(altFlight.arrival.at);
-
-                                  const isNonstop = !altFlight.stops || altFlight.stops.length === 0;
 
                                   return (
                                     <div
@@ -1939,13 +2045,52 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                             </div>
                                             <button
                                               onClick={() => {
-                                                setSelectedMileageFlight(altFlight);
-                                                setShowAddToProposal(true);
+                                                const aeroId = `aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`;
+                                                if (addedItems.has(aeroId)) {
+                                                  // Remove if already added
+                                                  setAddedItems(prev => {
+                                                    const newSet = new Set(prev);
+                                                    newSet.delete(aeroId);
+                                                    return newSet;
+                                                  });
+                                                  setPendingItems(prev => prev.filter(item => item.id !== aeroId));
+                                                  setShowAddToProposal(false);
+                                                  setSelectedMileageFlight(null);
+                                                } else {
+                                                  // Add new item (can add multiple mileage options)
+                                                  setSelectedMileageFlight(altFlight);
+                                                  setAddedItems(prev => new Set(prev).add(aeroId));
+                                                  setPendingItems(prev => {
+                                                    // Add this aero option to pending items
+                                                    return [...prev, { type: 'aero', id: aeroId, data: altFlight }];
+                                                  });
+                                                  setShowAddToProposal(true);
+                                                }
                                               }}
-                                              className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                              onMouseEnter={() => {
+                                                const aeroId = `aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`;
+                                                if (addedItems.has(aeroId)) {
+                                                  setHoveredAddButton(aeroId);
+                                                }
+                                              }}
+                                              onMouseLeave={() => setHoveredAddButton(null)}
+                                              className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                                                addedItems.has(`aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`)
+                                                  ? 'bg-green-500/20 hover:bg-red-500/20 text-green-300 hover:text-red-300 border-green-400/30 hover:border-red-400/30'
+                                                  : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                                              }`}
                                             >
-                                              <Plus className="h-3 w-3" />
-                                              Add
+                                              {addedItems.has(`aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`) ? (
+                                                <>
+                                                  <span className="text-[10px]">✓</span>
+                                                  {hoveredAddButton === `aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}` ? 'Remove' : 'Added'}
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Plus className="h-3 w-3" />
+                                                  Add
+                                                </>
+                                              )}
                                             </button>
                                           </div>
                                           <div className="flex flex-col items-end gap-0.5">
@@ -1967,71 +2112,51 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                         </div>
                                       </div>
 
-                                      {/* Flight Route: Departure → Layover → Arrival */}
-                                      <div className="flex items-center gap-3">
-                                        {/* Departure */}
-                                        <div className="text-center min-w-[70px]">
-                                          <div className="text-lg font-semibold text-white">{depTimeFormatted}</div>
-                                          <div className="text-xs text-gray-400">{depDateFormatted}</div>
-                                          <div className="text-sm font-medium text-gray-200">{altFlight.departure.iataCode}</div>
-                                          {altFlight.cabin && (
-                                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
-                                          )}
-                                        </div>
-
-                                        {/* Flight Line with Layovers */}
-                                        <div className="flex-1 px-2">
-                                          {isNonstop ? (
-                                            // Nonstop flight
-                                            <div>
-                                              <div className="flex items-center gap-1 relative">
-                                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
-                                                <Plane className="h-3 w-3 text-emerald-400" />
-                                                <div className="flex-1 border-t-2 border-emerald-500/40"></div>
-                                              </div>
-                                              <div className="text-center text-xs text-gray-200 mt-1">
-                                                <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                                {durationHrs}h {durationMins}m
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            // Flight with stops
-                                            <div>
-                                              <div className="flex items-center gap-1 relative">
-                                                <div className="flex-1 border-t-2 border-gray-600"></div>
-                                                {altFlight.stops && altFlight.stops.map((stop: any, idx: number) => (
-                                                  <React.Fragment key={idx}>
-                                                    <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded">
-                                                      <span className="text-[9px] text-gray-300 font-medium">
-                                                        {typeof stop === 'string' ? stop : (stop.code || stop.iataCode || 'N/A')}
-                                                      </span>
-                                                    </div>
-                                                    {idx < altFlight.stops.length - 1 && (
-                                                      <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
-                                                    )}
-                                                  </React.Fragment>
-                                                ))}
-                                                {altFlight.stops && altFlight.stops.length > 0 && (
-                                                  <div className="flex-1 border-t-2 border-gray-600"></div>
-                                                )}
-                                              </div>
-                                              <div className="text-center text-xs text-gray-200 mt-1">
-                                                <Clock className="h-2.5 w-2.5 inline mr-1" />
-                                                {durationHrs}h {durationMins}m • {altFlight.numberOfStops} stop{altFlight.numberOfStops !== 1 ? 's' : ''}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Arrival */}
-                                        <div className="text-center min-w-[70px]">
-                                          <div className="text-lg font-semibold text-white">{arrTimeFormatted}</div>
-                                          <div className="text-xs text-gray-400">{arrDateFormatted}</div>
-                                          <div className="text-sm font-medium text-gray-200">{altFlight.arrival.iataCode}</div>
-                                          {altFlight.cabin && (
-                                            <div className="text-[10px] text-accent-300 mt-0.5">{altFlight.cabin}</div>
-                                          )}
-                                        </div>
+                                      {/* Flight Route Details */}
+                                      <div className="mt-3 pt-3 border-t border-gray-700">
+                                        <FlightSegmentViewer
+                                          segments={[{
+                                            carrierCode: altFlight.carrierCode,
+                                            number: altFlight.flightNumber,
+                                            departure: {
+                                              iataCode: altFlight.departure?.iataCode,
+                                              at: altFlight.departure?.at
+                                            },
+                                            arrival: {
+                                              iataCode: altFlight.arrival?.iataCode,
+                                              at: altFlight.arrival?.at
+                                            },
+                                            cabin: altFlight.cabin,
+                                            duration: `${durationHrs}h ${durationMins}m`
+                                          }]}
+                                          layovers={altFlight.stops && altFlight.stops.length > 0 ? altFlight.stops.map((stop: any) => {
+                                            // Try to calculate layover duration if we have timing information
+                                            let durationMinutes: number | undefined;
+                                            
+                                            // If stop has duration information, use it
+                                            if (stop.durationMinutes !== undefined) {
+                                              durationMinutes = stop.durationMinutes;
+                                            } else if (stop.duration) {
+                                              // Parse duration string if available
+                                              const match = String(stop.duration).match(/(\d+)h\s*(\d+)m/);
+                                              if (match) {
+                                                durationMinutes = parseInt(match[1]) * 60 + parseInt(match[2]);
+                                              }
+                                            }
+                                            
+                                            return {
+                                              airport: {
+                                                code: typeof stop === 'string' ? stop : (stop.code || stop.iataCode),
+                                                iataCode: typeof stop === 'string' ? stop : (stop.iataCode || stop.code)
+                                              },
+                                              durationMinutes
+                                            };
+                                          }) : []}
+                                          formatTime={formatTimeInOriginTZ}
+                                          formatDate={formatDateInOriginTZ}
+                                          showCabin={true}
+                                          compact={false}
+                                        />
                                       </div>
 
                                       {/* Alternative Times Button */}
@@ -2157,15 +2282,38 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       awardOptions={sliceAwardOptions}
                       perCentValue={perCentValue}
                       onAdd={(award) => {
-                        setSelectedMileageFlight({
-                          ...award,
-                          carrierCode: carrier.code,
-                          mileage: award.miles,
-                          mileagePrice: award.tax,
-                          cabin: award.cabin
-                        });
-                        setShowAddToProposal(true);
+                        const awardId = `award-${award.id}`;
+                        if (addedItems.has(awardId)) {
+                          // Remove if already added
+                          setAddedItems(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(awardId);
+                            return newSet;
+                          });
+                          setPendingItems(prev => prev.filter(item => item.id !== awardId));
+                          setShowAddToProposal(false);
+                          setSelectedMileageFlight(null);
+                        } else {
+                          // Add new item (can add multiple award options)
+                          const awardData = {
+                            ...award,
+                            carrierCode: carrier.code,
+                            mileage: award.miles,
+                            mileagePrice: award.tax,
+                            cabin: award.cabin
+                          };
+                          setSelectedMileageFlight(awardData);
+                          setAddedItems(prev => new Set(prev).add(awardId));
+                          setPendingItems(prev => {
+                            // Add this award option to pending items
+                            return [...prev, { type: 'award', id: awardId, data: awardData }];
+                          });
+                          setShowAddToProposal(true);
+                        }
                       }}
+                      addedItems={addedItems}
+                      hoveredAddButton={hoveredAddButton}
+                      setHoveredAddButton={setHoveredAddButton}
                       onSelect={(awardId) => {
                         setSelectedAwardPerSlice({ ...selectedAwardPerSlice, [sliceIndex]: awardId });
                       }}
@@ -2175,6 +2323,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       originTimezone={originTimezone}
                       groupAwards={groupAwardOptions}
                     />
+                  )}
+                    </div>
                   )}
                 </div>
               );
@@ -2189,10 +2339,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         <AddToProposalModal
           flight={flight}
           selectedMileageFlight={selectedMileageFlight}
+          pendingItems={pendingItems}
           perCentValue={perCentValue}
+          flightCardId={flightCardId}
           onClose={() => {
             setShowAddToProposal(false);
             setSelectedMileageFlight(null);
+            // Keep addedItems set to show "Added" state - user can click Remove to clear it
+          }}
+          onItemRemoved={(itemId) => {
+            setAddedItems(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(itemId);
+              return newSet;
+            });
+            setPendingItems(prev => prev.filter(item => item.id !== itemId));
           }}
         />
       )}

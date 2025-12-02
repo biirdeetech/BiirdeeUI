@@ -1,0 +1,190 @@
+import React from 'react';
+import { Plane, Clock, MapPin } from 'lucide-react';
+
+interface Segment {
+  carrierCode?: string;
+  number?: string;
+  departure?: {
+    iataCode?: string;
+    at?: string;
+  };
+  arrival?: {
+    iataCode?: string;
+    at?: string;
+  };
+  cabin?: string;
+  duration?: string;
+}
+
+interface Layover {
+  airport?: {
+    code?: string;
+    iataCode?: string;
+  };
+  durationMinutes?: number;
+}
+
+interface FlightSegmentViewerProps {
+  segments: Segment[];
+  layovers?: Layover[];
+  formatTime: (dateStr: string) => string;
+  formatDate: (dateStr: string) => string;
+  formatDuration?: (duration: string) => string;
+  showCabin?: boolean;
+  compact?: boolean;
+}
+
+const cabinDisplayMap: Record<string, string> = {
+  'COACH': 'Economy',
+  'ECONOMY': 'Economy',
+  'PREMIUM': 'Premium Economy',
+  'PREMIUM_ECONOMY': 'Premium Economy',
+  'BUSINESS': 'Business',
+  'FIRST': 'First'
+};
+
+const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
+  segments,
+  layovers = [],
+  formatTime,
+  formatDate,
+  formatDuration,
+  showCabin = true,
+  compact = false
+}) => {
+  if (!segments || segments.length === 0) {
+    return null;
+  }
+
+  const isNonstop = segments.length === 1;
+
+  return (
+    <div className={`space-y-${compact ? '2' : '3'}`}>
+      {segments.map((segment, idx) => {
+        const nextSegment = segments[idx + 1];
+        const layover = layovers[idx];
+        const isLast = idx === segments.length - 1;
+
+        const depTime = segment.departure?.at ? formatTime(segment.departure.at) : '';
+        const depDate = segment.departure?.at ? formatDate(segment.departure.at) : '';
+        const arrTime = segment.arrival?.at ? formatTime(segment.arrival.at) : '';
+        const arrDate = segment.arrival?.at ? formatDate(segment.arrival.at) : '';
+        const depAirport = segment.departure?.iataCode || '';
+        const arrAirport = segment.arrival?.iataCode || '';
+        const carrierCode = segment.carrierCode || '';
+        const flightNumber = segment.number || '';
+        const cabin = segment.cabin || '';
+        const cabinDisplay = cabin ? cabinDisplayMap[cabin.toUpperCase()] || cabin : '';
+
+        // Calculate segment duration
+        let segmentDuration = '';
+        if (segment.duration) {
+          if (formatDuration) {
+            segmentDuration = formatDuration(segment.duration);
+          } else {
+            const match = segment.duration.match(/PT(\d+)H(\d+)M/);
+            if (match) {
+              const hours = parseInt(match[1]);
+              const minutes = parseInt(match[2]);
+              segmentDuration = `${hours}h ${minutes}m`;
+            }
+          }
+        }
+
+        return (
+          <div key={idx} className="relative">
+            {/* Segment Card */}
+            <div className={`bg-gray-800/40 rounded-lg border border-gray-700/50 p-${compact ? '2.5' : '3'} hover:bg-gray-800/60 transition-colors`}>
+              <div className="flex items-start gap-3">
+                {/* Airline Logo */}
+                <div className="flex-shrink-0">
+                  <img
+                    src={`https://www.gstatic.com/flights/airline_logos/35px/${carrierCode}.png`}
+                    alt={carrierCode}
+                    className="h-6 w-6 object-contain"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+
+                {/* Flight Info */}
+                <div className="flex-1 min-w-0">
+                  {/* Flight Number & Cabin */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-white">
+                      {carrierCode}{flightNumber}
+                    </span>
+                    {showCabin && cabinDisplay && (
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
+                        cabin.toUpperCase() === 'BUSINESS' || cabin.toUpperCase() === 'FIRST'
+                          ? 'text-purple-300 bg-purple-500/10 border border-purple-400/30'
+                          : cabin.toUpperCase() === 'PREMIUM' || cabin.toUpperCase() === 'PREMIUM_ECONOMY'
+                          ? 'text-blue-300 bg-blue-500/10 border border-blue-400/30'
+                          : 'text-gray-300 bg-gray-700/30 border border-gray-600/30'
+                      }`}>
+                        {cabinDisplay}
+                      </span>
+                    )}
+                    {segmentDuration && (
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {segmentDuration}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Route Timeline */}
+                  <div className="space-y-2">
+                    {/* Departure */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-16">
+                        <div className="text-sm font-semibold text-white">{depTime}</div>
+                        <div className="text-[10px] text-gray-400">{depDate}</div>
+                      </div>
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                          <span className="text-sm font-medium text-gray-200">{depAirport}</span>
+                        </div>
+                        <div className="flex-1 flex items-center">
+                          <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                          <Plane className={`h-4 w-4 mx-2 ${isNonstop ? 'text-emerald-400' : 'text-gray-500'}`} />
+                          <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-green-400" />
+                          <span className="text-sm font-medium text-gray-200">{arrAirport}</span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 w-16 text-right">
+                        <div className="text-sm font-semibold text-white">{arrTime}</div>
+                        <div className="text-[10px] text-gray-400">{arrDate}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Layover */}
+            {!isLast && layover && (
+              <div className="flex items-center justify-center py-2">
+                <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-1.5 text-xs text-orange-300 font-medium">
+                  <Clock className="h-3 w-3 inline mr-1.5" />
+                  Layover at {layover.airport?.code || layover.airport?.iataCode || 'N/A'}
+                  {layover.durationMinutes && (
+                    <span className="ml-1.5">
+                      {Math.floor(layover.durationMinutes / 60)}h {layover.durationMinutes % 60}m
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default FlightSegmentViewer;
+

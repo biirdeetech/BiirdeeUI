@@ -408,8 +408,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               From {results.solutionList.minPrice}
             </div>
           )}
-          {/* V2 Enrichment JSON Viewer Button - Development Tool */}
-          {v2EnrichmentData.size > 0 && (
+          {/* V2 Enrichment JSON Viewer Button - Development Tool (Hidden for now) */}
+          {false && v2EnrichmentData.size > 0 && (
             <button
               onClick={() => setShowV2EnrichmentViewer(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-sm font-medium transition-colors border border-purple-500/30"
@@ -425,70 +425,88 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </div>
       </div>
 
-      {/* Flight Cards - Grouped by Stops */}
-      <div className="space-y-4">
-        {sortedStopCounts.map((stopCount, groupIndex) => {
+      {/* Stop Count Tabs - Only show if multiple stop groups exist */}
+      {sortedStopCounts.length > 1 && (
+        <div className="border-b border-gray-800/50">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {sortedStopCounts.map((stopCount) => {
+              const groupData = stopGroups.get(stopCount);
+              if (!groupData) return null;
+
+              const { flights: groupFlights, cheapestPrice } = groupData;
+              const firstFlight = groupFlights[0];
+              const currency = firstFlight && 'id' in firstFlight
+                ? firstFlight.currency
+                : 'USD';
+              
+              const isActive = expandedStopGroup === stopCount;
+              const stopText = stopCount === 0 ? 'Nonstop' : `${stopCount} stop${stopCount > 1 ? 's' : ''}`;
+
+              return (
+                <button
+                  key={`tab-${stopCount}`}
+                  onClick={() => setExpandedStopGroup(stopCount)}
+                  className={`
+                    relative px-4 py-2.5 text-sm font-medium transition-all duration-200 whitespace-nowrap
+                    border-b-2 -mb-px
+                    ${isActive
+                      ? 'text-blue-400 border-blue-400 bg-blue-500/5'
+                      : 'text-gray-400 border-transparent hover:text-gray-300 hover:border-gray-700'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{stopText}</span>
+                    <span className={`
+                      text-xs px-1.5 py-0.5 rounded
+                      ${isActive 
+                        ? 'bg-blue-500/20 text-blue-300' 
+                        : 'bg-gray-800 text-gray-500'
+                      }
+                    `}>
+                      {groupFlights.length}
+                    </span>
+                    <span className={`
+                      text-xs
+                      ${isActive ? 'text-blue-300' : 'text-gray-500'}
+                    `}>
+                      {currency}{cheapestPrice.toLocaleString()}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Flight Cards - Show selected stop group */}
+      <div className="mt-4">
+        {sortedStopCounts.map((stopCount) => {
           const groupData = stopGroups.get(stopCount);
           if (!groupData) return null;
 
-          const { flights: groupFlights, cheapestPrice } = groupData;
-          const firstFlight = groupFlights[0];
-          const currency = firstFlight && 'id' in firstFlight
-            ? firstFlight.currency
-            : 'USD';
-
+          const { flights: groupFlights } = groupData;
           const isExpanded = expandedStopGroup === stopCount;
 
-          return (
-            <React.Fragment key={`stop-group-${stopCount}`}>
-              {/* Stop Group Separator */}
-              {groupFlights.length > 0 && (
-                <StopGroupSeparator
-                  stopCount={stopCount}
-                  flightCount={groupFlights.length}
-                  lowestPrice={cheapestPrice}
-                  currency={currency}
-                  isExpanded={isExpanded}
-                  onClick={() => {
-                    // If clicking the currently expanded group
-                    if (isExpanded) {
-                      // Find other available groups
-                      const otherGroups = sortedStopCounts.filter(count => count !== stopCount);
-                      // Only allow switching if there's another group to open
-                      if (otherGroups.length > 0) {
-                        // Open the next available group (prefer lower stop count = nonstop)
-                        setExpandedStopGroup(otherGroups[0]);
-                      }
-                      // If this is the only group, do nothing (prevent closing - at least one must stay open)
-                    } else {
-                      // Opening a different group - automatically close previous and open this one
-                      setExpandedStopGroup(stopCount);
-                    }
-                  }}
-                />
-              )}
+          if (!isExpanded) return null;
 
-              {/* Flights in this stop group - only show when expanded */}
-              {isExpanded && (() => {
-                // Re-group the flights in this stop category
-                const stopGrouped = groupSimilarFlights(groupFlights);
-                return stopGrouped.map((group, index) => (
-                  <FlightCardGroup
-                    key={`flight-group-${stopCount}-${index}`}
-                    primaryFlight={group.primary}
-                    similarFlights={group.similar}
-                    originTimezone={originTimezone}
-                    perCentValue={perCentValue}
-                    session={results.session}
-                    solutionSet={results.solutionSet}
-                    v2EnrichmentData={v2EnrichmentData}
-                    onEnrichFlight={onEnrichFlight}
-                    enrichingAirlines={enrichingAirlines}
-                  />
-                ));
-              })()}
-            </React.Fragment>
-          );
+          // Re-group the flights in this stop category
+          const stopGrouped = groupSimilarFlights(groupFlights);
+          return stopGrouped.map((group, index) => (
+            <FlightCardGroup
+              key={`flight-group-${stopCount}-${index}`}
+              primaryFlight={group.primary}
+              similarFlights={group.similar}
+              originTimezone={originTimezone}
+              perCentValue={perCentValue}
+              session={results.session}
+              solutionSet={results.solutionSet}
+              v2EnrichmentData={v2EnrichmentData}
+              onEnrichFlight={onEnrichFlight}
+              enrichingAirlines={enrichingAirlines}
+            />
+          ));
         })}
       </div>
 

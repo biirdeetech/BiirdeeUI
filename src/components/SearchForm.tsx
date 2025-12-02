@@ -117,6 +117,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [pageNum, setPageNum] = useState(1);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [aeroEnabled, setAeroEnabled] = useState(true);
+  // Award enabled - default from env or true
+  const [awardEnabled, setAwardEnabled] = useState(() => {
+    const envValue = import.meta.env.VITE_AWARD_ENABLED;
+    return envValue === undefined || envValue === '' ? true : envValue === 'true';
+  });
   const [airlines, setAirlines] = useState('');
   const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
   const [timeTolerance, setTimeTolerance] = useState(960);
@@ -201,6 +206,15 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setPerCentValue(parseFloat(searchParams.get('perCentValue') || '0.015'));
       setPageNum(parseInt(searchParams.get('pageNum') || '1'));
       setAeroEnabled(searchParams.get('aero') === 'true');
+      // Award enabled - read from URL or use default from env
+      const urlAwardEnabled = searchParams.get('awardEnabled');
+      if (urlAwardEnabled !== null) {
+        setAwardEnabled(urlAwardEnabled === 'true');
+      } else {
+        // Use env default if not in URL
+        const envValue = import.meta.env.VITE_AWARD_ENABLED;
+        setAwardEnabled(envValue === undefined || envValue === '' ? true : envValue === 'true');
+      }
       setAirlines(searchParams.get('airlines') || '');
       setStrictAirlineMatch(searchParams.get('strict_airline_match') === 'true');
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '960'));
@@ -614,6 +628,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
     // Add aero options
     searchParams.append('aero', aeroEnabled.toString());
+    searchParams.append('awardEnabled', awardEnabled.toString());
     if (airlines) {
       searchParams.append('airlines', airlines);
     }
@@ -739,6 +754,18 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               />
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
               <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Aero Enabled</span>
+            </label>
+
+            {/* Award Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={awardEnabled}
+                onChange={(e) => setAwardEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Award Enabled</span>
             </label>
 
             {/* Divider - hide on small screens */}

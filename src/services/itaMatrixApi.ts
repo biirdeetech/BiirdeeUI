@@ -534,7 +534,7 @@ class ITAMatrixService {
       origin: slice.origins,
       dest: slice.destinations,
       routing: slice.via || '',
-      ext: '',
+      ext: slice.ext || '', // Use ext from slice (generated from bookingClassSelection)
       routingRet: '',
       extRet: '',
       dates: {
