@@ -30,6 +30,7 @@ interface AddToProposalModalProps {
   selectedMileageFlight?: any;
   pendingItems?: Array<{type: 'flight' | 'aero' | 'award', id: string, data: any}>;
   perCentValue?: number;
+  flightCardId?: string;
   onClose: () => void;
   onItemRemoved?: (itemId: string) => void;
 }
@@ -473,7 +474,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
         {/* Modern Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-800/50 bg-gray-900/50">
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl shadow-lg">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-2.5 rounded-xl shadow-lg">
               <Plus className="h-4 w-4 text-white" />
             </div>
             <div>
@@ -511,12 +512,12 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
                 return (
                   <div key={option.id || idx} className="bg-gray-900/30 border border-gray-700/20 rounded-lg p-3">
                     <div className="flex items-start gap-3">
-                      <div className="bg-green-500/10 p-2 rounded-lg border border-green-500/20">
-                        <Plane className="h-3.5 w-3.5 text-green-400" />
+                      <div className="bg-success-500/10 p-2 rounded-lg border border-success-500/20">
+                        <Plane className="h-3.5 w-3.5 text-success-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-green-300">Option {option.option_number}</span>
+                          <span className="text-xs font-medium text-success-400">Option {option.option_number}</span>
                           <span className="text-sm font-semibold text-white truncate">{summary}</span>
                         </div>
                         <div className="text-xs font-medium text-gray-400">{formatPrice(price)}</div>
@@ -536,22 +537,22 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
           {/* New Items to Add */}
           {flightItem && (
             <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-blue-300 uppercase tracking-wide mb-2">New Items to Add</h4>
+              <h4 className="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-2">New Items to Add</h4>
               {/* Main Flight */}
               <div className="flex items-start gap-3">
-                <div className="bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
+                <div className="bg-blue-500/12 p-2 rounded-lg border border-blue-500/25">
                   <Plane className="h-4 w-4 text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-blue-300 uppercase tracking-wide">Main Flight</span>
+                      <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Main Flight</span>
                       <span className="text-sm font-semibold text-white truncate">{getFlightSummary()}</span>
                     </div>
                     {onItemRemoved && (
                       <button
                         onClick={() => onItemRemoved('flight')}
-                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1 hover:bg-red-500/10 rounded transition-colors"
+                        className="text-error-400 hover:text-error-300 text-xs px-2 py-1 hover:bg-error-500/10 rounded transition-colors"
                       >
                         Remove
                       </button>
@@ -576,10 +577,10 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className={`p-1.5 rounded ${
                             item.type === 'aero' 
-                              ? 'bg-orange-500/10 border border-orange-500/20' 
-                              : 'bg-purple-500/10 border border-purple-500/20'
+                              ? 'bg-warning-500/12 border border-warning-500/25' 
+                              : 'bg-purple-500/12 border border-purple-500/25'
                           }`}>
-                            <Award className={`h-3.5 w-3.5 ${item.type === 'aero' ? 'text-orange-400' : 'text-purple-400'}`} />
+                            <Award className={`h-3.5 w-3.5 ${item.type === 'aero' ? 'text-warning-400' : 'text-purple-400'}`} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -766,7 +767,7 @@ const AddToProposalModal: React.FC<AddToProposalModalProps> = ({ flight, selecte
               <button
                 onClick={handleCreateProposal}
                 disabled={saving}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                className="bg-success-600 hover:bg-success-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
                 {saving ? 'Creating...' : 'Create Proposal & Add Flight'}

@@ -1103,7 +1103,7 @@ const SearchPage: React.FC = () => {
         {/* Mobile/Tablet: Full width top section, Desktop: Overlay Sidebar */}
         <div
           className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto transition-all duration-300 ${
-            sidebarCollapsed ? 'lg:w-0 lg:border-r-0 lg:-translate-x-full' : 'lg:w-[350px] lg:translate-x-0 lg:shadow-2xl'
+            sidebarCollapsed ? 'lg:w-0 lg:border-r-0 lg:-translate-x-full' : 'lg:w-[480px] lg:translate-x-0 lg:shadow-2xl'
           } lg:z-50`}
         >
           <div className={`p-6 lg:p-8 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
@@ -1125,7 +1125,7 @@ const SearchPage: React.FC = () => {
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className={`hidden lg:block fixed top-[150px] z-[60] bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
-            sidebarCollapsed ? 'left-0 top-[20px]' : 'left-[350px]'
+            sidebarCollapsed ? 'left-0 top-[20px]' : 'left-[480px]'
           }`}
           title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
         >

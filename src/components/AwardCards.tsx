@@ -123,10 +123,10 @@ const AwardCards: React.FC<AwardCardsProps> = ({
                 className={`px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
                   isActive
                     ? cabinKey === 'BUSINESS' || cabinKey === 'FIRST'
-                      ? 'bg-purple-500/20 text-purple-300 border-b-2 border-purple-400'
+                      ? 'bg-purple-500/15 text-purple-400 border-b-2 border-purple-500'
                       : cabinKey === 'PREMIUM' || cabinKey === 'PREMIUM_ECONOMY'
-                      ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-400'
-                      : 'bg-gray-700/50 text-gray-300 border-b-2 border-gray-500'
+                      ? 'bg-blue-500/15 text-blue-400 border-b-2 border-blue-500'
+                      : 'bg-gray-700/40 text-gray-300 border-b-2 border-gray-600'
                     : 'text-gray-400 hover:text-gray-300'
                 }`}
               >
@@ -184,7 +184,7 @@ const AwardCards: React.FC<AwardCardsProps> = ({
           <div
             key={award.id || groupIndex}
             className={`bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border transition-all duration-200 p-3 ${
-              isSelected ? 'border-purple-500/50 bg-purple-500/10' : 'border-gray-700'
+              isSelected ? 'border-purple-500/40 bg-purple-500/8' : 'border-gray-700/60'
             }`}
           >
             {/* Header: Selection Checkbox + Flight Info + Award Price + Add Button */}
@@ -217,9 +217,9 @@ const AwardCards: React.FC<AwardCardsProps> = ({
                     {/* Cabin Badge - only text colored, no background */}
                     <span className={`px-2 py-0.5 text-[10px] font-medium ${
                       award.cabin.toUpperCase() === 'BUSINESS' || award.cabin.toUpperCase() === 'FIRST'
-                        ? 'text-purple-300'
+                        ? 'text-purple-400'
                         : award.cabin.toUpperCase() === 'PREMIUM' || award.cabin.toUpperCase() === 'PREMIUM_ECONOMY'
-                        ? 'text-blue-300'
+                        ? 'text-blue-400'
                         : 'text-gray-300'
                     }`}>
                       {cabinDisplay}
@@ -233,11 +233,11 @@ const AwardCards: React.FC<AwardCardsProps> = ({
               </div>
               <div className="flex flex-col items-end gap-1">
                 <div className="flex items-center gap-2">
-                  <div className="bg-purple-500/15 border border-purple-400/40 rounded px-2 py-1">
-                    <span className="text-xs font-bold text-purple-300">{award.miles.toLocaleString()}</span>
+                  <div className="bg-purple-500/12 border border-purple-500/25 rounded px-2 py-1">
+                    <span className="text-xs font-bold text-purple-400">{award.miles.toLocaleString()}</span>
                     <span className="text-[10px] text-purple-400/70"> mi</span>
                     <span className="text-xs text-purple-400/60"> + </span>
-                    <span className="text-xs font-semibold text-purple-300">${award.tax.toFixed(2)}</span>
+                    <span className="text-xs font-semibold text-purple-400">${award.tax.toFixed(2)}</span>
                   </div>
                   <button
                     onClick={() => onAdd(award)}

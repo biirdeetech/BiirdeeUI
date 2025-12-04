@@ -58,8 +58,75 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
 
   const isNonstop = segments.length === 1;
 
+  if (compact) {
+    // Ultra compact horizontal layout
+    return (
+      <div className="py-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {segments.map((segment, idx) => {
+            const layover = layovers[idx];
+            const isLast = idx === segments.length - 1;
+            const depTime = segment.departure?.at ? formatTime(segment.departure.at) : '';
+            const arrTime = segment.arrival?.at ? formatTime(segment.arrival.at) : '';
+            const depAirport = segment.departure?.iataCode || '';
+            const arrAirport = segment.arrival?.iataCode || '';
+            const carrierCode = segment.carrierCode || '';
+            const flightNumber = segment.number || '';
+            const cabin = segment.cabin || '';
+            const cabinDisplay = cabin ? cabinDisplayMap[cabin.toUpperCase()] || cabin : '';
+
+            let segmentDuration = '';
+            if (segment.duration && formatDuration) {
+              segmentDuration = formatDuration(segment.duration);
+            }
+
+            return (
+              <React.Fragment key={idx}>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {carrierCode && (
+                    <img
+                      src={`https://www.gstatic.com/flights/airline_logos/35px/${carrierCode}.png`}
+                      alt={carrierCode}
+                      className="h-4 w-4 object-contain"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <span className="font-semibold text-white">{depTime}</span>
+                  <span className="text-gray-400">{depAirport}</span>
+                  <Plane className="h-3 w-3 text-gray-500" />
+                  {segmentDuration && <span className="text-gray-500">{segmentDuration}</span>}
+                  <Plane className="h-3 w-3 text-gray-500" />
+                  <span className="font-semibold text-white">{arrTime}</span>
+                  <span className="text-gray-400">{arrAirport}</span>
+                  {showCabin && cabinDisplay && (
+                    <span className={`text-[10px] px-1 py-0.5 rounded ${
+                      cabin.toUpperCase() === 'BUSINESS' || cabin.toUpperCase() === 'FIRST'
+                        ? 'text-purple-300 bg-purple-500/10'
+                        : cabin.toUpperCase() === 'PREMIUM' || cabin.toUpperCase() === 'PREMIUM_ECONOMY'
+                        ? 'text-blue-300 bg-blue-500/10'
+                        : 'text-gray-300 bg-gray-700/30'
+                    }`}>
+                      {cabinDisplay}
+                    </span>
+                  )}
+                </div>
+                {!isLast && layover && (
+                  <span className="text-[10px] text-warning-400">
+                    {layover.airport?.code || layover.airport?.iataCode || 'N/A'} 
+                    {layover.durationMinutes && ` (${Math.floor(layover.durationMinutes / 60)}h ${layover.durationMinutes % 60}m)`}
+                  </span>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Full detailed view
   return (
-    <div className={`space-y-${compact ? '2' : '3'}`}>
+    <div className="space-y-3">
       {segments.map((segment, idx) => {
         const nextSegment = segments[idx + 1];
         const layover = layovers[idx];
@@ -76,7 +143,6 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
         const cabin = segment.cabin || '';
         const cabinDisplay = cabin ? cabinDisplayMap[cabin.toUpperCase()] || cabin : '';
 
-        // Calculate segment duration
         let segmentDuration = '';
         if (segment.duration) {
           if (formatDuration) {
@@ -93,10 +159,8 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
 
         return (
           <div key={idx} className="relative">
-            {/* Segment Card */}
-            <div className={`bg-gray-800/40 rounded-lg border border-gray-700/50 p-${compact ? '2.5' : '3'} hover:bg-gray-800/60 transition-colors`}>
+            <div className="bg-gray-800/40 rounded-lg border border-gray-700/50 p-3 hover:bg-gray-800/60 transition-colors">
               <div className="flex items-start gap-3">
-                {/* Airline Logo */}
                 <div className="flex-shrink-0">
                   <img
                     src={`https://www.gstatic.com/flights/airline_logos/35px/${carrierCode}.png`}
@@ -105,10 +169,7 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 </div>
-
-                {/* Flight Info */}
                 <div className="flex-1 min-w-0">
-                  {/* Flight Number & Cabin */}
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-semibold text-white">
                       {carrierCode}{flightNumber}
@@ -131,10 +192,7 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
                       </span>
                     )}
                   </div>
-
-                  {/* Route Timeline */}
                   <div className="space-y-2">
-                    {/* Departure */}
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-16">
                         <div className="text-sm font-semibold text-white">{depTime}</div>
@@ -164,8 +222,6 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Layover */}
             {!isLast && layover && (
               <div className="flex items-center justify-center py-2">
                 <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-1.5 text-xs text-orange-300 font-medium">

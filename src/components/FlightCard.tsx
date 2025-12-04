@@ -23,64 +23,88 @@ interface FlightCardProps {
   v2EnrichmentData?: Map<string, any[]>;
   onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
   enrichingAirlines?: Set<string>;
+  similarFlights?: (FlightSolution | GroupedFlight)[]; // Similar flights with different cabins
+  similarFlightsCount?: number; // Count of similar flights shown in dropdown (for options count display)
+  showSimilarOptions?: boolean; // Whether to show similar options indicator
+  onToggleSimilarOptions?: () => void; // Callback to toggle similar options
+  isSimilarOptionsExpanded?: boolean; // Whether similar options are expanded
 }
 
 // Helper to group similar mileage flights for cleaner display
 const groupMileageFlights = (flights: any[]) => {
-  const groups = new Map<string, any[]>();
+  // First pass: Group by flight number + departure time (ignoring arrival/layovers)
+  const flightGroups = new Map<string, any[]>();
 
   flights.forEach((flight) => {
-    const route = `${flight.departure.iataCode}-${flight.arrival.iataCode}`;
+    const flightNumber = flight.flightNumber || '';
     const depTime = new Date(flight.departure.at).toISOString().slice(11, 16); // HH:MM
-    const arrTime = new Date(flight.arrival.at).toISOString().slice(11, 16);
-    const layovers = flight.segments?.map((s: any) => s.arrival?.iataCode).filter((code: string, idx: number, arr: string[]) => idx < arr.length - 1).join(',') || '';
+    const origin = flight.departure?.iataCode || '';
+    
+    // Group by: flight number + departure time + origin
+    // This groups flights that are the same but may have different arrival times or layovers
+    const groupKey = `${flightNumber}|${depTime}|${origin}`;
 
-    // Primary grouping: same route + same times + same layovers = different carriers
-    const timeRouteKey = `${route}|${depTime}|${arrTime}|${layovers}`;
-
-    if (!groups.has(timeRouteKey)) {
-      groups.set(timeRouteKey, []);
+    if (!flightGroups.has(groupKey)) {
+      flightGroups.set(groupKey, []);
     }
-    groups.get(timeRouteKey)!.push(flight);
+    flightGroups.get(groupKey)!.push(flight);
   });
 
-  // Convert to grouped structure with sub-grouping
-  return Array.from(groups.values()).map(groupFlights => {
+  // Second pass: Process each group
+  return Array.from(flightGroups.values()).map(groupFlights => {
     if (groupFlights.length === 1) {
       return {
         primary: groupFlights[0],
-        alternativeTimes: [],
-        alternativeCarriers: []
+        alternativeArrivals: [], // Different arrival times
+        alternativeLayovers: [], // Different layovers/routes
+        alternativeTimes: [], // Different departure times (legacy)
+        alternativeCarriers: [] // Different carriers (legacy)
       };
     }
 
-    // Check if same flight number (time alternatives) or different flight numbers (carrier alternatives)
-    const sameFlightNum = groupFlights.every(f => f.flightNumber === groupFlights[0].flightNumber);
+    // Sort by arrival time (earliest first)
+    groupFlights.sort((a, b) => {
+      const aArr = new Date(a.arrival?.at || a.arrival).getTime();
+      const bArr = new Date(b.arrival?.at || b.arrival).getTime();
+      return aArr - bArr;
+    });
 
-    if (sameFlightNum) {
-      // Time alternatives - same flight at different departure times
-      groupFlights.sort((a, b) =>
-        new Date(a.departure.at).getTime() - new Date(b.departure.at).getTime()
-      );
-      return {
-        primary: groupFlights[0],
-        alternativeTimes: groupFlights.slice(1),
-        alternativeCarriers: []
-      };
-    } else {
-      // Carrier alternatives - different flights at same time/route
-      // Prefer lower flight number or carrier code
-      groupFlights.sort((a, b) => {
-        const aNum = parseInt(a.flightNumber?.replace(/\D/g, '') || '9999');
-        const bNum = parseInt(b.flightNumber?.replace(/\D/g, '') || '9999');
-        return aNum - bNum;
-      });
-      return {
-        primary: groupFlights[0],
-        alternativeTimes: [],
-        alternativeCarriers: groupFlights.slice(1)
-      };
-    }
+    const primary = groupFlights[0];
+    const alternatives = groupFlights.slice(1);
+    
+    // Separate alternatives by type
+    const alternativeArrivals: any[] = [];
+    const alternativeLayovers: any[] = [];
+    
+    alternatives.forEach(alt => {
+      // Check if same route but different arrival time
+      const sameRoute = primary.departure?.iataCode === alt.departure?.iataCode &&
+                       primary.arrival?.iataCode === alt.arrival?.iataCode;
+      
+      // Check if different layovers
+      const primaryLayovers = primary.stops?.map((s: any) => typeof s === 'string' ? s : (s.code || s.iataCode)).join(',') || '';
+      const altLayovers = alt.stops?.map((s: any) => typeof s === 'string' ? s : (s.code || s.iataCode)).join(',') || '';
+      const differentLayovers = primaryLayovers !== altLayovers;
+      
+      if (sameRoute && differentLayovers) {
+        // Same route but different layover pattern
+        alternativeLayovers.push(alt);
+      } else if (sameRoute) {
+        // Same route, same layovers, just different arrival time
+        alternativeArrivals.push(alt);
+      } else {
+        // Different route entirely (different destination or layover airports)
+        alternativeLayovers.push(alt);
+      }
+    });
+
+    return {
+      primary,
+      alternativeArrivals,
+      alternativeLayovers,
+      alternativeTimes: [], // Legacy - kept for compatibility
+      alternativeCarriers: [] // Legacy - kept for compatibility
+    };
   });
 };
 
@@ -178,7 +202,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set() }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     const date = new Date(dateStr);
@@ -226,12 +250,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [mileageAwardTab, setMileageAwardTab] = useState<Record<number, 'aero' | 'award'>>({});
   const [aeroCabinTabs, setAeroCabinTabs] = useState<Record<string, string>>({}); // airlineKey -> cabin
   const [expandedMileageOptions, setExpandedMileageOptions] = useState<Record<number, boolean>>({}); // sliceIndex -> expanded
+  const [tooltipStates, setTooltipStates] = useState<Record<string, boolean>>({}); // Track tooltip visibility: 'details', 'awards', 'hacks', 'add'
+  const [selectedCabinFilter, setSelectedCabinFilter] = useState<Record<number, string | null>>({}); // sliceIndex -> cabin filter
+  const [selectedCabin, setSelectedCabin] = useState<string | null>(null); // Selected cabin for compact card display
+  const [selectedPriceOption, setSelectedPriceOption] = useState<Record<string, number>>({}); // cabin -> selected price
+  const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
+  const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
 
+
+  // Get the flight to display (either original or switched variant)
+  const flightToDisplay = displayedFlight || flight;
+  const isGroupedFlightDisplay = !('id' in flightToDisplay);
 
   // Get flight data based on type
   const getFlightData = () => {
-    if (isGroupedFlight) {
-      const groupedFlight = flight as GroupedFlight;
+    if (isGroupedFlightDisplay) {
+      const groupedFlight = flightToDisplay as GroupedFlight;
       const selectedReturn = groupedFlight.returnOptions[selectedReturnIndex];
       const slices = [groupedFlight.outboundSlice, selectedReturn.returnSlice];
       
@@ -246,7 +280,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         hasMultipleReturns: groupedFlight.returnOptions.length > 1
       };
     } else {
-      const regularFlight = flight as FlightSolution;
+      const regularFlight = flightToDisplay as FlightSolution;
       const firstSlice = regularFlight.slices[0];
       
       return {
@@ -268,17 +302,287 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   };
 
-  const { slices, carrier, isNonstop, totalAmount, displayTotal, currency, pricePerMile, hasMultipleReturns, flightId, totalMileage, totalMileagePrice, matchType, mileageDeals, fullyEnriched } = getFlightData();
-  const { addToProposal: addToProposalContext, removeFromProposal } = useProposalContext();
-  const flightCardId = flightId || `flight-${Date.now()}`;
-  const isPremium = PREMIUM_CARRIERS.includes(carrier.code);
+  const flightData = getFlightData();
+  const { slices, carrier, isNonstop, displayTotal, currency, hasMultipleReturns, matchType } = flightData;
+  // Proposal context available but not directly used in this component
+  // const { addToProposal: addToProposalContext, removeFromProposal } = useProposalContext();
+  
+  // Get flightId - available for regular flights, not grouped flights
+  const flightId = ('id' in flight ? flight.id : undefined) || (flightData as any).flightId;
+  
+  // Check if flight has price variations (from deduplication of identical flights)
+  // This is now handled per-cabin in getCabinPricing
+  
+  // Remove unused console.log that references flightId
+  // console.log('🎴 FlightCard: Rendering flight with', { 
+  //   isGrouped: isGroupedFlight, 
+  //   hasMultipleReturns, 
+  //   sliceCount: slices.length,
+  //   flightId
+  // });
 
-  console.log('🎴 FlightCard: Rendering flight with', { 
-    isGrouped: isGroupedFlight, 
-    hasMultipleReturns, 
-    sliceCount: slices.length,
-    flightId
-  });
+  // Helper to get flight signature for price option grouping (same airline, origin, departure time)
+  const getPriceOptionSignature = (f: FlightSolution | GroupedFlight) => {
+    const airlineCode = getFlightAirlineCode(f);
+    if ('id' in f) {
+      const firstSlice = f.slices[0];
+      const departure = firstSlice.departure || '';
+      const origin = firstSlice.origin?.code || '';
+      const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
+      return `${airlineCode}-${departure}-${origin}-${cabin}`;
+    } else {
+      const departure = f.outboundSlice.departure || '';
+      const origin = f.outboundSlice.origin?.code || '';
+      const cabin = f.outboundSlice.cabins?.join(',') || 'UNKNOWN';
+      return `${airlineCode}-${departure}-${origin}-${cabin}`;
+    }
+  };
+
+  // Helper to extract airline code from flight number (e.g., "B6816" -> "B6")
+  const getAirlineCode = (flightNumber: string): string => {
+    if (!flightNumber) return '';
+    // Extract airline code (letters before numbers)
+    const match = flightNumber.match(/^([A-Z]+)/);
+    return match ? match[1] : '';
+  };
+
+  // Helper to get airline code from flight
+  const getFlightAirlineCode = (f: FlightSolution | GroupedFlight): string => {
+    if ('id' in f) {
+      const firstSlice = f.slices[0];
+      // Try to get from segments first (more reliable)
+      if (firstSlice.segments && firstSlice.segments.length > 0 && firstSlice.segments[0].carrier?.code) {
+        return firstSlice.segments[0].carrier.code;
+      }
+      // Fallback to extracting from flight number
+      const flightNumber = firstSlice.flights?.[0] || '';
+      return getAirlineCode(flightNumber);
+    } else {
+      // Try to get from carrier if available
+      if (f.carrier?.code) {
+        return f.carrier.code;
+      }
+      // Fallback to extracting from flight number
+      const flightNumber = f.outboundSlice.flights?.[0] || '';
+      return getAirlineCode(flightNumber);
+    }
+  };
+
+  // Helper to get flight signature for time option grouping (same airline, origin, destination, day)
+  const getTimeOptionSignature = (f: FlightSolution | GroupedFlight) => {
+    const airlineCode = getFlightAirlineCode(f);
+    if ('id' in f) {
+      const firstSlice = f.slices[0];
+      const lastSlice = f.slices[f.slices.length - 1];
+      const origin = firstSlice.origin?.code || '';
+      const destination = lastSlice.destination?.code || '';
+      const departureDate = firstSlice.departure ? new Date(firstSlice.departure).toDateString() : '';
+      const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
+      return `${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
+    } else {
+      const origin = f.outboundSlice.origin?.code || '';
+      const destination = f.outboundSlice.destination?.code || '';
+      const departureDate = f.outboundSlice.departure ? new Date(f.outboundSlice.departure).toDateString() : '';
+      const cabin = f.outboundSlice.cabins?.join(',') || 'UNKNOWN';
+      return `${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
+    }
+  };
+
+  // Helper to get time option key (departure-arrival format)
+  const getTimeOptionKey = (f: FlightSolution | GroupedFlight) => {
+    if ('id' in f) {
+      const firstSlice = f.slices[0];
+      const lastSlice = f.slices[f.slices.length - 1];
+      const depTime = formatTimeInOriginTZ(firstSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
+      const arrTime = formatTimeInOriginTZ(lastSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
+      return `${depTime}-${arrTime}`;
+    } else {
+      const depTime = formatTimeInOriginTZ(f.outboundSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
+      const arrTime = formatTimeInOriginTZ(f.outboundSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
+      return `${depTime}-${arrTime}`;
+    }
+  };
+
+  // Helper to get cabin pricing and time options from similar flights
+  const getCabinPricing = (cabinName: string) => {
+    // Normalize cabin names
+    const normalizeCabin = (cabin: string) => {
+      const c = cabin.toUpperCase();
+      if (c.includes('FIRST')) return 'FIRST';
+      if (c.includes('BUSINESS') && c.includes('PREMIUM')) return 'BUSINESS_PREMIUM';
+      if (c.includes('BUSINESS')) return 'BUSINESS';
+      if (c.includes('PREMIUM')) return 'PREMIUM_ECONOMY';
+      return 'ECONOMY';
+    };
+
+    const targetCabin = normalizeCabin(cabinName);
+    const matchingFlights: Array<{ 
+      price: number; 
+      currency: string; 
+      flight: any; 
+      duration: number;
+      priceOptionSig: string;
+      timeOptionSig: string;
+      timeOptionKey: string;
+    }> = [];
+    
+    // Check current flight first
+    const currentCabin = slices[0]?.cabins?.[0] || '';
+    if (normalizeCabin(currentCabin) === targetCabin) {
+      matchingFlights.push({
+        price: displayTotal,
+        currency: currency,
+        flight: flight,
+        duration: slices.reduce((sum, s) => sum + s.duration, 0),
+        priceOptionSig: getPriceOptionSignature(flight),
+        timeOptionSig: getTimeOptionSignature(flight),
+        timeOptionKey: getTimeOptionKey(flight)
+      });
+    }
+
+    // Check similar flights
+    for (const similarFlight of similarFlights) {
+      let similarSlices: any[] = [];
+      let similarPrice = 0;
+      let similarCurrency = 'USD';
+      
+      if ('id' in similarFlight) {
+        similarSlices = similarFlight.slices;
+        similarPrice = similarFlight.displayTotal || similarFlight.totalAmount || 0;
+        similarCurrency = similarFlight.currency || 'USD';
+      } else {
+        const groupedFlight = similarFlight as GroupedFlight;
+        similarSlices = [groupedFlight.outboundSlice, groupedFlight.returnOptions[0]?.returnSlice];
+        similarPrice = groupedFlight.returnOptions[0]?.displayTotal || groupedFlight.returnOptions[0]?.totalAmount || 0;
+        similarCurrency = groupedFlight.returnOptions[0]?.currency || 'USD';
+      }
+
+      const similarCabin = similarSlices[0]?.cabins?.[0] || '';
+      if (normalizeCabin(similarCabin) === targetCabin && similarPrice > 0) {
+        matchingFlights.push({
+          price: similarPrice,
+          currency: similarCurrency,
+          flight: similarFlight,
+          duration: similarSlices.reduce((sum: number, s: any) => sum + (s.duration || 0), 0),
+          priceOptionSig: getPriceOptionSignature(similarFlight),
+          timeOptionSig: getTimeOptionSignature(similarFlight),
+          timeOptionKey: getTimeOptionKey(similarFlight)
+        });
+      }
+    }
+
+    if (matchingFlights.length === 0) return null;
+
+    // Get primary flight signature for comparison
+    const primaryPriceSig = getPriceOptionSignature(flight);
+    const primaryTimeSig = getTimeOptionSignature(flight);
+
+    // Group flights by price option (same carrier, origin, departure time)
+    const priceOptionGroups = new Map<string, typeof matchingFlights>();
+    matchingFlights.forEach(f => {
+      if (!priceOptionGroups.has(f.priceOptionSig)) {
+        priceOptionGroups.set(f.priceOptionSig, []);
+      }
+      priceOptionGroups.get(f.priceOptionSig)!.push(f);
+    });
+
+    // Group flights by time option (same origin, destination, day)
+    const timeOptionGroups = new Map<string, typeof matchingFlights>();
+    matchingFlights.forEach(f => {
+      if (!timeOptionGroups.has(f.timeOptionSig)) {
+        timeOptionGroups.set(f.timeOptionSig, []);
+      }
+      timeOptionGroups.get(f.timeOptionSig)!.push(f);
+    });
+
+    // Get price options (flights with same price option signature as primary)
+    // Include the current flight itself in the count
+    const priceOptionFlights = priceOptionGroups.get(primaryPriceSig) || [];
+    const uniquePriceOptionPrices = [...new Set(priceOptionFlights.map(f => f.price))];
+    const priceOptions = uniquePriceOptionPrices.length > 1 ? {
+      allPrices: uniquePriceOptionPrices.sort((a, b) => a - b),
+      flightsByPrice: new Map<number, typeof priceOptionFlights>(
+        uniquePriceOptionPrices.map(price => [
+          price,
+          priceOptionFlights.filter(f => f.price === price)
+        ])
+      )
+    } : null;
+
+    // Get time options (flights with same time option signature as primary)
+    // Include the current flight itself in the count
+    const timeOptionFlights = timeOptionGroups.get(primaryTimeSig) || [];
+    const uniqueTimeOptionKeys = [...new Set(timeOptionFlights.map(f => f.timeOptionKey))];
+    const timeOptions = uniqueTimeOptionKeys.length > 1 ? {
+      allTimeKeys: uniqueTimeOptionKeys.sort(),
+      flightsByTime: new Map<string, typeof timeOptionFlights>(
+        uniqueTimeOptionKeys.map(timeKey => [
+          timeKey,
+          timeOptionFlights.filter(f => f.timeOptionKey === timeKey)
+        ])
+      )
+    } : null;
+
+    // Get unique prices (for detecting variations)
+    const prices = matchingFlights.map(f => f.price);
+    const uniquePrices = [...new Set(prices)];
+    const minPrice = Math.min(...prices);
+    const hasVariations = uniquePrices.length > 1 && (Math.max(...prices) - minPrice) > 0;
+
+    // Calculate total unique options
+    // If similarFlightsCount is provided, use that (count of flights in dropdown)
+    // Otherwise, count unique flights from matchingFlights
+    const totalOptionsCount = similarFlightsCount !== undefined 
+      ? similarFlightsCount + 1 // +1 for the current flight itself
+      : (() => {
+          const uniqueFlights = new Set(matchingFlights.map(f => 'id' in f.flight ? f.flight.id : JSON.stringify(f.flight)));
+          return uniqueFlights.size;
+        })();
+
+    return {
+      price: minPrice,
+      currency: matchingFlights[0].currency,
+      flight: matchingFlights[0].flight,
+      duration: matchingFlights[0].duration,
+      optionsCount: totalOptionsCount,
+      hasVariations: hasVariations,
+      allPrices: uniquePrices.sort((a, b) => a - b),
+      flightsByPrice: new Map<number, typeof matchingFlights>(
+        Array.from(new Set(prices)).map(price => [
+          price,
+          matchingFlights.filter(f => f.price === price)
+        ])
+      ),
+      priceOptions: priceOptions, // Price options (same carrier, origin, departure time)
+      timeOptions: timeOptions // Time options (same origin, destination, day)
+    };
+  };
+
+  // Get pricing for all cabins
+  const cabinPricing = {
+    ECONOMY: getCabinPricing('ECONOMY'),
+    BUSINESS: getCabinPricing('BUSINESS'),
+    BUSINESS_PREMIUM: getCabinPricing('BUSINESS PREMIUM'),
+    FIRST: getCabinPricing('FIRST')
+  };
+
+  // Set default selected cabin to current flight's cabin
+  useEffect(() => {
+    if (!selectedCabin && slices[0]?.cabins?.[0]) {
+      const currentCabin = slices[0].cabins[0].toUpperCase();
+      if (currentCabin.includes('FIRST')) {
+        setSelectedCabin('FIRST');
+      } else if (currentCabin.includes('BUSINESS') && currentCabin.includes('PREMIUM')) {
+        setSelectedCabin('BUSINESS_PREMIUM');
+      } else if (currentCabin.includes('BUSINESS')) {
+        setSelectedCabin('BUSINESS');
+      } else {
+        setSelectedCabin('ECONOMY');
+      }
+    }
+  }, [slices, selectedCabin]);
+
+  // Removed console.log for production
 
   // Check if this airline is currently being enriched
   const isEnriching = enrichingAirlines.has(carrier.code);
@@ -782,15 +1086,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     return diffDays;
   };
 
-  const formatPrice = (price: number, currencyCode: string) => {
+  const formatPrice = (price: number, currencyCode: string, showPlus: boolean = false) => {
     // Format number with commas
     const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price);
 
-    // Return with currency code prefix
-    return `${currencyCode} ${formatted}`;
+    // Return with currency code prefix and optional "+"
+    return `${currencyCode} ${formatted}${showPlus ? '+' : ''}`;
   };
 
   const openHacksPage = () => {
@@ -843,6 +1147,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
     return null;
   };
+
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Calculate segment durations and layover times
   const calculateSegmentTimes = (slice: any) => {
@@ -911,102 +1217,131 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   return (
     <>
       <div 
-        className={`bg-gray-900 border-2 rounded-lg hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl ${
-          matchType && matchType !== 'none' ? 'border-gray-600' : 'border-gray-800'
+        className={`bg-gray-900/80 backdrop-blur-sm border border-gray-800/60 rounded-lg hover:border-gray-700/60 hover:bg-gray-900 transition-all duration-200 ${
+          matchType && matchType !== 'none' ? 'border-gray-700/60' : ''
         }`}
       >
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-800">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
-          <div className="flex items-center gap-3 flex-wrap">
+      {/* Main Flight Bar - Ultra Compact Google Flights Style */}
+      <div className="px-4 py-3 border-b border-gray-800/30">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Airline + Route + Times */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Airline Logo */}
             {carrier.code && (
               <img
                 src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
                 alt={carrier.code}
-                className="h-7 w-7 object-contain"
+                className="h-6 w-6 object-contain flex-shrink-0"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             )}
-            <div>
-              <div className="font-semibold text-white">{carrier.shortName}</div>
-              <div className="text-xs text-gray-400">
-                {slices[0].origin.code} → {slices[slices.length - 1].destination.code}
-                {slices[0].flights && slices[0].flights.length > 0 && (
-                  <span className="ml-2">Flight {slices[0].flights[0]}</span>
-                )}
+            
+            {/* Route: Departure → Duration → Arrival */}
+            <div 
+              className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {/* Departure */}
+              <div className="text-left min-w-[65px]">
+                <div className="text-sm font-semibold text-white">
+                  {formatTime(slices[0].departure)}
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  {slices[0].origin.code}
+                </div>
+              </div>
+
+              {/* Arrow & Duration */}
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-px bg-gray-700"></div>
+                  {isNonstop ? (
+                    <Plane className="h-3 w-3 text-success-400" />
+                  ) : (
+                    <div className="text-[10px] text-gray-500">
+                      {slices[0].stops?.length || 0}
+                    </div>
+                  )}
+                  <div className="w-6 h-px bg-gray-700"></div>
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {formatDuration(slices[0].duration)}
+                </div>
+              </div>
+
+              {/* Arrival */}
+              <div className="text-left min-w-[65px]">
+                <div className="text-sm font-semibold text-white">
+                  {formatTime(slices[0].arrival)}
+                  {(() => {
+                    const dayDiff = getDayDifference(slices[0].departure, slices[0].arrival);
+                    if (dayDiff > 0) {
+                      return <span className="text-[10px] text-warning-400 ml-0.5">+{dayDiff}</span>;
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  {slices[slices.length - 1].destination.code}
+                </div>
               </div>
             </div>
+
+            {/* Flight Info: Airline Name & Flight Number */}
+            <div className="flex flex-col items-start min-w-[120px] ml-2">
+              <div className="text-xs font-medium text-white">
+                {carrier.shortName || carrier.name || carrier.code}
+              </div>
+              {slices[0].flights && slices[0].flights.length > 0 && (
+                <div className="text-[10px] text-gray-400 font-mono">
+                  {slices[0].flights[0]}
+                </div>
+              )}
+              {/* Cabin Class */}
+              {slices[0].cabins && slices[0].cabins.length > 0 && (
+                <div className="text-[10px] text-accent-400 font-medium mt-0.5">
+                  {slices[0].cabins[0]}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center: Badges & Best Deals */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Nonstop Badge */}
             {isNonstop && (
-              <div className="px-2 py-1 bg-success-500/20 text-success-400 text-xs font-medium rounded">
+              <div className="px-2 py-0.5 bg-success-500/15 text-success-400 text-[10px] font-medium rounded border border-success-500/30">
                 Nonstop
               </div>
             )}
-            {isPremium && (
-              <div className="px-2 py-1 bg-accent-500/20 text-accent-400 text-xs font-medium rounded">
-                Premium Carrier
-              </div>
-            )}
+            
+            {/* Round Trip Badge */}
             {slices.length > 1 && (
-              <div className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs font-medium rounded flex items-center gap-1">
-                {slices.length === 2 ? 'Round Trip' : `${slices.length} Flights`}
-                {hasMultipleReturns && (
-                  <span className="text-xs">({isGroupedFlight && (flight as GroupedFlight).returnOptions.length} return options)</span>
-                )}
+              <div className="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-[10px] font-medium rounded border border-blue-500/30">
+                {slices.length === 2 ? 'Round Trip' : `${slices.length} Legs`}
               </div>
             )}
-            {/* Selected Mileage Badges - Show for user-selected programs */}
+
+            {/* Match Type Badge */}
+            {matchType && matchType !== 'none' && (
+              <div className={`px-2 py-0.5 text-[10px] font-medium rounded border ${
+                matchType === 'exact'
+                  ? 'bg-success-500/15 text-success-400 border-success-500/30'
+                  : 'bg-warning-500/15 text-warning-400 border-warning-500/30'
+              }`}>
+                Aero {matchType === 'exact' ? '✓' : '~'}
+              </div>
+            )}
+
+            {/* Best Deal Indicator */}
             {(() => {
-              const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
-              if (!hasSelectedMileage) return null;
-
-              return slices.map((slice, idx) => {
-                const selectedCarrier = selectedMileagePerSlice[idx];
-                if (!selectedCarrier || !slice.mileageBreakdown) return null;
-
-                const programs = groupMileageByProgram(slice.mileageBreakdown);
-                const selectedProgram = programs.find(p => p.carrierCode === selectedCarrier);
-                if (!selectedProgram) return null;
-
-                const sliceLabel = slices.length > 1 
-                  ? (idx === 0 ? 'Outbound' : `Return`)
-                  : 'One-way';
-
-                return (
-                  <div key={idx} className="px-2 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/40 text-purple-200 text-xs font-medium rounded flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase opacity-70">{sliceLabel}:</span>
-                    <span className="font-semibold">{selectedProgram.carrierCode}</span>
-                    {selectedProgram.cabin && (
-                      <span className="text-[10px] opacity-70">{selectedProgram.cabin}</span>
-                    )}
-                    <span className="font-bold">{selectedProgram.totalMileage.toLocaleString()}</span>
-                    <span className="text-[10px]">mi</span>
-                    {selectedProgram.totalPrice > 0 && (
-                      <>
-                        <span className="text-[10px]">+</span>
-                        <span className="font-semibold">${selectedProgram.totalPrice.toFixed(0)}</span>
-                      </>
-                    )}
-                  </div>
-                );
-              }).filter(Boolean);
-            })()}
-          </div>
-          <div className="flex items-center gap-3 flex-wrap justify-end w-full lg:w-auto h-7">
-            {/* Price Per Mile */}
-            {/* <div className="text-xs text-gray-400 flex items-center h-full">
-              ${formatPricePerMile(pricePerMile)}/mi
-            </div> */}
-
-            {/* Total Price */}
-            {(() => {
-              // Calculate mileage value ONLY if user has selected mileage programs
+              // Calculate if there's a better deal
               const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
               
               let bestMileageValue = null;
               if (hasSelectedMileage) {
-                // Calculate total from selected programs
                 let totalMileage = 0;
                 let totalPrice = 0;
                 
@@ -1027,24 +1362,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 }
               }
 
-              // Calculate best award value if available - use selected award per slice or find cheapest
               let bestAwardValue = null;
               if (hasAwardOptions && allAwardOptions.length > 0) {
-                // Check if any slice has a selected award
                 let selectedAward: any = null;
                 for (let idx = 0; idx < slices.length; idx++) {
                   const selectedAwardId = selectedAwardPerSlice[idx];
                   if (selectedAwardId) {
                     const sliceAwardOptions = allAwardOptions.filter(award => {
-                      // First check enrichment segment metadata (more reliable for route matching)
                       if (award.enrichmentOrigin && award.enrichmentDestination) {
                         if (award.enrichmentOrigin === slices[idx].origin.code &&
                             award.enrichmentDestination === slices[idx].destination.code) {
                           return true;
                         }
                       }
-                      
-                      // Fallback to itinerary segments if metadata not available
                       const itinerary = award.itineraries?.[0];
                       if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
                       const firstSegment = itinerary.segments[0];
@@ -1057,7 +1387,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   }
                 }
                 
-                // Use selected award or find cheapest
                 const bestAward = selectedAward || [...allAwardOptions].sort((a, b) => {
                   const aValue = (a.miles * perCentValue) + a.tax;
                   const bValue = (b.miles * perCentValue) + b.tax;
@@ -1068,68 +1397,453 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 }
               }
 
-              // Get cash price (displayTotal is always a number)
               const cashPrice = displayTotal;
-
-              // Show strike-through if mileage or award is significantly cheaper (more than 10% savings)
               const bestAlternativeValue = bestMileageValue && bestAwardValue
                 ? Math.min(bestMileageValue, bestAwardValue)
                 : bestMileageValue || bestAwardValue;
-              const showStrikeThrough = bestAlternativeValue && bestAlternativeValue < cashPrice * 0.90;
+              
+              const showBestDeal = bestAlternativeValue && bestAlternativeValue < cashPrice * 0.85;
+
+              if (showBestDeal) {
+                const savings = cashPrice - bestAlternativeValue;
+                const savingsPercent = Math.round((savings / cashPrice) * 100);
+                const dealType = bestMileageValue && bestAwardValue
+                  ? (bestMileageValue <= bestAwardValue ? 'Miles' : 'Award')
+                  : (bestMileageValue ? 'Miles' : 'Award');
+                
+                return (
+                  <div className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 text-[10px] font-bold rounded border border-purple-400/40">
+                    💎 Save {savingsPercent}% ({dealType})
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Loading Award Indicator */}
+            {isEnriching && !hasV2Enrichment && (
+              <div className="px-2 py-0.5 bg-warning-500/15 text-warning-400 text-[10px] font-medium rounded border border-warning-500/30 flex items-center gap-1 animate-pulse">
+                <Zap className="h-2.5 w-2.5" />
+                Fetching...
+              </div>
+            )}
+          </div>
+
+          {/* Right: Similar Options Indicator + Cabin Sections */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Minimal Similar Options Indicator - Fixed width to prevent layout shift */}
+            <div className="w-[40px] flex items-center justify-center flex-shrink-0">
+              {showSimilarOptions && similarFlightsCount !== undefined && similarFlightsCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSimilarOptions?.();
+                  }}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
+                    isSimilarOptionsExpanded
+                      ? 'bg-blue-500/10 text-blue-400'
+                      : 'bg-gray-800/30 text-gray-500 hover:bg-gray-700/40 hover:text-gray-400'
+                  }`}
+                  title={`${similarFlightsCount} similar option${similarFlightsCount !== 1 ? 's' : ''}`}
+                >
+                  <span>{similarFlightsCount}</span>
+                  <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isSimilarOptionsExpanded ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </div>
+            {/* Cabin Pricing Sections */}
+            {(['ECONOMY', 'BUSINESS', 'BUSINESS_PREMIUM', 'FIRST'] as const).map((cabinKey) => {
+              const pricing = cabinPricing[cabinKey];
+              const isSelected = selectedCabin === cabinKey;
+              const cabinLabels: Record<string, string> = {
+                'ECONOMY': 'Economy',
+                'BUSINESS': 'Business',
+                'BUSINESS_PREMIUM': 'Business Premium',
+                'FIRST': 'First'
+              };
 
               return (
-                <div className="flex items-center gap-2 h-full">
-                  <div className={`text-xl font-medium flex items-center ${showStrikeThrough ? 'text-red-400 relative' : 'text-neutral-100'}`}>
-                    {formatPrice(displayTotal, currency)}
-                    {showStrikeThrough && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-red-500 transform rotate-[20deg]"></div>
-                      </div>
-                    )}
+                <button
+                  key={cabinKey}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (pricing) {
+                      setSelectedCabin(cabinKey);
+                      // If clicking on a different flight's cabin, we'd need to switch the flight
+                      // For now, just highlight the cabin
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center min-w-[70px] px-2 py-1.5 rounded border transition-all ${
+                    isSelected
+                      ? cabinKey === 'FIRST' || cabinKey === 'BUSINESS' || cabinKey === 'BUSINESS_PREMIUM'
+                        ? 'bg-purple-500/20 border-purple-500/40'
+                        : 'bg-blue-500/20 border-blue-500/40'
+                      : pricing
+                      ? 'bg-gray-800/30 border-gray-700/30 hover:bg-gray-800/50 hover:border-gray-600/50'
+                      : 'bg-gray-800/10 border-gray-700/20 opacity-50 cursor-not-allowed'
+                  }`}
+                  disabled={!pricing}
+                >
+                  <div className={`text-[9px] font-semibold mb-0.5 ${
+                    isSelected ? 'text-purple-300' : pricing ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {cabinLabels[cabinKey]}
                   </div>
-                  {showStrikeThrough && bestAlternativeValue && (
-                    <button
-                      onClick={() => {
-                        // Expand the slice with the best alternative
-                        if (bestMileageValue && (!bestAwardValue || bestMileageValue <= bestAwardValue)) {
-                          const dealIndex = slices.findIndex(s => s.mileageBreakdown?.length);
-                          if (dealIndex >= 0) {
-                            setExpandedSlices(prev => ({ ...prev, [dealIndex]: !prev[dealIndex] }));
-                          }
-                        } else if (bestAwardValue) {
-                          // Expand first slice and show award tab
-                          const firstSliceIndex = 0;
-                          setExpandedSlices(prev => ({ ...prev, [firstSliceIndex]: true }));
-                          setMileageAwardTab(prev => ({ ...prev, [firstSliceIndex]: 'award' }));
-                        }
-                      }}
-                      className="text-sm font-bold text-green-400 hover:text-green-300 transition-colors cursor-pointer whitespace-nowrap"
-                    >
-                      ${bestAlternativeValue.toFixed(2)} <span className="text-xs font-normal">
-                        {bestMileageValue && bestAwardValue
-                          ? (bestMileageValue <= bestAwardValue ? 'mileage' : 'award')
-                          : (bestMileageValue ? 'mileage' : 'award')
-                        } cash
-                      </span>
-                    </button>
+                  {pricing ? (
+                    <>
+                      <div className={`text-xs font-bold ${
+                        isSelected ? 'text-white' : 'text-gray-300'
+                      }`}>
+                        {formatPrice(pricing.price, pricing.currency, pricing.hasVariations)}
+                      </div>
+                      {pricing.optionsCount > 1 && (
+                        <div className="text-[9px] text-gray-500 mt-0.5">
+                          ({pricing.optionsCount} options)
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-gray-600">N/A</div>
                   )}
-                </div>
+                </button>
               );
-            })()}
+            })}
+
+            {/* Expand/Collapse Chevron - Far Right */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="p-1.5 hover:bg-gray-800/50 rounded transition-colors text-gray-400 hover:text-gray-300 ml-1"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Loading Award Info - Show when enrichment is in progress for this airline */}
-        {isEnriching && !hasV2Enrichment && (
-          <div className="mt-2 px-3 py-2 bg-gradient-to-r from-yellow-500/5 to-amber-500/5 border border-yellow-400/20 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-400 animate-[pulse_1.5s_ease-in-out_infinite]" />
-              <div className="text-sm font-medium text-yellow-400">
-                Fetching awards...
+
+
+      {/* Expanded Details - Only show when expanded */}
+      {isExpanded && (
+        <div className="border-t border-gray-800/30">
+          {/* Price and Time Options - Top of expanded section */}
+          {(() => {
+            const selectedCabinPricing = selectedCabin ? cabinPricing[selectedCabin as keyof typeof cabinPricing] : null;
+            if (!selectedCabinPricing) return null;
+
+            const hasPriceOptions = selectedCabinPricing.priceOptions && selectedCabinPricing.priceOptions.allPrices.length > 1;
+            const hasTimeOptions = selectedCabinPricing.timeOptions && selectedCabinPricing.timeOptions.allTimeKeys.length > 1;
+            
+            if (!hasPriceOptions && !hasTimeOptions) return null;
+
+            const currentSelectedPrice = selectedCabin && selectedPriceOption[selectedCabin] 
+              ? selectedPriceOption[selectedCabin] 
+              : selectedCabinPricing.allPrices[0];
+            
+            const currentSelectedTime = selectedCabin && selectedTimeOption[selectedCabin]
+              ? selectedTimeOption[selectedCabin]
+              : (selectedCabinPricing.timeOptions?.allTimeKeys[0] || null);
+
+            // Helper to switch flight and sync both price and time options
+            const switchToFlight = (targetFlight: any) => {
+              const isDifferent = 'id' in flightToDisplay && 'id' in targetFlight
+                ? flightToDisplay.id !== targetFlight.id
+                : flightToDisplay !== targetFlight;
+              
+              if (isDifferent) {
+                setDisplayedFlight(targetFlight);
+                
+                // Auto-sync price option
+                if (selectedCabinPricing.flightsByPrice) {
+                  for (const [price, flights] of selectedCabinPricing.flightsByPrice.entries()) {
+                    if (flights.some(f => ('id' in f.flight && 'id' in targetFlight ? f.flight.id === targetFlight.id : f.flight === targetFlight))) {
+                      setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: price }));
+                      break;
+                    }
+                  }
+                }
+                
+                // Auto-sync time option
+                if (selectedCabinPricing.timeOptions?.flightsByTime) {
+                  // Find the time key for this flight
+                  for (const [timeKey, flights] of selectedCabinPricing.timeOptions.flightsByTime.entries()) {
+                    if (flights.some(f => ('id' in f.flight && 'id' in targetFlight ? f.flight.id === targetFlight.id : f.flight === targetFlight))) {
+                      setSelectedTimeOption(prev => ({ ...prev, [selectedCabin!]: timeKey }));
+                      break;
+                    }
+                  }
+                }
+              }
+            };
+
+            return (
+              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30 space-y-3">
+                {/* Price Options */}
+                {hasPriceOptions && (
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                      Price Options:
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedCabinPricing.priceOptions!.allPrices.map((price, idx) => {
+                        const isSelected = price === currentSelectedPrice;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPriceOption(prev => ({
+                                ...prev,
+                                [selectedCabin!]: price
+                              }));
+                              // Switch to the first flight with this price
+                              const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(price) || [];
+                              if (flightsAtPrice.length > 0) {
+                                switchToFlight(flightsAtPrice[0].flight);
+                              }
+                            }}
+                            className={`px-2.5 py-1 rounded border transition-all ${
+                              isSelected
+                                ? 'bg-success-500/20 border-success-500/40 text-success-400 hover:bg-success-500/30'
+                                : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
+                            }`}
+                          >
+                            <span className="text-xs font-bold">
+                              {formatPrice(price, selectedCabinPricing.currency, false)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Time Options */}
+                {hasTimeOptions && (
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                      Time Options:
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedCabinPricing.timeOptions!.allTimeKeys.map((timeKey, idx) => {
+                        const isSelected = timeKey === currentSelectedTime;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTimeOption(prev => ({
+                                ...prev,
+                                [selectedCabin!]: timeKey
+                              }));
+                              // Switch to the first flight with this time
+                              const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(timeKey) || [];
+                              if (flightsAtTime.length > 0) {
+                                switchToFlight(flightsAtTime[0].flight);
+                              }
+                            }}
+                            className={`px-2.5 py-1 rounded border transition-all ${
+                              isSelected
+                                ? 'bg-blue-500/20 border-blue-500/40 text-blue-400 hover:bg-blue-500/30'
+                                : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
+                            }`}
+                          >
+                            <span className="text-xs font-bold font-mono">
+                              {timeKey}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
+            );
+          })()}
+
+          {/* Action Buttons - First 80px on right side */}
+          <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
+            {/* Details Button */}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSummaryModal(true);
+                }}
+                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, details: true }))}
+                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, details: false }))}
+                className="flex flex-col items-center gap-1.5 p-2 hover:bg-gray-800/50 rounded transition-colors text-gray-400 hover:text-gray-300"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="text-[10px] font-medium">Details</span>
+              </button>
+              {tooltipStates.details && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                  View Flight Details
+                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
+            {/* Find Awards Button - Only if no enrichment */}
+            {onEnrichFlight && !hasAnyEnrichmentForCarrier && !isEnriching && (
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEnrichClick();
+                  }}
+                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, awards: true }))}
+                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, awards: false }))}
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-warning-500/20 rounded transition-colors text-warning-400 hover:text-warning-300"
+                >
+                  <Award className="h-4 w-4" />
+                  <span className="text-[10px] font-medium">Find Awards</span>
+                </button>
+                {tooltipStates.awards && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                    Find Award Availability
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hacks Button */}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openHacksPage();
+                }}
+                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, hacks: true }))}
+                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, hacks: false }))}
+                className="flex flex-col items-center gap-1.5 p-2 hover:bg-accent-500/20 rounded transition-colors text-accent-400 hover:text-accent-300"
+              >
+                <Target className="h-4 w-4" />
+                <span className="text-[10px] font-medium">Hacks</span>
+              </button>
+              {tooltipStates.hacks && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                  View Flight Hacks
+                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
+            {/* Add to Proposal Button */}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (addedItems.has('flight')) {
+                    const newSet = new Set(addedItems);
+                    newSet.delete('flight');
+                    Array.from(newSet).forEach(item => {
+                      if (item.startsWith('aero-') || item.startsWith('award-')) {
+                        newSet.delete(item);
+                      }
+                    });
+                    setAddedItems(newSet);
+                    setPendingItems(prev => prev.filter(item => item.type !== 'flight' && !item.id.startsWith('aero-') && !item.id.startsWith('award-')));
+                    setShowAddToProposal(false);
+                    setSelectedMileageFlight(null);
+                  } else {
+                    setAddedItems(prev => new Set(prev).add('flight'));
+                    setPendingItems(prev => {
+                      const filtered = prev.filter(item => item.type !== 'flight');
+                      return [...filtered, { type: 'flight', id: 'flight', data: flight }];
+                    });
+                    setShowAddToProposal(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  setTooltipStates(prev => ({ ...prev, add: true }));
+                  if (addedItems.has('flight')) {
+                    setHoveredAddButton('flight');
+                  }
+                }}
+                onMouseLeave={() => {
+                  setTooltipStates(prev => ({ ...prev, add: false }));
+                  setHoveredAddButton(null);
+                }}
+                className={`flex flex-col items-center gap-1.5 p-2 rounded transition-colors ${
+                  addedItems.has('flight')
+                    ? 'bg-success-500/20 hover:bg-error-500/20 text-success-400 hover:text-error-400'
+                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300'
+                }`}
+              >
+                {addedItems.has('flight') ? (
+                  <>
+                    <span className="text-sm">✓</span>
+                    <span className="text-[10px] font-medium">Added</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    <span className="text-[10px] font-medium">Add</span>
+                  </>
+                )}
+              </button>
+              {tooltipStates.add && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                  {addedItems.has('flight') ? (hoveredAddButton === 'flight' ? 'Remove from proposal' : 'Added to proposal') : 'Add to proposal'}
+                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                </div>
+              )}
             </div>
           </div>
-        )}
+
+          {/* Selected Mileage Badge - If selected */}
+          {(() => {
+            const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
+            if (!hasSelectedMileage) return null;
+
+            return (
+              <div className="px-4 py-2 border-t border-gray-800/30">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {slices.map((slice, idx) => {
+                    const selectedCarrier = selectedMileagePerSlice[idx];
+                    if (!selectedCarrier || !slice.mileageBreakdown) return null;
+
+                    const programs = groupMileageByProgram(slice.mileageBreakdown);
+                    const selectedProgram = programs.find(p => p.carrierCode === selectedCarrier);
+                    if (!selectedProgram) return null;
+
+                    const sliceLabel = slices.length > 1 
+                      ? (idx === 0 ? 'Outbound' : `Return`)
+                      : 'One-way';
+
+                    return (
+                      <div key={idx} className="px-2 py-1 bg-gradient-to-r from-purple-500/12 to-blue-500/12 border border-purple-500/25 text-purple-300 text-xs font-medium rounded">
+                        <span className="text-[10px] opacity-70">{sliceLabel}: </span>
+                        <span className="font-semibold">{selectedProgram.carrierCode}</span>
+                        <span className="mx-1">•</span>
+                        <span className="font-bold">{selectedProgram.totalMileage.toLocaleString()} mi</span>
+                        {selectedProgram.totalPrice > 0 && (
+                          <span className="ml-1">+ ${selectedProgram.totalPrice.toFixed(0)}</span>
+                        )}
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                </div>
+              </div>
+            );
+          })()}
+
+      {/* Loading Award Info - Show when enrichment is in progress for this airline */}
+      {isEnriching && !hasV2Enrichment && (
+        <div className="px-4 py-2 bg-gradient-to-r from-warning-500/8 to-warning-500/5 border-l-2 border-warning-500/40 rounded-r">
+          <div className="flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5 text-warning-400 animate-[pulse_1.5s_ease-in-out_infinite]" />
+            <div className="text-xs font-medium text-warning-400">
+              Fetching awards...
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* V2 Mileage Enrichment - Display best award if available */}
         {hasAwardOptions && slices.length > 0 && (() => {
@@ -1166,160 +1880,34 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
           const cashValue = (bestAward.miles * perCentValue) + bestAward.tax;
 
-          return (
-            <div className="mt-2 px-4 py-3 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-purple-400" />
-                  <div>
-                    <div className="text-xs font-medium text-gray-300">Best Award Available</div>
-                    <div className="text-[10px] text-gray-500 uppercase">{bestAward.cabin} • {sliceAwardOptions.length} options</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-purple-300">
-                      {bestAward.miles.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      miles
+            return (
+              <div className="px-4 py-2 border-t border-gray-800/30 bg-purple-500/8 border-l-2 border-purple-500/40">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-3.5 w-3.5 text-purple-400" />
+                    <div>
+                      <div className="text-xs font-semibold text-white">Best Award Available</div>
+                      <div className="text-[10px] text-gray-400">{bestAward.cabin} • {sliceAwardOptions.length} options</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-green-400">
-                      + ${bestAward.tax.toFixed(2)}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      taxes/fees
-                    </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-purple-300 font-semibold">{bestAward.miles.toLocaleString()} mi</span>
+                    <span className="text-gray-500">+</span>
+                    <span className="text-success-400 font-semibold">${bestAward.tax.toFixed(2)}</span>
+                    <span className="text-gray-500">=</span>
+                    <span className="text-purple-200 font-semibold">${cashValue.toFixed(2)}</span>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-purple-200">
-                      ${cashValue.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-gray-400">
-                      total value
-                    </div>
-                  </div>
-                  {/* View JSON Button - Development Tool */}
-                  <button
-                    onClick={() => setShowV2EnrichmentViewer(true)}
-                    className="p-1.5 hover:bg-purple-500/20 rounded transition-colors"
-                    title="View V2 Enrichment JSON"
-                  >
-                    <Code className="h-4 w-4 text-purple-400" />
-                  </button>
                 </div>
               </div>
-            </div>
-          );
-        })()}
-
-        {/* Action Buttons Row */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
-              {/* Match Type Badge - Left Side */}
-              {matchType && matchType !== 'none' && (
-                <div>
-                  {matchType === 'exact' && (
-                    <span className="inline-flex items-center px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full font-medium border border-green-500/30">
-                      Aero Full Match
-                    </span>
-                  )}
-                  {matchType === 'partial' && (
-                    <span className="inline-flex items-center px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full font-medium border border-yellow-500/30">
-                      Aero Partial Match
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setShowSummaryModal(true)}
-                className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 hover:text-purple-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-                title="View Flight Details"
-              >
-                <Eye className="h-3 w-3" />
-                Details
-              </button>
-
-              {/* Mileage Enrichment Button - Only show if no enrichment data exists for this carrier at all */}
-              {onEnrichFlight && !hasAnyEnrichmentForCarrier && !isEnriching && (
-                <button
-                  onClick={handleEnrichClick}
-                  className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 hover:text-amber-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-                  title="Find Award Availability"
-                >
-                  <Award className="h-3 w-3" />
-                  Find Awards
-                </button>
-              )}
-
-              <button
-                onClick={openHacksPage}
-                className="bg-accent-500/20 hover:bg-accent-500/30 text-accent-400 hover:text-accent-300 px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1"
-              >
-                <Target className="h-3 w-3" />
-                Hacks
-              </button>
-              <button
-                onClick={() => {
-                  if (addedItems.has('flight')) {
-                    // Remove flight and all associated mileage/awards
-                    const newSet = new Set(addedItems);
-                    newSet.delete('flight');
-                    // Remove all aero and award items for this flight
-                    Array.from(newSet).forEach(item => {
-                      if (item.startsWith('aero-') || item.startsWith('award-')) {
-                        newSet.delete(item);
-                      }
-                    });
-                    setAddedItems(newSet);
-                    setPendingItems(prev => prev.filter(item => item.type !== 'flight' && !item.id.startsWith('aero-') && !item.id.startsWith('award-')));
-                    setShowAddToProposal(false);
-                    setSelectedMileageFlight(null);
-                  } else {
-                    // Add flight
-                    setAddedItems(prev => new Set(prev).add('flight'));
-                    setPendingItems(prev => {
-                      // Remove any existing flight entry and add new one
-                      const filtered = prev.filter(item => item.type !== 'flight');
-                      return [...filtered, { type: 'flight', id: 'flight', data: flight }];
-                    });
-                    setShowAddToProposal(true);
-                  }
-                }}
-                onMouseEnter={() => {
-                  if (addedItems.has('flight')) {
-                    setHoveredAddButton('flight');
-                  } else if (addedItems.size > 0) {
-                    setHoveredAddButton('flight');
-                  }
-                }}
-                onMouseLeave={() => setHoveredAddButton(null)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1 ${
-                  addedItems.has('flight')
-                    ? 'bg-green-500/20 hover:bg-red-500/20 text-green-400 hover:text-red-400 border border-green-500/30 hover:border-red-500/30'
-                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300'
-                }`}
-              >
-                {addedItems.has('flight') ? (
-                  <>
-                    <span className="text-xs">✓</span>
-                    {hoveredAddButton === 'flight' ? 'Remove' : 'Added'}
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-3 w-3" />
-                    {hoveredAddButton === 'flight' && addedItems.size > 0 ? 'Replace' : 'Add to proposal'}
-                  </>
-                )}
-              </button>
+            );
+          })()}
         </div>
-      </div>
+      )}
 
-      {/* Flight Details - Multiple Slices */}
-      <div className="px-3 sm:px-4 lg:px-6 py-4">
-        {slices.map((slice, sliceIndex) => (
+      {/* Flight Details - Multiple Slices - Only when expanded */}
+      {isExpanded && (
+        <div className="px-4 py-3 bg-gray-850/20 border-t border-gray-800/30">
+          {slices.map((slice, sliceIndex) => (
           <div key={sliceIndex} className={sliceIndex > 0 ? 'border-t border-gray-700 pt-3 lg:pt-4 mt-3 lg:mt-4' : ''}>
             {/* Slice Label */}
             <div className="flex items-center gap-2 mb-2 lg:mb-3">
@@ -1650,10 +2238,92 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
+            {/* Cabin Filter Bar - Quick filter for all mileage options */}
+            {(() => {
+              // Collect all available cabins from both Aero and Award options
+              const allCabins = new Set<string>();
+              
+              // From Aero flights
+              if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
+                slice.mileageBreakdown.forEach(breakdown => {
+                  if (breakdown.allMatchingFlights) {
+                    breakdown.allMatchingFlights.forEach((flight: any) => {
+                      const cabin = (flight.cabin || 'COACH').toUpperCase();
+                      allCabins.add(cabin);
+                    });
+                  }
+                });
+              }
+              
+              // From Award options
+              if (hasAwardOptions) {
+                allAwardOptions.forEach(award => {
+                  if (award.cabin) {
+                    allCabins.add(award.cabin.toUpperCase());
+                  }
+                });
+              }
+              
+              if (allCabins.size <= 1) return null; // No need to filter if only one cabin
+              
+              const cabinOrder = ['FIRST', 'BUSINESS', 'PREMIUM_ECONOMY', 'PREMIUM', 'ECONOMY', 'COACH'];
+              const sortedCabins = Array.from(allCabins).sort((a, b) => {
+                const aIndex = cabinOrder.indexOf(a) !== -1 ? cabinOrder.indexOf(a) : 999;
+                const bIndex = cabinOrder.indexOf(b) !== -1 ? cabinOrder.indexOf(b) : 999;
+                return aIndex - bIndex;
+              });
+              
+              const cabinDisplayMap: Record<string, string> = {
+                'COACH': 'Economy',
+                'ECONOMY': 'Economy',
+                'PREMIUM': 'Premium',
+                'PREMIUM_ECONOMY': 'Premium',
+                'BUSINESS': 'Business',
+                'FIRST': 'First'
+              };
+              
+              const selectedCabin = selectedCabinFilter[sliceIndex];
+              
+              return (
+                <div className="mb-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-400 font-medium">Filter by Cabin:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => setSelectedCabinFilter(prev => ({ ...prev, [sliceIndex]: null }))}
+                      className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                        !selectedCabin
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          : 'bg-gray-800/50 text-gray-400 hover:text-gray-300 border border-gray-700/50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {sortedCabins.map(cabin => (
+                      <button
+                        key={cabin}
+                        onClick={() => setSelectedCabinFilter(prev => ({ ...prev, [sliceIndex]: cabin }))}
+                        className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
+                          selectedCabin === cabin
+                            ? cabin === 'BUSINESS' || cabin === 'FIRST'
+                              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                              : cabin === 'PREMIUM' || cabin === 'PREMIUM_ECONOMY'
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              : 'bg-gray-700/50 text-gray-300 border border-gray-600'
+                            : 'bg-gray-800/50 text-gray-400 hover:text-gray-300 border border-gray-700/50'
+                        }`}
+                      >
+                        {cabinDisplayMap[cabin] || cabin}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Mileage Options Section - Combined Aero and Award with Tabs */}
             {((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
               // Check if we have award options for this slice
-              const sliceAwardOptions = hasAwardOptions ? allAwardOptions.filter(award => {
+              let sliceAwardOptions = hasAwardOptions ? allAwardOptions.filter(award => {
                 // First check enrichment segment metadata (more reliable for route matching)
                 if (award.enrichmentOrigin && award.enrichmentDestination) {
                   if (award.enrichmentOrigin === slice.origin.code &&
@@ -1671,6 +2341,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 const awardDest = lastSegment.arrival?.iataCode;
                 return awardOrigin === slice.origin.code && awardDest === slice.destination.code;
               }) : [];
+              
+              // Apply cabin filter if set
+              const globalCabinFilter = selectedCabinFilter[sliceIndex];
+              if (globalCabinFilter && sliceAwardOptions.length > 0) {
+                sliceAwardOptions = sliceAwardOptions.filter(award => {
+                  const awardCabin = (award.cabin || 'COACH').toUpperCase();
+                  return awardCabin === globalCabinFilter;
+                });
+              }
 
               const hasAeroForSlice = slice.mileageBreakdown && slice.mileageBreakdown.length > 0;
               const hasAwardForSlice = sliceAwardOptions.length > 0;
@@ -1865,9 +2544,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         };
 
                         // Get flights for active cabin (or all if no cabin tabs needed)
-                        const activeCabinFlights = availableCabins.length > 1 && activeCabinTab 
+                        let activeCabinFlights = availableCabins.length > 1 && activeCabinTab 
                           ? flightsByCabin.get(activeCabinTab) || [] 
                           : filteredFlights;
+                        
+                        // Apply global cabin filter if set
+                        const globalCabinFilter = selectedCabinFilter[sliceIndex];
+                        if (globalCabinFilter) {
+                          activeCabinFlights = activeCabinFlights.filter(flight => {
+                            const flightCabin = (flight.cabin || 'COACH').toUpperCase();
+                            return flightCabin === globalCabinFilter;
+                          });
+                        }
 
                         return (
                           <div key={airlineKey} className="mt-3 bg-purple-900/10 p-3 rounded border border-purple-500/20">
@@ -1979,7 +2667,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                   const altFlight = group.primary;
                                   const altIndex = groupIndex;
                                   const alternativeKey = `${sliceIndex}-${airlineKey}-${groupIndex}`;
-                                  const showAlternatives = showAlternativeTimes[alternativeKey] || false;
+                                  const hasAlternatives = (group.alternativeArrivals && group.alternativeArrivals.length > 0) || 
+                                                         (group.alternativeLayovers && group.alternativeLayovers.length > 0);
                                   
                                   // Calculate time difference
                                   const flightTime = new Date(altFlight.departure.at).getTime();
@@ -2028,6 +2717,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                           />
                                           <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
                                           <span className="text-xs text-gray-400">{carrierName}</span>
+                                          {hasAlternatives && (
+                                            <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-medium rounded border border-blue-500/30">
+                                              +{((group.alternativeArrivals?.length || 0) + (group.alternativeLayovers?.length || 0))} similar
+                                            </span>
+                                          )}
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
                                           <div className="flex items-center gap-2">
@@ -2159,34 +2853,44 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                         />
                                       </div>
 
-                                      {/* Alternative Times Button */}
-                                      {group.alternativeTimes.length > 0 && (
+                                      {/* Alternative Arrivals - Same flight, different arrival times */}
+                                      {group.alternativeArrivals && group.alternativeArrivals.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-gray-700">
                                           <button
-                                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [alternativeKey]: !showAlternatives}))}
+                                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [`${alternativeKey}-arrivals`]: !showAlternativeTimes[`${alternativeKey}-arrivals`]}))}
                                             className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
                                           >
                                             <span className="text-xs font-medium text-gray-300">
-                                              {group.alternativeTimes.length} alternative time{group.alternativeTimes.length !== 1 ? 's' : ''}
+                                              {group.alternativeArrivals.length} alternative arrival{group.alternativeArrivals.length !== 1 ? 's' : ''} (same route)
                                             </span>
-                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternatives ? 'rotate-180' : ''}`} />
+                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternativeTimes[`${alternativeKey}-arrivals`] ? 'rotate-180' : ''}`} />
                                           </button>
 
-                                          {/* Alternative Times List */}
-                                          {showAlternatives && (
+                                          {/* Alternative Arrivals List */}
+                                          {showAlternativeTimes[`${alternativeKey}-arrivals`] && (
                                             <div className="mt-2 space-y-2">
-                                              {group.alternativeTimes.map((altTime: any, altTimeIdx: number) => {
-                                                const altDepTime = formatTimeInOriginTZ(altTime.departure.at);
-                                                const altDepDate = formatDateInOriginTZ(altTime.departure.at);
-                                                const altArrTime = formatTimeInOriginTZ(altTime.arrival.at);
-                                                const altArrDate = formatDateInOriginTZ(altTime.arrival.at);
+                                              {group.alternativeArrivals.map((altArrival: any, altArrivalIdx: number) => {
+                                                const altDepTime = formatTimeInOriginTZ(altArrival.departure?.at || altArrival.departure);
+                                                const altDepDate = formatDateInOriginTZ(altArrival.departure?.at || altArrival.departure);
+                                                const altArrTime = formatTimeInOriginTZ(altArrival.arrival?.at || altArrival.arrival);
+                                                const altArrDate = formatDateInOriginTZ(altArrival.arrival?.at || altArrival.arrival);
+                                                
+                                                // Calculate duration difference
+                                                const primaryArr = new Date(altFlight.arrival?.at || altFlight.arrival).getTime();
+                                                const altArr = new Date(altArrival.arrival?.at || altArrival.arrival).getTime();
+                                                const diffMinutes = Math.round((altArr - primaryArr) / (1000 * 60));
+                                                const diffHours = Math.floor(Math.abs(diffMinutes) / 60);
+                                                const diffMins = Math.abs(diffMinutes) % 60;
+                                                const diffStr = diffMinutes > 0 
+                                                  ? `+${diffHours > 0 ? `${diffHours}h ` : ''}${diffMins}m`
+                                                  : `-${diffHours > 0 ? `${diffHours}h ` : ''}${diffMins}m`;
 
                                                 return (
                                                   <div
-                                                    key={altTimeIdx}
+                                                    key={altArrivalIdx}
                                                     className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
                                                   >
-                                                    <div className="flex items-center gap-2 flex-1">
+                                                    <div className="flex items-center gap-3 flex-1">
                                                       <div className="text-xs">
                                                         <div className="text-white font-medium">{altDepTime}</div>
                                                         <div className="text-gray-400">{altDepDate}</div>
@@ -2196,13 +2900,98 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                                         <div className="text-white font-medium">{altArrTime}</div>
                                                         <div className="text-gray-400">{altArrDate}</div>
                                                       </div>
+                                                      <div className="text-[10px] text-warning-400 font-medium">
+                                                        {diffStr}
+                                                      </div>
+                                                      {altArrival.mileage && (
+                                                        <div className="text-[10px] text-gray-500">
+                                                          {altArrival.mileage.toLocaleString()} mi
+                                                        </div>
+                                                      )}
                                                     </div>
                                                     <button
                                                       onClick={() => {
-                                                        setSelectedMileageFlight(altTime);
+                                                        setSelectedMileageFlight(altArrival);
                                                         setShowAddToProposal(true);
                                                       }}
                                                       className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                                    >
+                                                      <Plus className="h-3 w-3" />
+                                                      Add
+                                                    </button>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Alternative Layovers - Same flight, different layovers/routes */}
+                                      {group.alternativeLayovers && group.alternativeLayovers.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-gray-700">
+                                          <button
+                                            onClick={() => setShowAlternativeTimes(prev => ({...prev, [`${alternativeKey}-layovers`]: !showAlternativeTimes[`${alternativeKey}-layovers`]}))}
+                                            className="w-full flex items-center justify-between px-3 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors"
+                                          >
+                                            <span className="text-xs font-medium text-gray-300">
+                                              {group.alternativeLayovers.length} alternative route{group.alternativeLayovers.length !== 1 ? 's' : ''} (different layovers)
+                                            </span>
+                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showAlternativeTimes[`${alternativeKey}-layovers`] ? 'rotate-180' : ''}`} />
+                                          </button>
+
+                                          {/* Alternative Layovers List */}
+                                          {showAlternativeTimes[`${alternativeKey}-layovers`] && (
+                                            <div className="mt-2 space-y-2">
+                                              {group.alternativeLayovers.map((altLayover: any, altLayoverIdx: number) => {
+                                                const altDepTime = formatTimeInOriginTZ(altLayover.departure?.at || altLayover.departure);
+                                                const altDepDate = formatDateInOriginTZ(altLayover.departure?.at || altLayover.departure);
+                                                const altArrTime = formatTimeInOriginTZ(altLayover.arrival?.at || altLayover.arrival);
+                                                const altArrDate = formatDateInOriginTZ(altLayover.arrival?.at || altLayover.arrival);
+                                                
+                                                // Get layover info
+                                                const layovers = altLayover.stops?.map((s: any) => typeof s === 'string' ? s : (s.code || s.iataCode)) || [];
+                                                const layoverStr = layovers.length > 0 ? layovers.join(', ') : 'Direct';
+                                                
+                                                // Build route string
+                                                const origin = altLayover.departure?.iataCode || '';
+                                                const destination = altLayover.arrival?.iataCode || '';
+                                                const routeStr = layovers.length > 0 
+                                                  ? `${origin} → ${layovers.join(' → ')} → ${destination}`
+                                                  : `${origin} → ${destination}`;
+
+                                                return (
+                                                  <div
+                                                    key={altLayoverIdx}
+                                                    className="flex items-center justify-between px-3 py-2 bg-gray-800/30 rounded border border-gray-700/50"
+                                                  >
+                                                    <div className="flex flex-col gap-1.5 flex-1">
+                                                      <div className="flex items-center gap-3">
+                                                        <div className="text-xs">
+                                                          <div className="text-white font-medium">{altDepTime}</div>
+                                                          <div className="text-gray-400">{altDepDate}</div>
+                                                        </div>
+                                                        <div className="text-gray-500">→</div>
+                                                        <div className="text-xs">
+                                                          <div className="text-white font-medium">{altArrTime}</div>
+                                                          <div className="text-gray-400">{altArrDate}</div>
+                                                        </div>
+                                                        {altLayover.mileage && (
+                                                          <div className="text-[10px] text-gray-500">
+                                                            {altLayover.mileage.toLocaleString()} mi
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                      <div className="text-[10px] text-gray-500 font-mono">
+                                                        {routeStr}
+                                                      </div>
+                                                    </div>
+                                                    <button
+                                                      onClick={() => {
+                                                        setSelectedMileageFlight(altLayover);
+                                                        setShowAddToProposal(true);
+                                                      }}
+                                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1 ml-2"
                                                     >
                                                       <Plus className="h-3 w-3" />
                                                       Add
@@ -2331,34 +3120,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             })()}
           </div>
         ))}
-      </div>
-
-
-      {/* Add to Proposal Modal */}
-      {showAddToProposal && (
-        <AddToProposalModal
-          flight={flight}
-          selectedMileageFlight={selectedMileageFlight}
-          pendingItems={pendingItems}
-          perCentValue={perCentValue}
-          flightCardId={flightCardId}
-          onClose={() => {
-            setShowAddToProposal(false);
-            setSelectedMileageFlight(null);
-            // Keep addedItems set to show "Added" state - user can click Remove to clear it
-          }}
-          onItemRemoved={(itemId) => {
-            setAddedItems(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(itemId);
-              return newSet;
-            });
-            setPendingItems(prev => prev.filter(item => item.id !== itemId));
-          }}
-        />
+        </div>
       )}
-
     </div>
+
+    {/* Add to Proposal Modal */}
+    {showAddToProposal && (
+      <AddToProposalModal
+        flight={flight}
+        selectedMileageFlight={selectedMileageFlight}
+        pendingItems={pendingItems}
+        perCentValue={perCentValue}
+        flightCardId={('id' in flight ? flight.id : undefined) || `flight-${Date.now()}`}
+        onClose={() => {
+          setShowAddToProposal(false);
+          setSelectedMileageFlight(null);
+          // Keep addedItems set to show "Added" state - user can click Remove to clear it
+        }}
+        onItemRemoved={(itemId) => {
+          setAddedItems(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(itemId);
+            return newSet;
+          });
+          setPendingItems(prev => prev.filter(item => item.id !== itemId));
+        }}
+      />
+    )}
 
     {/* V2 Enrichment JSON Viewer - Development Tool */}
     {showV2EnrichmentViewer && (
