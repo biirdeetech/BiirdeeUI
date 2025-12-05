@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code } from 'lucide-react';
 import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
@@ -307,8 +307,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   // Proposal context available but not directly used in this component
   // const { addToProposal: addToProposalContext, removeFromProposal } = useProposalContext();
   
-  // Get flightId - available for regular flights, not grouped flights
-  const flightId = ('id' in flight ? flight.id : undefined) || (flightData as any).flightId;
+  // Get flightId - use displayed flight if available, otherwise use original flight
+  const flightId = ('id' in flightToDisplay ? flightToDisplay.id : undefined) || 
+                   ('id' in flight ? flight.id : undefined) || 
+                   (flightData as any).flightId;
   
   // Check if flight has price variations (from deduplication of identical flights)
   // This is now handled per-cabin in getCabinPricing
@@ -368,6 +370,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   };
 
+  // Helper to extract date from ISO string (YYYY-MM-DD) without timezone conversion
+  const getDateFromISO = (isoString: string): string => {
+    if (!isoString) return '';
+    // Extract date part (YYYY-MM-DD) from ISO string before timezone conversion
+    const dateMatch = isoString.match(/^(\d{4}-\d{2}-\d{2})/);
+    return dateMatch ? dateMatch[1] : '';
+  };
+
   // Helper to get flight signature for time option grouping (same airline, origin, destination, day)
   const getTimeOptionSignature = (f: FlightSolution | GroupedFlight) => {
     const airlineCode = getFlightAirlineCode(f);
@@ -376,13 +386,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       const lastSlice = f.slices[f.slices.length - 1];
       const origin = firstSlice.origin?.code || '';
       const destination = lastSlice.destination?.code || '';
-      const departureDate = firstSlice.departure ? new Date(firstSlice.departure).toDateString() : '';
+      const departureDate = firstSlice.departure ? getDateFromISO(firstSlice.departure) : '';
       const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
       return `${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
     } else {
       const origin = f.outboundSlice.origin?.code || '';
       const destination = f.outboundSlice.destination?.code || '';
-      const departureDate = f.outboundSlice.departure ? new Date(f.outboundSlice.departure).toDateString() : '';
+      const departureDate = f.outboundSlice.departure ? getDateFromISO(f.outboundSlice.departure) : '';
       const cabin = f.outboundSlice.cabins?.join(',') || 'UNKNOWN';
       return `${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
     }
@@ -404,16 +414,23 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   };
 
   // Helper to get cabin pricing and time options from similar flights
+  // IMPORTANT: Only includes flights from the same airline as the primary flight
   const getCabinPricing = (cabinName: string) => {
     // Normalize cabin names
+    // Note: PREMIUM-COACH maps to ECONOMY for display purposes since we don't have a separate PREMIUM_ECONOMY button
     const normalizeCabin = (cabin: string) => {
       const c = cabin.toUpperCase();
       if (c.includes('FIRST')) return 'FIRST';
       if (c.includes('BUSINESS') && c.includes('PREMIUM')) return 'BUSINESS_PREMIUM';
       if (c.includes('BUSINESS')) return 'BUSINESS';
-      if (c.includes('PREMIUM')) return 'PREMIUM_ECONOMY';
+      // PREMIUM-COACH maps to ECONOMY for button display
+      if (c.includes('PREMIUM') || c.includes('PREMIUM-COACH') || c.includes('PREMIUM_COACH')) return 'ECONOMY';
       return 'ECONOMY';
     };
+
+    // Get the primary airline code - all flights must match this airline
+    const primaryAirlineCode = getFlightAirlineCode(flight);
+    if (!primaryAirlineCode) return null; // Can't determine airline, skip
 
     const targetCabin = normalizeCabin(cabinName);
     const matchingFlights: Array<{ 
@@ -426,22 +443,92 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       timeOptionKey: string;
     }> = [];
     
-    // Check current flight first
-    const currentCabin = slices[0]?.cabins?.[0] || '';
-    if (normalizeCabin(currentCabin) === targetCabin) {
-      matchingFlights.push({
-        price: displayTotal,
-        currency: currency,
-        flight: flight,
-        duration: slices.reduce((sum, s) => sum + s.duration, 0),
-        priceOptionSig: getPriceOptionSignature(flight),
-        timeOptionSig: getTimeOptionSignature(flight),
-        timeOptionKey: getTimeOptionKey(flight)
-      });
+    // Helper to check if a flight matches the primary airline
+    const matchesAirline = (f: FlightSolution | GroupedFlight): boolean => {
+      const airlineCode = getFlightAirlineCode(f);
+      return airlineCode === primaryAirlineCode;
+    };
+    
+    // Always include the original flight first (for stable price option signature)
+    // But only if it matches the airline (it should, but check anyway)
+    if (matchesAirline(flight)) {
+      const originalSlices = 'id' in flight ? flight.slices : [flight.outboundSlice];
+      const originalDisplayTotal = 'id' in flight 
+        ? (flight.displayTotal || flight.totalAmount || 0)
+        : (flight.returnOptions?.[0]?.displayTotal || flight.returnOptions?.[0]?.totalAmount || 0);
+      const originalCurrency = 'id' in flight 
+        ? (flight.currency || 'USD')
+        : (flight.returnOptions?.[0]?.currency || 'USD');
+      
+      // Check original flight first (only use first slice cabin - departing cabin)
+      const originalCabin = originalSlices[0]?.cabins?.[0] || '';
+      const normalizedOriginalCabin = normalizeCabin(originalCabin);
+      const originalCabinUpper = originalCabin.toUpperCase();
+      
+      // For ECONOMY cabin, also include PREMIUM-COACH flights
+      if (normalizedOriginalCabin === targetCabin || 
+          (targetCabin === 'ECONOMY' && (originalCabinUpper.includes('PREMIUM') || originalCabinUpper.includes('PREMIUM-COACH') || originalCabinUpper.includes('PREMIUM_COACH')))) {
+        matchingFlights.push({
+          price: originalDisplayTotal,
+          currency: originalCurrency,
+          flight: flight,
+          duration: originalSlices.reduce((sum, s) => sum + (s.duration || 0), 0),
+          priceOptionSig: getPriceOptionSignature(flight),
+          timeOptionSig: getTimeOptionSignature(flight),
+          timeOptionKey: getTimeOptionKey(flight)
+        });
+      }
+    }
+    
+    // Also include displayedFlight if it's different from the original flight AND matches airline
+    if (displayedFlight && matchesAirline(displayedFlight)) {
+      const isDifferent = 'id' in flight && 'id' in displayedFlight
+        ? flight.id !== displayedFlight.id
+        : flight !== displayedFlight;
+      
+      if (isDifferent) {
+        const displayedSlices = 'id' in displayedFlight ? displayedFlight.slices : [displayedFlight.outboundSlice];
+        const displayedDisplayTotal = 'id' in displayedFlight 
+          ? (displayedFlight.displayTotal || displayedFlight.totalAmount || 0)
+          : (displayedFlight.returnOptions?.[0]?.displayTotal || displayedFlight.returnOptions?.[0]?.totalAmount || 0);
+        const displayedCurrency = 'id' in displayedFlight 
+          ? (displayedFlight.currency || 'USD')
+          : (displayedFlight.returnOptions?.[0]?.currency || 'USD');
+        
+        const displayedCabin = displayedSlices[0]?.cabins?.[0] || '';
+        const normalizedDisplayedCabin = normalizeCabin(displayedCabin);
+        const displayedCabinUpper = displayedCabin.toUpperCase();
+        if (normalizedDisplayedCabin === targetCabin || 
+            (targetCabin === 'ECONOMY' && (displayedCabinUpper.includes('PREMIUM') || displayedCabinUpper.includes('PREMIUM-COACH') || displayedCabinUpper.includes('PREMIUM_COACH')))) {
+          // Check if this flight is already in matchingFlights (avoid duplicates)
+          const alreadyIncluded = matchingFlights.some(f => {
+            const fId = 'id' in f.flight ? f.flight.id : null;
+            const dId = 'id' in displayedFlight ? displayedFlight.id : null;
+            return fId && dId ? fId === dId : f.flight === displayedFlight;
+          });
+          
+          if (!alreadyIncluded) {
+            matchingFlights.push({
+              price: displayedDisplayTotal,
+              currency: displayedCurrency,
+              flight: displayedFlight,
+              duration: displayedSlices.reduce((sum, s) => sum + (s.duration || 0), 0),
+              priceOptionSig: getPriceOptionSignature(displayedFlight),
+              timeOptionSig: getTimeOptionSignature(displayedFlight),
+              timeOptionKey: getTimeOptionKey(displayedFlight)
+            });
+          }
+        }
+      }
     }
 
-    // Check similar flights
+    // Check similar flights - ONLY include flights from the same airline
     for (const similarFlight of similarFlights) {
+      // CRITICAL: Only include flights from the same airline
+      if (!matchesAirline(similarFlight)) {
+        continue; // Skip flights from different airlines
+      }
+
       let similarSlices: any[] = [];
       let similarPrice = 0;
       let similarCurrency = 'USD';
@@ -458,7 +545,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       }
 
       const similarCabin = similarSlices[0]?.cabins?.[0] || '';
-      if (normalizeCabin(similarCabin) === targetCabin && similarPrice > 0) {
+      const normalizedSimilarCabin = normalizeCabin(similarCabin);
+      const similarCabinUpper = similarCabin.toUpperCase();
+      if ((normalizedSimilarCabin === targetCabin || 
+           (targetCabin === 'ECONOMY' && (similarCabinUpper.includes('PREMIUM') || similarCabinUpper.includes('PREMIUM-COACH') || similarCabinUpper.includes('PREMIUM_COACH')))) 
+          && similarPrice > 0) {
         matchingFlights.push({
           price: similarPrice,
           currency: similarCurrency,
@@ -474,8 +565,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     if (matchingFlights.length === 0) return null;
 
     // Get primary flight signature for comparison
+    // IMPORTANT: Always use the original flight for price option signature
+    // This ensures price options remain stable when displayedFlight changes
+    // Price options should show ALL prices for flights with the same carrier, origin, departure time
     const primaryPriceSig = getPriceOptionSignature(flight);
-    const primaryTimeSig = getTimeOptionSignature(flight);
+    
+    // For time options, use displayedFlight if available to show correct time options for current selection
+    const primaryTimeSig = getTimeOptionSignature(displayedFlight || flight);
 
     // Group flights by price option (same carrier, origin, departure time)
     const priceOptionGroups = new Map<string, typeof matchingFlights>();
@@ -496,22 +592,58 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     });
 
     // Get price options (flights with same price option signature as primary)
-    // Include the current flight itself in the count
+    // IMPORTANT: Use ALL flights with the same price option signature AND same airline, not just the primary
+    // This ensures all prices are shown even when time options change, but only for the same airline
     const priceOptionFlights = priceOptionGroups.get(primaryPriceSig) || [];
-    const uniquePriceOptionPrices = [...new Set(priceOptionFlights.map(f => f.price))];
+    
+    // Filter price option flights to ensure they're all from the same airline
+    // (matchingFlights should already be filtered, but double-check)
+    let allPriceOptionFlights = priceOptionFlights.filter(f => matchesAirline(f.flight));
+    
+    // If no flights found with primary price sig, check if there are any flights with similar price sigs
+    // This handles cases where flights share the same departure time but have different signatures
+    if (allPriceOptionFlights.length === 0) {
+      // Fallback: collect all flights that share the same airline, origin, and departure time
+      // Always use original flight to ensure price options remain stable
+      const primaryOrigin = 'id' in flight 
+        ? flight.slices[0]?.origin?.code 
+        : flight.outboundSlice?.origin?.code;
+      const primaryDepTime = 'id' in flight
+        ? flight.slices[0]?.departure
+        : flight.outboundSlice?.departure;
+      
+      if (primaryOrigin && primaryDepTime) {
+        allPriceOptionFlights = matchingFlights.filter(f => {
+          // Already filtered by airline in matchingFlights, but verify
+          if (!matchesAirline(f.flight)) return false;
+          
+          const fOrigin = 'id' in f.flight 
+            ? f.flight.slices[0]?.origin?.code 
+            : f.flight.outboundSlice?.origin?.code;
+          const fDepTime = 'id' in f.flight
+            ? f.flight.slices[0]?.departure
+            : f.flight.outboundSlice?.departure;
+          
+          return fOrigin === primaryOrigin && 
+                 fDepTime === primaryDepTime;
+        });
+      }
+    }
+    
+    const uniquePriceOptionPrices = [...new Set(allPriceOptionFlights.map(f => f.price))];
     const priceOptions = uniquePriceOptionPrices.length > 1 ? {
       allPrices: uniquePriceOptionPrices.sort((a, b) => a - b),
-      flightsByPrice: new Map<number, typeof priceOptionFlights>(
+      flightsByPrice: new Map<number, typeof allPriceOptionFlights>(
         uniquePriceOptionPrices.map(price => [
           price,
-          priceOptionFlights.filter(f => f.price === price)
+          allPriceOptionFlights.filter(f => f.price === price)
         ])
       )
     } : null;
 
     // Get time options (flights with same time option signature as primary)
-    // Include the current flight itself in the count
-    const timeOptionFlights = timeOptionGroups.get(primaryTimeSig) || [];
+    // Filter to ensure all flights are from the same airline
+    const timeOptionFlights = (timeOptionGroups.get(primaryTimeSig) || []).filter(f => matchesAirline(f.flight));
     const uniqueTimeOptionKeys = [...new Set(timeOptionFlights.map(f => f.timeOptionKey))];
     const timeOptions = uniqueTimeOptionKeys.length > 1 ? {
       allTimeKeys: uniqueTimeOptionKeys.sort(),
@@ -559,28 +691,53 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   };
 
   // Get pricing for all cabins
-  const cabinPricing = {
+  // Recalculate when displayedFlight changes to ensure price options are always accurate
+  const cabinPricing = useMemo(() => ({
     ECONOMY: getCabinPricing('ECONOMY'),
     BUSINESS: getCabinPricing('BUSINESS'),
     BUSINESS_PREMIUM: getCabinPricing('BUSINESS PREMIUM'),
     FIRST: getCabinPricing('FIRST')
-  };
+  }), [displayedFlight, flight, similarFlights, displayTotal, currency, slices]);
 
-  // Set default selected cabin to current flight's cabin
+  // Set default selected cabin to current flight's cabin (only use departing/first slice cabin)
   useEffect(() => {
     if (!selectedCabin && slices[0]?.cabins?.[0]) {
       const currentCabin = slices[0].cabins[0].toUpperCase();
+      let cabinToSelect: string | null = null;
+      
       if (currentCabin.includes('FIRST')) {
-        setSelectedCabin('FIRST');
+        cabinToSelect = 'FIRST';
       } else if (currentCabin.includes('BUSINESS') && currentCabin.includes('PREMIUM')) {
-        setSelectedCabin('BUSINESS_PREMIUM');
+        cabinToSelect = 'BUSINESS_PREMIUM';
       } else if (currentCabin.includes('BUSINESS')) {
-        setSelectedCabin('BUSINESS');
+        cabinToSelect = 'BUSINESS';
+      } else if (currentCabin.includes('PREMIUM')) {
+        // PREMIUM-COACH maps to ECONOMY button for display
+        cabinToSelect = 'ECONOMY';
       } else {
-        setSelectedCabin('ECONOMY');
+        cabinToSelect = 'ECONOMY';
+      }
+      
+      // Only set if the cabin has pricing available and a valid price
+      if (cabinToSelect) {
+        const pricing = cabinPricing[cabinToSelect as keyof typeof cabinPricing];
+        // Check if pricing exists and has a valid price (not null/0)
+        if (pricing && pricing.price > 0) {
+          setSelectedCabin(cabinToSelect);
+        } else {
+          // If the mapped cabin doesn't have pricing, try to find the first available cabin with pricing
+          const availableCabins = ['FIRST', 'BUSINESS_PREMIUM', 'BUSINESS', 'ECONOMY'] as const;
+          for (const cabin of availableCabins) {
+            const cabinPricingData = cabinPricing[cabin];
+            if (cabinPricingData && cabinPricingData.price > 0) {
+              setSelectedCabin(cabin);
+              break;
+            }
+          }
+        }
       }
     }
-  }, [slices, selectedCabin]);
+  }, [slices, selectedCabin, cabinPricing]);
 
   // Removed console.log for production
 
@@ -1086,11 +1243,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     return diffDays;
   };
 
+  // Helper to format day difference indicator text
+  const formatDayIndicator = (dayDiff: number) => {
+    if (dayDiff === 1) return 'Next day';
+    if (dayDiff === 2) return '+2 days';
+    return `+${dayDiff} days`;
+  };
+
   const formatPrice = (price: number, currencyCode: string, showPlus: boolean = false) => {
-    // Format number with commas
+    // Format number with commas, preserving decimals if they exist (up to 1 decimal place)
+    // This matches the precision shown in the top tabs
     const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 1
     }).format(price);
 
     // Return with currency code prefix and optional "+"
@@ -1149,6 +1314,59 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   };
 
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Auto-sync price option when dropdown opens or displayed flight/time option changes
+  useEffect(() => {
+    if (!isExpanded || !selectedCabin) return;
+    
+    const selectedCabinPricing = cabinPricing[selectedCabin as keyof typeof cabinPricing];
+    if (!selectedCabinPricing?.priceOptions?.flightsByPrice) return;
+
+    // Only update if there's no stored price option for this cabin
+    const currentStoredPrice = selectedPriceOption[selectedCabin];
+    if (currentStoredPrice) return; // Already has a stored price, don't override
+
+    // Helper to find price for a flight
+    const findPriceForFlight = (targetFlight: any): number | null => {
+      if (!selectedCabinPricing.priceOptions?.flightsByPrice) return null;
+      for (const [price, flights] of selectedCabinPricing.priceOptions.flightsByPrice.entries()) {
+        if (flights.some(f => {
+          const fId = 'id' in f.flight ? f.flight.id : null;
+          const tId = 'id' in targetFlight ? targetFlight.id : null;
+          return fId && tId ? fId === tId : f.flight === targetFlight;
+        })) {
+          return price;
+        }
+      }
+      return null;
+    };
+
+    const selectedTime = selectedTimeOption[selectedCabin];
+    
+    // If there's a selected time option, find price that matches both flight and time
+    if (selectedTime && selectedCabinPricing.timeOptions?.flightsByTime) {
+      const flightsAtTime = selectedCabinPricing.timeOptions.flightsByTime.get(selectedTime) || [];
+      const matchingFlight = flightsAtTime.find(f => {
+        const fId = 'id' in f.flight ? f.flight.id : null;
+        const tId = 'id' in flightToDisplay ? flightToDisplay.id : null;
+        return fId && tId ? fId === tId : f.flight === flightToDisplay;
+      });
+      
+      if (matchingFlight) {
+        const priceForFlight = findPriceForFlight(matchingFlight.flight);
+        if (priceForFlight !== null) {
+          setSelectedPriceOption(prev => ({ ...prev, [selectedCabin]: priceForFlight }));
+          return;
+        }
+      }
+    }
+    
+    // Otherwise, find price for displayed flight
+    const priceForFlight = findPriceForFlight(flightToDisplay);
+    if (priceForFlight !== null) {
+      setSelectedPriceOption(prev => ({ ...prev, [selectedCabin]: priceForFlight }));
+    }
+  }, [isExpanded, selectedCabin, displayedFlight, selectedTimeOption, cabinPricing, flightToDisplay]);
 
   // Calculate segment durations and layover times
   const calculateSegmentTimes = (slice: any) => {
@@ -1273,12 +1491,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
               {/* Arrival */}
               <div className="text-left min-w-[65px]">
-                <div className="text-sm font-semibold text-white">
-                  {formatTime(slices[0].arrival)}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-white">
+                    {formatTime(slices[0].arrival)}
+                  </span>
                   {(() => {
                     const dayDiff = getDayDifference(slices[0].departure, slices[0].arrival);
                     if (dayDiff > 0) {
-                      return <span className="text-[10px] text-warning-400 ml-0.5">+{dayDiff}</span>;
+                      return (
+                        <div className="relative">
+                          <span 
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-500/10 text-slate-300 border border-slate-600/30 cursor-help"
+                            onMouseEnter={() => setTooltipStates(prev => ({ ...prev, 'day-indicator-header': true }))}
+                            onMouseLeave={() => setTooltipStates(prev => ({ ...prev, 'day-indicator-header': false }))}
+                          >
+                            +{dayDiff}
+                          </span>
+                          {tooltipStates['day-indicator-header'] && (
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-50 w-32 bg-gray-800/95 border border-gray-700/50 rounded-md shadow-lg p-1.5 text-[10px] text-gray-200 text-center backdrop-blur-sm">
+                              Arrives {formatDayIndicator(dayDiff).toLowerCase()}
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-800/95 border-r border-b border-gray-700/50 transform rotate-45 -mt-1"></div>
+                            </div>
+                          )}
+                        </div>
+                      );
                     }
                     return null;
                   })()}
@@ -1301,7 +1537,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               )}
               {/* Cabin Class */}
               {slices[0].cabins && slices[0].cabins.length > 0 && (
-                <div className="text-[10px] text-accent-400 font-medium mt-0.5">
+                <div className="text-[10px] text-teal-300 font-medium mt-0.5">
                   {slices[0].cabins[0]}
                 </div>
               )}
@@ -1319,7 +1555,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             
             {/* Round Trip Badge */}
             {slices.length > 1 && (
-              <div className="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-[10px] font-medium rounded border border-blue-500/30">
+              <div className="px-2 py-0.5 bg-slate-500/10 text-slate-300 text-[10px] font-medium rounded border border-slate-600/30">
                 {slices.length === 2 ? 'Round Trip' : `${slices.length} Legs`}
               </div>
             )}
@@ -1329,7 +1565,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               <div className={`px-2 py-0.5 text-[10px] font-medium rounded border ${
                 matchType === 'exact'
                   ? 'bg-success-500/15 text-success-400 border-success-500/30'
-                  : 'bg-warning-500/15 text-warning-400 border-warning-500/30'
+                  : 'bg-amber-500/10 text-amber-300 border-amber-600/30'
               }`}>
                 Aero {matchType === 'exact' ? '✓' : '~'}
               </div>
@@ -1422,7 +1658,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             {/* Loading Award Indicator */}
             {isEnriching && !hasV2Enrichment && (
-              <div className="px-2 py-0.5 bg-warning-500/15 text-warning-400 text-[10px] font-medium rounded border border-warning-500/30 flex items-center gap-1 animate-pulse">
+              <div className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-[10px] font-medium rounded border border-amber-600/30 flex items-center gap-1 animate-pulse">
                 <Zap className="h-2.5 w-2.5" />
                 Fetching...
               </div>
@@ -1437,14 +1673,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleSimilarOptions?.();
+                    if (import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT === 'true') {
+                      onToggleSimilarOptions?.();
+                    }
                   }}
+                  disabled={import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT !== 'true'}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
-                    isSimilarOptionsExpanded
-                      ? 'bg-blue-500/10 text-blue-400'
+                    import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT !== 'true'
+                      ? 'bg-gray-800/30 text-gray-500 opacity-50 cursor-not-allowed'
+                      : isSimilarOptionsExpanded
+                      ? 'bg-slate-500/10 text-slate-300'
                       : 'bg-gray-800/30 text-gray-500 hover:bg-gray-700/40 hover:text-gray-400'
                   }`}
-                  title={`${similarFlightsCount} similar option${similarFlightsCount !== 1 ? 's' : ''}`}
+                  title={import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT === 'true' 
+                    ? `${similarFlightsCount} similar option${similarFlightsCount !== 1 ? 's' : ''}`
+                    : 'Similar flights disabled'}
                 >
                   <span>{similarFlightsCount}</span>
                   <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isSimilarOptionsExpanded ? 'rotate-180' : ''}`} />
@@ -1462,45 +1705,231 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 'FIRST': 'First'
               };
 
+              // Get the actual price for the currently displayed flight for this cabin
+              const getDisplayPrice = () => {
+                if (!pricing) return null;
+                
+                // Find the price of the currently displayed flight
+                const normalizeCabin = (cabin: string) => {
+                  const c = cabin.toUpperCase();
+                  if (c.includes('FIRST')) return 'FIRST';
+                  if (c.includes('BUSINESS') && c.includes('PREMIUM')) return 'BUSINESS_PREMIUM';
+                  if (c.includes('BUSINESS')) return 'BUSINESS';
+                  if (c.includes('PREMIUM')) return 'PREMIUM_ECONOMY';
+                  return 'ECONOMY';
+                };
+
+                const flightToDisplayCabin = flightToDisplay && 'id' in flightToDisplay
+                  ? flightToDisplay.slices[0]?.cabins?.[0] || ''
+                  : flightToDisplay
+                  ? (flightToDisplay as GroupedFlight).outboundSlice?.cabins?.[0] || ''
+                  : '';
+
+                const targetCabin = normalizeCabin(cabinKey);
+                const displayedCabin = normalizeCabin(flightToDisplayCabin);
+
+                // If the displayed flight matches this cabin, use its price
+                // For ECONOMY, also match PREMIUM-COACH flights
+                const flightToDisplayCabinUpper = flightToDisplayCabin.toUpperCase();
+                if (displayedCabin === targetCabin || 
+                    (targetCabin === 'ECONOMY' && (flightToDisplayCabinUpper.includes('PREMIUM') || flightToDisplayCabinUpper.includes('PREMIUM-COACH') || flightToDisplayCabinUpper.includes('PREMIUM_COACH')))) {
+                  const flightPrice = 'id' in flightToDisplay
+                    ? (flightToDisplay.displayTotal || flightToDisplay.totalAmount || 0)
+                    : (flightToDisplay as GroupedFlight).returnOptions?.[0]?.displayTotal 
+                      || (flightToDisplay as GroupedFlight).returnOptions?.[0]?.totalAmount 
+                      || 0;
+                  return flightPrice > 0 ? flightPrice : pricing.price;
+                }
+
+                // Otherwise, find the price from matching flights that match the displayed flight
+                if (pricing.flightsByPrice) {
+                  for (const [price, flights] of pricing.flightsByPrice.entries()) {
+                    const matchingFlight = flights.find(f => {
+                      const fId = 'id' in f.flight ? f.flight.id : null;
+                      const tId = 'id' in flightToDisplay ? flightToDisplay.id : null;
+                      return fId && tId ? fId === tId : f.flight === flightToDisplay;
+                    });
+                    if (matchingFlight) {
+                      return price;
+                    }
+                  }
+                }
+
+                // Fallback to the pricing's price
+                return pricing.price;
+              };
+
+              const displayPrice = getDisplayPrice();
+
+              // Helper to switch to a flight with the selected cabin
+              const switchToCabinFlight = () => {
+                if (!pricing) return;
+
+                // Normalize cabin helper
+                const normalizeCabin = (cabin: string) => {
+                  const c = cabin.toUpperCase();
+                  if (c.includes('FIRST')) return 'FIRST';
+                  if (c.includes('BUSINESS') && c.includes('PREMIUM')) return 'BUSINESS_PREMIUM';
+                  if (c.includes('BUSINESS')) return 'BUSINESS';
+                  if (c.includes('PREMIUM')) return 'ECONOMY'; // PREMIUM-COACH maps to ECONOMY
+                  return 'ECONOMY';
+                };
+
+                // Check if current displayed flight already has this cabin
+                const currentCabin = flightToDisplay && 'id' in flightToDisplay
+                  ? flightToDisplay.slices[0]?.cabins?.[0] || ''
+                  : flightToDisplay
+                  ? (flightToDisplay as GroupedFlight).outboundSlice?.cabins?.[0] || ''
+                  : '';
+                
+                const normalizedCurrentCabin = normalizeCabin(currentCabin);
+                const normalizedTargetCabin = normalizeCabin(cabinKey);
+                const currentCabinUpper = currentCabin.toUpperCase();
+
+                // If current flight already matches the cabin, don't switch
+                if (normalizedCurrentCabin === normalizedTargetCabin || 
+                    (normalizedTargetCabin === 'ECONOMY' && (currentCabinUpper.includes('PREMIUM') || currentCabinUpper.includes('PREMIUM-COACH') || currentCabinUpper.includes('PREMIUM_COACH')))) {
+                  setSelectedCabin(cabinKey);
+                  return;
+                }
+
+                // Find a flight with the target cabin
+                // First, try to get from flightsByPrice (prefer the cheapest price)
+                let targetFlight = null;
+                
+                if (pricing.flightsByPrice && pricing.flightsByPrice.size > 0) {
+                  // Get the first (cheapest) price's flights
+                  const sortedPrices = Array.from(pricing.flightsByPrice.keys()).sort((a, b) => a - b);
+                  if (sortedPrices.length > 0) {
+                    const cheapestPrice = sortedPrices[0];
+                    const flightsAtPrice = pricing.flightsByPrice.get(cheapestPrice) || [];
+                    if (flightsAtPrice.length > 0) {
+                      targetFlight = flightsAtPrice[0].flight;
+                    }
+                  }
+                }
+
+                // Fallback to pricing.flight if flightsByPrice doesn't have a match
+                if (!targetFlight && pricing.flight) {
+                  targetFlight = pricing.flight;
+                }
+
+                // Switch to the target flight
+                if (targetFlight) {
+                  // Safety check: Ensure target flight matches the primary airline
+                  const primaryAirlineCode = getFlightAirlineCode(flight);
+                  const targetAirlineCode = getFlightAirlineCode(targetFlight);
+                  
+                  if (targetAirlineCode !== primaryAirlineCode) {
+                    // Flight doesn't match airline, skip switching
+                    setSelectedCabin(cabinKey);
+                    return;
+                  }
+                  
+                  setSelectedCabin(cabinKey);
+                  
+                  // Check if it's a different flight before switching
+                  const isDifferent = 'id' in flightToDisplay && 'id' in targetFlight
+                    ? flightToDisplay.id !== targetFlight.id
+                    : flightToDisplay !== targetFlight;
+                  
+                  if (isDifferent) {
+                    // Sync price and time options for the new cabin before switching
+                    const newCabinPricing = cabinPricing[cabinKey as keyof typeof cabinPricing];
+                    
+                    if (newCabinPricing) {
+                      // Find and set the price option for this flight
+                      if (newCabinPricing.flightsByPrice) {
+                        for (const [price, flights] of newCabinPricing.flightsByPrice.entries()) {
+                          const matchingFlight = flights.find(f => {
+                            const fId = 'id' in f.flight ? f.flight.id : null;
+                            const tId = 'id' in targetFlight ? targetFlight.id : null;
+                            return fId && tId ? fId === tId : f.flight === targetFlight;
+                          });
+                          if (matchingFlight) {
+                            setSelectedPriceOption(prev => ({ ...prev, [cabinKey]: price }));
+                            break;
+                          }
+                        }
+                      }
+                      
+                      // Find and set the time option for this flight
+                      if (newCabinPricing.timeOptions?.flightsByTime) {
+                        for (const [timeKey, flights] of newCabinPricing.timeOptions.flightsByTime.entries()) {
+                          const matchingFlight = flights.find(f => {
+                            const fId = 'id' in f.flight ? f.flight.id : null;
+                            const tId = 'id' in targetFlight ? targetFlight.id : null;
+                            return fId && tId ? fId === tId : f.flight === targetFlight;
+                          });
+                          if (matchingFlight) {
+                            setSelectedTimeOption(prev => ({ ...prev, [cabinKey]: timeKey }));
+                            break;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Switch to the target flight
+                    setDisplayedFlight(targetFlight);
+                  }
+                } else {
+                  // If no flight found, just set the cabin (shouldn't happen if pricing exists)
+                  setSelectedCabin(cabinKey);
+                }
+              };
+
               return (
                 <button
                   key={cabinKey}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (pricing) {
-                      setSelectedCabin(cabinKey);
-                      // If clicking on a different flight's cabin, we'd need to switch the flight
-                      // For now, just highlight the cabin
+                      switchToCabinFlight();
                     }
                   }}
                   className={`flex flex-col items-center justify-center min-w-[70px] px-2 py-1.5 rounded border transition-all ${
-                    isSelected
+                    isSelected && pricing && displayPrice !== null
                       ? cabinKey === 'FIRST' || cabinKey === 'BUSINESS' || cabinKey === 'BUSINESS_PREMIUM'
                         ? 'bg-purple-500/20 border-purple-500/40'
-                        : 'bg-blue-500/20 border-blue-500/40'
-                      : pricing
+                        : 'bg-slate-500/15 border-slate-600/40'
+                      : pricing && displayPrice !== null
                       ? 'bg-gray-800/30 border-gray-700/30 hover:bg-gray-800/50 hover:border-gray-600/50'
                       : 'bg-gray-800/10 border-gray-700/20 opacity-50 cursor-not-allowed'
                   }`}
-                  disabled={!pricing}
+                  disabled={!pricing || displayPrice === null}
                 >
                   <div className={`text-[9px] font-semibold mb-0.5 ${
                     isSelected ? 'text-purple-300' : pricing ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {cabinLabels[cabinKey]}
                   </div>
-                  {pricing ? (
+                  {pricing && displayPrice !== null ? (
                     <>
                       <div className={`text-xs font-bold ${
                         isSelected ? 'text-white' : 'text-gray-300'
                       }`}>
-                        {formatPrice(pricing.price, pricing.currency, pricing.hasVariations)}
+                        {formatPrice(displayPrice, pricing.currency, false)}
                       </div>
-                      {pricing.optionsCount > 1 && (
-                        <div className="text-[9px] text-gray-500 mt-0.5">
-                          ({pricing.optionsCount} options)
-                        </div>
-                      )}
+                      {(() => {
+                        // Only show options count if there are actual price or time options
+                        const hasPriceOptions = pricing.priceOptions && pricing.priceOptions.allPrices.length > 1;
+                        const hasTimeOptions = pricing.timeOptions && pricing.timeOptions.allTimeKeys.length > 1;
+                        const shouldShowOptions = hasPriceOptions || hasTimeOptions;
+                        
+                        if (!shouldShowOptions) return null;
+                        
+                        // Calculate actual options count from price and time options
+                        const priceOptionsCount = hasPriceOptions ? pricing.priceOptions!.allPrices.length : 0;
+                        const timeOptionsCount = hasTimeOptions ? pricing.timeOptions!.allTimeKeys.length : 0;
+                        // If both exist, don't double count - use the max
+                        const actualOptionsCount = Math.max(priceOptionsCount, timeOptionsCount);
+                        
+                        return actualOptionsCount > 1 ? (
+                          <div className="text-[9px] text-gray-500 mt-0.5">
+                            ({actualOptionsCount} options)
+                          </div>
+                        ) : null;
+                      })()}
                     </>
                   ) : (
                     <div className="text-[10px] text-gray-600">N/A</div>
@@ -1538,9 +1967,63 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             
             if (!hasPriceOptions && !hasTimeOptions) return null;
 
-            const currentSelectedPrice = selectedCabin && selectedPriceOption[selectedCabin] 
-              ? selectedPriceOption[selectedCabin] 
-              : selectedCabinPricing.allPrices[0];
+            // Helper to find price for the displayed flight
+            const findPriceForFlight = (targetFlight: any): number | null => {
+              if (!selectedCabinPricing.priceOptions?.flightsByPrice) return null;
+              
+              for (const [price, flights] of selectedCabinPricing.priceOptions.flightsByPrice.entries()) {
+                if (flights.some(f => {
+                  const fId = 'id' in f.flight ? f.flight.id : null;
+                  const tId = 'id' in targetFlight ? targetFlight.id : null;
+                  return fId && tId ? fId === tId : f.flight === targetFlight;
+                })) {
+                  return price;
+                }
+              }
+              return null;
+            };
+
+            // Determine current selected price:
+            // 1. Check if there's a stored price option
+            // 2. If there's a selected time option, find price that matches both the displayed flight AND the time option
+            // 3. Otherwise, find price that matches the displayed flight
+            // 4. Default to first price
+            let currentSelectedPrice: number;
+            if (selectedCabin && selectedPriceOption[selectedCabin]) {
+              currentSelectedPrice = selectedPriceOption[selectedCabin];
+            } else {
+              const selectedTime = selectedCabin && selectedTimeOption[selectedCabin]
+                ? selectedTimeOption[selectedCabin]
+                : null;
+              
+              // If there's a selected time option, find price that matches both flight and time
+              if (selectedTime && selectedCabinPricing.timeOptions?.flightsByTime) {
+                const flightsAtTime = selectedCabinPricing.timeOptions.flightsByTime.get(selectedTime) || [];
+                // Find the flight in the time group that matches the displayed flight
+                const matchingFlight = flightsAtTime.find(f => {
+                  const fId = 'id' in f.flight ? f.flight.id : null;
+                  const tId = 'id' in flightToDisplay ? flightToDisplay.id : null;
+                  return fId && tId ? fId === tId : f.flight === flightToDisplay;
+                });
+                
+                if (matchingFlight) {
+                  const priceForFlight = findPriceForFlight(matchingFlight.flight);
+                  if (priceForFlight !== null) {
+                    currentSelectedPrice = priceForFlight;
+                  } else {
+                    currentSelectedPrice = selectedCabinPricing.allPrices[0];
+                  }
+                } else {
+                  // If no matching flight in time group, find price for displayed flight
+                  const priceForFlight = findPriceForFlight(flightToDisplay);
+                  currentSelectedPrice = priceForFlight !== null ? priceForFlight : selectedCabinPricing.allPrices[0];
+                }
+              } else {
+                // No time option selected, just find price for displayed flight
+                const priceForFlight = findPriceForFlight(flightToDisplay);
+                currentSelectedPrice = priceForFlight !== null ? priceForFlight : selectedCabinPricing.allPrices[0];
+              }
+            }
             
             const currentSelectedTime = selectedCabin && selectedTimeOption[selectedCabin]
               ? selectedTimeOption[selectedCabin]
@@ -1553,28 +2036,49 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 : flightToDisplay !== targetFlight;
               
               if (isDifferent) {
-                setDisplayedFlight(targetFlight);
-                
-                // Auto-sync price option
-                if (selectedCabinPricing.flightsByPrice) {
+                // Auto-sync price option BEFORE switching flight
+                if (selectedCabinPricing.priceOptions?.flightsByPrice) {
+                  for (const [price, flights] of selectedCabinPricing.priceOptions.flightsByPrice.entries()) {
+                    if (flights.some(f => {
+                      const fId = 'id' in f.flight ? f.flight.id : null;
+                      const tId = 'id' in targetFlight ? targetFlight.id : null;
+                      return fId && tId ? fId === tId : f.flight === targetFlight;
+                    })) {
+                      setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: price }));
+                      break;
+                    }
+                  }
+                } else if (selectedCabinPricing.flightsByPrice) {
+                  // Fallback to flightsByPrice if priceOptions not available
                   for (const [price, flights] of selectedCabinPricing.flightsByPrice.entries()) {
-                    if (flights.some(f => ('id' in f.flight && 'id' in targetFlight ? f.flight.id === targetFlight.id : f.flight === targetFlight))) {
+                    if (flights.some(f => {
+                      const fId = 'id' in f.flight ? f.flight.id : null;
+                      const tId = 'id' in targetFlight ? targetFlight.id : null;
+                      return fId && tId ? fId === tId : f.flight === targetFlight;
+                    })) {
                       setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: price }));
                       break;
                     }
                   }
                 }
                 
-                // Auto-sync time option
+                // Auto-sync time option BEFORE switching flight
                 if (selectedCabinPricing.timeOptions?.flightsByTime) {
                   // Find the time key for this flight
                   for (const [timeKey, flights] of selectedCabinPricing.timeOptions.flightsByTime.entries()) {
-                    if (flights.some(f => ('id' in f.flight && 'id' in targetFlight ? f.flight.id === targetFlight.id : f.flight === targetFlight))) {
+                    if (flights.some(f => {
+                      const fId = 'id' in f.flight ? f.flight.id : null;
+                      const tId = 'id' in targetFlight ? targetFlight.id : null;
+                      return fId && tId ? fId === tId : f.flight === targetFlight;
+                    })) {
                       setSelectedTimeOption(prev => ({ ...prev, [selectedCabin!]: timeKey }));
                       break;
                     }
                   }
                 }
+                
+                // Switch flight AFTER setting state
+                setDisplayedFlight(targetFlight);
               }
             };
 
@@ -1594,6 +2098,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             key={idx}
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Set price option state first
                               setSelectedPriceOption(prev => ({
                                 ...prev,
                                 [selectedCabin!]: price
@@ -1601,7 +2106,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               // Switch to the first flight with this price
                               const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(price) || [];
                               if (flightsAtPrice.length > 0) {
-                                switchToFlight(flightsAtPrice[0].flight);
+                                // Use setTimeout to ensure state is set before switching
+                                setTimeout(() => {
+                                  switchToFlight(flightsAtPrice[0].flight);
+                                }, 0);
                               }
                             }}
                             className={`px-2.5 py-1 rounded border transition-all ${
@@ -1634,6 +2142,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             key={idx}
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Set time option state first
                               setSelectedTimeOption(prev => ({
                                 ...prev,
                                 [selectedCabin!]: timeKey
@@ -1641,12 +2150,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               // Switch to the first flight with this time
                               const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(timeKey) || [];
                               if (flightsAtTime.length > 0) {
-                                switchToFlight(flightsAtTime[0].flight);
+                                // Use setTimeout to ensure state is set before switching
+                                setTimeout(() => {
+                                  switchToFlight(flightsAtTime[0].flight);
+                                }, 0);
                               }
                             }}
                             className={`px-2.5 py-1 rounded border transition-all ${
                               isSelected
-                                ? 'bg-blue-500/20 border-blue-500/40 text-blue-400 hover:bg-blue-500/30'
+                                ? 'bg-success-500/20 border-success-500/40 text-success-400 hover:bg-success-500/30'
                                 : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
                             }`}
                           >
@@ -1697,7 +2209,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   }}
                   onMouseEnter={() => setTooltipStates(prev => ({ ...prev, awards: true }))}
                   onMouseLeave={() => setTooltipStates(prev => ({ ...prev, awards: false }))}
-                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-warning-500/20 rounded transition-colors text-warning-400 hover:text-warning-300"
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-amber-500/15 rounded transition-colors text-amber-300 hover:text-amber-200"
                 >
                   <Award className="h-4 w-4" />
                   <span className="text-[10px] font-medium">Find Awards</span>
@@ -1720,7 +2232,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 }}
                 onMouseEnter={() => setTooltipStates(prev => ({ ...prev, hacks: true }))}
                 onMouseLeave={() => setTooltipStates(prev => ({ ...prev, hacks: false }))}
-                className="flex flex-col items-center gap-1.5 p-2 hover:bg-accent-500/20 rounded transition-colors text-accent-400 hover:text-accent-300"
+                className="flex flex-col items-center gap-1.5 p-2 hover:bg-teal-500/15 rounded transition-colors text-teal-300 hover:text-teal-200"
               >
                 <Target className="h-4 w-4" />
                 <span className="text-[10px] font-medium">Hacks</span>
@@ -1772,7 +2284,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 className={`flex flex-col items-center gap-1.5 p-2 rounded transition-colors ${
                   addedItems.has('flight')
                     ? 'bg-success-500/20 hover:bg-error-500/20 text-success-400 hover:text-error-400'
-                    : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 hover:text-blue-300'
+                    : 'bg-slate-500/15 hover:bg-slate-500/20 text-slate-300 hover:text-slate-200'
                 }`}
               >
                 {addedItems.has('flight') ? (
@@ -1835,10 +2347,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
       {/* Loading Award Info - Show when enrichment is in progress for this airline */}
       {isEnriching && !hasV2Enrichment && (
-        <div className="px-4 py-2 bg-gradient-to-r from-warning-500/8 to-warning-500/5 border-l-2 border-warning-500/40 rounded-r">
+        <div className="px-4 py-2 bg-gradient-to-r from-amber-500/8 to-amber-500/5 border-l-2 border-amber-600/40 rounded-r">
           <div className="flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-warning-400 animate-[pulse_1.5s_ease-in-out_infinite]" />
-            <div className="text-xs font-medium text-warning-400">
+            <Zap className="h-3.5 w-3.5 text-amber-300 animate-[pulse_1.5s_ease-in-out_infinite]" />
+            <div className="text-xs font-medium text-amber-300">
               Fetching awards...
             </div>
           </div>
@@ -1912,7 +2424,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             {/* Slice Label */}
             <div className="flex items-center gap-2 mb-2 lg:mb-3">
               {getSliceLabel(sliceIndex) && (
-                <div className="text-sm font-medium text-accent-400">
+                <div className="text-sm font-medium text-teal-300">
                   {getSliceLabel(sliceIndex)}
                 </div>
               )}
@@ -1922,7 +2434,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <div className="relative ml-auto hidden sm:block">
                   <button
                     onClick={() => setShowReturnDropdown(!showReturnDropdown)}
-                    className="flex items-center gap-1 px-2 lg:px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                    className="flex items-center gap-1 px-2 lg:px-3 py-1 bg-slate-600 hover:bg-slate-700 text-white text-xs font-medium rounded transition-colors"
                   >
                     Return Options
                     <ChevronDown className={`h-2.5 w-2.5 lg:h-3 lg:w-3 transition-transform ${showReturnDropdown ? 'rotate-180' : ''}`} />
@@ -1935,7 +2447,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           key={index}
                           onClick={() => handleReturnSelection(index)}
                           className={`w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors first:rounded-t-lg last:rounded-b-lg border-b border-gray-700 last:border-b-0 ${
-                            index === selectedReturnIndex ? 'bg-blue-600/20 border-blue-500' : ''
+                            index === selectedReturnIndex ? 'bg-slate-600/20 border-slate-500' : ''
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -1987,7 +2499,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   )}
                   {/* Cabin class for departure */}
                   {slice.cabins && slice.cabins.length > 0 && slice.cabins[0] && (
-                    <div className="text-[10px] text-accent-300 mt-1">
+                    <div className="text-[10px] text-teal-200 mt-1">
                       {slice.cabins[0]}
                     </div>
                   )}
@@ -2141,12 +2653,31 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                 {/* Arrival Airport */}
                 <div className="text-center min-w-[80px]">
-                  <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                    {formatTime(slice.arrival)}
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                      {formatTime(slice.arrival)}
+                    </span>
                     {(() => {
                       const dayDiff = getDayDifference(slice.departure, slice.arrival);
                       if (dayDiff > 0) {
-                        return <span className="text-xs text-accent-400 ml-1">+{dayDiff}</span>;
+                        const tooltipKey = `day-indicator-${sliceIndex}`;
+                        return (
+                          <div className="relative">
+                            <span 
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-500/10 text-slate-300 border border-slate-600/30 whitespace-nowrap cursor-help"
+                              onMouseEnter={() => setTooltipStates(prev => ({ ...prev, [tooltipKey]: true }))}
+                              onMouseLeave={() => setTooltipStates(prev => ({ ...prev, [tooltipKey]: false }))}
+                            >
+                              +{dayDiff}
+                            </span>
+                            {tooltipStates[tooltipKey] && (
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-50 w-32 bg-gray-800/95 border border-gray-700/50 rounded-md shadow-lg p-1.5 text-[10px] text-gray-200 text-center backdrop-blur-sm">
+                                Arrives {formatDayIndicator(dayDiff).toLowerCase()}
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-800/95 border-r border-b border-gray-700/50 transform rotate-45 -mt-1"></div>
+                              </div>
+                            )}
+                          </div>
+                        );
                       }
                       return null;
                     })()}
@@ -2160,7 +2691,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   )}
                   {/* Cabin class for arrival */}
                   {slice.cabins && slice.cabins.length > 0 && slice.cabins[slice.cabins.length - 1] && (
-                    <div className="text-[10px] text-accent-300 mt-1">
+                    <div className="text-[10px] text-teal-200 mt-1">
                       {slice.cabins[slice.cabins.length - 1]}
                     </div>
                   )}
@@ -2229,8 +2760,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             {/* Expanded Segment Details */}
             {expandedSegments[sliceIndex] && slice.segments && slice.segments.length > 0 && (
-              <div className="mb-4 border border-blue-500/20 bg-blue-500/5 rounded-lg p-4">
-                <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
+              <div className="mb-4 border border-slate-600/20 bg-slate-500/5 rounded-lg p-4">
+                <div className="text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2">
                   <Plane className="h-3 w-3" />
                   Flight Segments
                 </div>
@@ -2292,7 +2823,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       onClick={() => setSelectedCabinFilter(prev => ({ ...prev, [sliceIndex]: null }))}
                       className={`px-2 py-1 text-[10px] font-medium rounded transition-all ${
                         !selectedCabin
-                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                          ? 'bg-slate-500/15 text-slate-300 border border-slate-600/30'
                           : 'bg-gray-800/50 text-gray-400 hover:text-gray-300 border border-gray-700/50'
                       }`}
                     >
@@ -2307,7 +2838,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             ? cabin === 'BUSINESS' || cabin === 'FIRST'
                               ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                               : cabin === 'PREMIUM' || cabin === 'PREMIUM_ECONOMY'
-                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              ? 'bg-slate-500/15 text-slate-300 border border-slate-600/30'
                               : 'bg-gray-700/50 text-gray-300 border border-gray-600'
                             : 'bg-gray-800/50 text-gray-400 hover:text-gray-300 border border-gray-700/50'
                         }`}
@@ -2614,7 +3145,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                   timeInsensitiveFlights.length === 0
                                     ? 'text-gray-600 cursor-not-allowed opacity-50'
                                     : sliceAlternativeTabs[airlineKey] === 'time-insensitive'
-                                    ? 'text-blue-400 bg-gray-800/50'
+                                    ? 'text-slate-300 bg-gray-800/50'
                                     : 'text-gray-400 hover:text-gray-300 cursor-pointer'
                                 }`}
                               >
@@ -2624,7 +3155,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                   <span className="text-[10px]">({timeInsensitiveFlights.length})</span>
                                 </div>
                                 {sliceAlternativeTabs[airlineKey] === 'time-insensitive' && timeInsensitiveFlights.length > 0 && (
-                                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-500" />
                                 )}
                               </button>
                             </div>
@@ -2646,7 +3177,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                           ? cabinKey === 'BUSINESS' || cabinKey === 'FIRST'
                                             ? 'bg-purple-500/20 text-purple-300 border-b-2 border-purple-400'
                                             : cabinKey === 'PREMIUM' || cabinKey === 'PREMIUM_ECONOMY'
-                                            ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-400'
+                                            ? 'bg-slate-500/15 text-slate-200 border-b-2 border-slate-400'
                                             : 'bg-gray-700/50 text-gray-300 border-b-2 border-gray-500'
                                           : 'text-gray-400 hover:text-gray-300'
                                       }`}
@@ -2718,7 +3249,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                           <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
                                           <span className="text-xs text-gray-400">{carrierName}</span>
                                           {hasAlternatives && (
-                                            <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-medium rounded border border-blue-500/30">
+                                            <span className="px-1.5 py-0.5 bg-slate-500/15 text-slate-300 text-[9px] font-medium rounded border border-slate-600/30">
                                               +{((group.alternativeArrivals?.length || 0) + (group.alternativeLayovers?.length || 0))} similar
                                             </span>
                                           )}
@@ -2771,7 +3302,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                               className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
                                                 addedItems.has(`aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`)
                                                   ? 'bg-green-500/20 hover:bg-red-500/20 text-green-300 hover:text-red-300 border-green-400/30 hover:border-red-400/30'
-                                                  : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                                                  : 'bg-slate-500/15 hover:bg-slate-500/20 text-slate-200 border-slate-400/30'
                                               }`}
                                             >
                                               {addedItems.has(`aero-${altFlight.flightNumber}-${altFlight.departure?.iataCode}-${altFlight.arrival?.iataCode}`) ? (
@@ -2900,7 +3431,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                                         <div className="text-white font-medium">{altArrTime}</div>
                                                         <div className="text-gray-400">{altArrDate}</div>
                                                       </div>
-                                                      <div className="text-[10px] text-warning-400 font-medium">
+                                                      <div className="text-[10px] text-amber-300 font-medium">
                                                         {diffStr}
                                                       </div>
                                                       {altArrival.mileage && (
@@ -2914,7 +3445,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                                         setSelectedMileageFlight(altArrival);
                                                         setShowAddToProposal(true);
                                                       }}
-                                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                                      className="px-2 py-1 bg-slate-500/15 hover:bg-slate-500/20 text-slate-200 text-xs rounded border border-slate-400/30 transition-colors flex items-center gap-1"
                                                     >
                                                       <Plus className="h-3 w-3" />
                                                       Add
@@ -3042,7 +3573,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                                         setSelectedMileageFlight(altCarrier);
                                                         setShowAddToProposal(true);
                                                       }}
-                                                      className="px-2 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-xs rounded border border-blue-400/30 transition-colors flex items-center gap-1"
+                                                      className="px-2 py-1 bg-slate-500/15 hover:bg-slate-500/20 text-slate-200 text-xs rounded border border-slate-400/30 transition-colors flex items-center gap-1"
                                                     >
                                                       <Plus className="h-3 w-3" />
                                                       Add
@@ -3164,6 +3695,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         onClose={() => setShowSummaryModal(false)}
         solutionId={
           flightId || 
+          (isGroupedFlightDisplay ? (flightToDisplay as GroupedFlight).returnOptions[selectedReturnIndex]?.originalFlightId : '') ||
           (isGroupedFlight ? (flight as GroupedFlight).returnOptions[selectedReturnIndex]?.originalFlightId : '') ||
           ''
         }

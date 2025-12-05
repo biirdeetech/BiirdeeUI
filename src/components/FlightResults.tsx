@@ -285,6 +285,14 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     }
   };
 
+  // Helper to extract date from ISO string (YYYY-MM-DD) without timezone conversion
+  const getDateFromISO = (isoString: string): string => {
+    if (!isoString) return '';
+    // Extract date part (YYYY-MM-DD) from ISO string before timezone conversion
+    const dateMatch = isoString.match(/^(\d{4}-\d{2}-\d{2})/);
+    return dateMatch ? dateMatch[1] : '';
+  };
+
   // Helper to get time option signature (same airline, origin, destination, day, cabin)
   const getTimeOptionSignature = (f: FlightSolution | GroupedFlight) => {
     const airlineCode = getFlightAirlineCode(f);
@@ -293,13 +301,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       const lastSlice = f.slices[f.slices.length - 1];
       const origin = firstSlice.origin?.code || '';
       const destination = lastSlice.destination?.code || '';
-      const departureDate = firstSlice.departure ? new Date(firstSlice.departure).toDateString() : '';
+      const departureDate = firstSlice.departure ? getDateFromISO(firstSlice.departure) : '';
       const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
       return `TIME-${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
     } else {
       const origin = f.outboundSlice.origin?.code || '';
       const destination = f.outboundSlice.destination?.code || '';
-      const departureDate = f.outboundSlice.departure ? new Date(f.outboundSlice.departure).toDateString() : '';
+      const departureDate = f.outboundSlice.departure ? getDateFromISO(f.outboundSlice.departure) : '';
       const cabin = f.outboundSlice.cabins?.join(',') || 'UNKNOWN';
       return `TIME-${airlineCode}-${origin}-${destination}-${departureDate}-${cabin}`;
     }
@@ -310,12 +318,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     const grouped = new Map<string, (FlightSolution | GroupedFlight)[]>();
     const timeOptionGroups = new Map<string, (FlightSolution | GroupedFlight)[]>();
 
-    // First pass: Group by flight number + departure time (existing logic)
+    // First pass: Group by airline + flight number + departure time + origin + cabin
+    // This ensures flights with same airline, route, departure time, and cabin are grouped together
+    // Price variations will be handled by price options within the same card
     flightList.forEach(flight => {
       let signature = '';
+      const airlineCode = getFlightAirlineCode(flight);
       
       if (groupingMode === 'segment') {
-        // Group by flight number + departure time + origin (ignoring arrival time and layovers)
+        // Group by airline + flight number + departure time + origin + cabin (ignoring arrival time and layovers)
         if ('id' in flight) {
           // For FlightSolution: get first slice info
           const firstSlice = flight.slices[0];
@@ -324,9 +335,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           const origin = firstSlice.origin?.code || '';
           const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
           
-          // Group by: flight number + departure time + origin + cabin
-          // This groups flights with same flight number and departure, but different arrival times/layovers
-          signature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+          // Group by: airline + flight number + departure time + origin + cabin
+          // This groups flights with same airline, flight number and departure, but different arrival times/layovers/prices
+          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
         } else {
           // For GroupedFlight: get outbound slice info
           const flightNumber = flight.outboundSlice.flights?.[0] || '';
@@ -334,11 +345,11 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           const origin = flight.outboundSlice.origin?.code || '';
           const cabin = flight.outboundSlice.cabins?.join(',') || 'UNKNOWN';
           
-          // Group by: flight number + departure time + origin + cabin
-          signature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+          // Group by: airline + flight number + departure time + origin + cabin
+          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
         }
       } else {
-        // Group by flight (flight number + departure time + origin + cabin) - groups same flight with different arrival/layovers
+        // Group by airline + flight (flight number + departure time + origin + cabin) - groups same flight with different arrival/layovers/prices
         if ('id' in flight) {
           const firstSlice = flight.slices[0];
           const flightNumber = firstSlice.flights?.[0] || '';
@@ -346,15 +357,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           const origin = firstSlice.origin?.code || '';
           const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
           
-          // Group by: flight number + departure time + origin + cabin
-          // This groups flights with same flight number and departure, but different arrival times/layovers
-          signature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+          // Group by: airline + flight number + departure time + origin + cabin
+          // This groups flights with same airline, flight number and departure, but different arrival times/layovers/prices
+          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
         } else {
           const flightNumber = flight.outboundSlice.flights?.[0] || '';
           const departure = flight.outboundSlice.departure || '';
           const origin = flight.outboundSlice.origin?.code || '';
           const cabin = flight.outboundSlice.cabins?.join(',') || 'UNKNOWN';
-          signature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
         }
       }
 
@@ -453,6 +464,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           // Use the first flight's signature as the group key
           if (allTimeSigFlights.length > 0) {
             const firstFlight = allTimeSigFlights[0];
+            const airlineCode = getFlightAirlineCode(firstFlight);
             let newSignature = '';
             if ('id' in firstFlight) {
               const firstSlice = firstFlight.slices[0];
@@ -460,13 +472,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               const departure = firstSlice.departure || '';
               const origin = firstSlice.origin?.code || '';
               const cabin = firstSlice.cabins?.join(',') || 'UNKNOWN';
-              newSignature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+              newSignature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
             } else {
               const flightNumber = firstFlight.outboundSlice.flights?.[0] || '';
               const departure = firstFlight.outboundSlice.departure || '';
               const origin = firstFlight.outboundSlice.origin?.code || '';
               const cabin = firstFlight.outboundSlice.cabins?.join(',') || 'UNKNOWN';
-              newSignature = `FLIGHT-${flightNumber}-${departure}-${origin}-${cabin}`;
+              newSignature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}-${cabin}`;
             }
             grouped.set(newSignature, allTimeSigFlights);
           }
@@ -474,9 +486,103 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       }
     });
 
+    // Deduplicate across groups: Merge groups that have flights with same airline, route, departure time, cabin
+    // Normalize departure time to remove milliseconds for comparison
+    const normalizeDepartureTime = (departure: string): string => {
+      if (!departure) return '';
+      // Extract date+time up to seconds, ignore milliseconds and timezone
+      const match = departure.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+      return match ? match[1] : departure;
+    };
+    
+    const normalizeCabinForGrouping = (cabin: string): string => {
+      const c = cabin.toUpperCase();
+      if (c.includes('FIRST')) return 'FIRST';
+      if (c.includes('BUSINESS') && c.includes('PREMIUM')) return 'BUSINESS_PREMIUM';
+      if (c.includes('BUSINESS')) return 'BUSINESS';
+      if (c.includes('PREMIUM')) return 'ECONOMY'; // PREMIUM-COACH maps to ECONOMY
+      return 'ECONOMY';
+    };
+    
+    // Create a map of normalized route keys to groups
+    const routeKeyToGroups = new Map<string, string[]>();
+    
+    grouped.forEach((flights, signature) => {
+      if (flights.length === 0) return;
+      
+      const firstFlight = flights[0];
+      const airlineCode = getFlightAirlineCode(firstFlight);
+      let routeKey = '';
+      
+      if ('id' in firstFlight) {
+        const firstSlice = firstFlight.slices[0];
+        const lastSlice = firstFlight.slices[firstFlight.slices.length - 1];
+        const departure = normalizeDepartureTime(firstSlice.departure || '');
+        const origin = firstSlice.origin?.code || '';
+        const destination = lastSlice.destination?.code || '';
+        const cabin = normalizeCabinForGrouping(firstSlice.cabins?.join(',') || 'UNKNOWN');
+        routeKey = `${airlineCode}-${origin}-${destination}-${departure}-${cabin}`;
+      } else {
+        const departure = normalizeDepartureTime(firstFlight.outboundSlice.departure || '');
+        const origin = firstFlight.outboundSlice.origin?.code || '';
+        const destination = firstFlight.outboundSlice.destination?.code || '';
+        const cabin = normalizeCabinForGrouping(firstFlight.outboundSlice.cabins?.join(',') || 'UNKNOWN');
+        routeKey = `${airlineCode}-${origin}-${destination}-${departure}-${cabin}`;
+      }
+      
+      if (!routeKeyToGroups.has(routeKey)) {
+        routeKeyToGroups.set(routeKey, []);
+      }
+      routeKeyToGroups.get(routeKey)!.push(signature);
+    });
+    
+    // Merge groups that share the same normalized route key
+    const mergedGroups = new Map<string, (FlightSolution | GroupedFlight)[]>();
+    const processedSignatures = new Set<string>();
+    
+    routeKeyToGroups.forEach((signatures, routeKey) => {
+      if (signatures.length > 1) {
+        // Multiple groups with same route - merge them
+        const mergedFlights: (FlightSolution | GroupedFlight)[] = [];
+        const seenFlightIds = new Set<string>();
+        
+        signatures.forEach(sig => {
+          if (processedSignatures.has(sig)) return;
+          processedSignatures.add(sig);
+          
+          const groupFlights = grouped.get(sig) || [];
+          groupFlights.forEach(flight => {
+            const flightId = getFlightId(flight);
+            if (!seenFlightIds.has(flightId)) {
+              seenFlightIds.add(flightId);
+              mergedFlights.push(flight);
+            }
+          });
+        });
+        
+        if (mergedFlights.length > 0) {
+          // Use the first signature as the key
+          mergedGroups.set(signatures[0], mergedFlights);
+        }
+      } else {
+        // Single group - keep as is
+        const sig = signatures[0];
+        if (!processedSignatures.has(sig)) {
+          processedSignatures.add(sig);
+          mergedGroups.set(sig, grouped.get(sig) || []);
+        }
+      }
+    });
+    
+    // Also include any groups that weren't processed (shouldn't happen, but safety check)
+    grouped.forEach((flights, signature) => {
+      if (!processedSignatures.has(signature)) {
+        mergedGroups.set(signature, flights);
+      }
+    });
+
     // Convert to primary/similar structure and sort within groups
-    return Array.from(grouped.values()).map(group => {
-      // Keep all flights - no deduplication
+    return Array.from(mergedGroups.values()).map(group => {
       // Sort group: fastest (shortest duration) first, then cheapest (lowest price)
       const sorted = group.sort((a, b) => {
         const aFlight = 'id' in a ? a : a.returnOptions[0];
@@ -688,7 +794,79 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
           // Re-group the flights in this stop category
           const stopGrouped = groupSimilarFlights(groupFlights);
-          return stopGrouped.map((group, index) => (
+          
+          // Final deduplication: Remove duplicate groups (same airline, route, time, cabin)
+          const deduplicatedStopGrouped: Array<{ primary: FlightSolution | GroupedFlight; similar: (FlightSolution | GroupedFlight)[] }> = [];
+          const seenRouteKeys = new Set<string>();
+          
+          stopGrouped.forEach(group => {
+            const flight = group.primary;
+            const airlineCode = getFlightAirlineCode(flight);
+            let routeKey = '';
+            
+            if ('id' in flight) {
+              const firstSlice = flight.slices[0];
+              const lastSlice = flight.slices[flight.slices.length - 1];
+              const departure = firstSlice.departure || '';
+              const origin = firstSlice.origin?.code || '';
+              const destination = lastSlice.destination?.code || '';
+              const cabin = firstSlice.cabins?.[0] || 'UNKNOWN';
+              // Normalize departure to date+hour+minute only for comparison
+              const depTime = departure.substring(0, 16); // YYYY-MM-DDTHH:MM
+              routeKey = `${airlineCode}-${origin}-${destination}-${depTime}-${cabin.toUpperCase()}`;
+            } else {
+              const departure = flight.outboundSlice.departure || '';
+              const origin = flight.outboundSlice.origin?.code || '';
+              const destination = flight.outboundSlice.destination?.code || '';
+              const cabin = flight.outboundSlice.cabins?.[0] || 'UNKNOWN';
+              const depTime = departure.substring(0, 16);
+              routeKey = `${airlineCode}-${origin}-${destination}-${depTime}-${cabin.toUpperCase()}`;
+            }
+            
+            // Only add if we haven't seen this exact route+time+cabin combination
+            if (!seenRouteKeys.has(routeKey)) {
+              seenRouteKeys.add(routeKey);
+              deduplicatedStopGrouped.push(group);
+            } else {
+              // If duplicate found, merge the similar flights into the existing group
+              const existingGroup = deduplicatedStopGrouped.find(g => {
+                const existingFlight = g.primary;
+                const existingAirlineCode = getFlightAirlineCode(existingFlight);
+                let existingRouteKey = '';
+                
+                if ('id' in existingFlight) {
+                  const firstSlice = existingFlight.slices[0];
+                  const lastSlice = existingFlight.slices[existingFlight.slices.length - 1];
+                  const departure = firstSlice.departure || '';
+                  const origin = firstSlice.origin?.code || '';
+                  const destination = lastSlice.destination?.code || '';
+                  const cabin = firstSlice.cabins?.[0] || 'UNKNOWN';
+                  const depTime = departure.substring(0, 16);
+                  existingRouteKey = `${existingAirlineCode}-${origin}-${destination}-${depTime}-${cabin.toUpperCase()}`;
+                } else {
+                  const departure = existingFlight.outboundSlice.departure || '';
+                  const origin = existingFlight.outboundSlice.origin?.code || '';
+                  const destination = existingFlight.outboundSlice.destination?.code || '';
+                  const cabin = existingFlight.outboundSlice.cabins?.[0] || 'UNKNOWN';
+                  const depTime = departure.substring(0, 16);
+                  existingRouteKey = `${existingAirlineCode}-${origin}-${destination}-${depTime}-${cabin.toUpperCase()}`;
+                }
+                
+                return existingRouteKey === routeKey;
+              });
+              
+              if (existingGroup) {
+                // Merge similar flights
+                existingGroup.similar = [...existingGroup.similar, ...group.similar];
+                // Also add the primary if it's different
+                if (getFlightId(group.primary) !== getFlightId(existingGroup.primary)) {
+                  existingGroup.similar.push(group.primary);
+                }
+              }
+            }
+          });
+          
+          return deduplicatedStopGrouped.map((group, index) => (
             <FlightCardGroup
               key={`flight-group-${stopCount}-${index}`}
               primaryFlight={group.primary}
