@@ -1880,7 +1880,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       switchToCabinFlight();
                     }
                   }}
-                  className={`flex flex-col items-center justify-center min-w-[70px] max-w-[90px] px-2 py-1.5 rounded border transition-all ${
+                  className={`flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border transition-all ${
                     isSelected && pricing && displayPrice !== null
                       ? cabinKey === 'FIRST' || cabinKey === 'BUSINESS' || cabinKey === 'BUSINESS_PREMIUM'
                         ? 'bg-purple-500/20 border-purple-500/40'
