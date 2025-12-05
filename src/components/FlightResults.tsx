@@ -809,29 +809,26 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           });
 
           // Helper to create a detailed flight fingerprint for aggressive deduplication
-          // IMPORTANT: DO NOT include cabin in fingerprint - cabin variations should be shown as options, not separate cards
+          // Group by airline + route + stops ONLY
+          // This groups ALL flights from the same airline on the same route together
+          // Flight number, departure time, arrival time variations will be shown as options
           const getFlightFingerprint = (flight: FlightSolution | GroupedFlight): string => {
             const airlineCode = getFlightAirlineCode(flight);
             if ('id' in flight) {
               const firstSlice = flight.slices[0];
               const lastSlice = flight.slices[flight.slices.length - 1];
-              const departure = normalizeDepartureToMinute(firstSlice.departure || '');
-              const arrival = normalizeDepartureToMinute(lastSlice.arrival || '');
               const origin = firstSlice.origin?.code || '';
               const destination = lastSlice.destination?.code || '';
-              const flightNum = firstSlice.flights?.[0] || '';
               const stops = flight.slices.map(s => s.stops?.length || 0).join(',');
-              // NO cabin, NO duration, NO price - just route/time/stops/flight number
-              return `${airlineCode}|${flightNum}|${origin}|${destination}|${departure}|${arrival}|${stops}`;
+              // Group by: airline + origin + destination + stops
+              // NO flight number, NO times, NO cabin, NO price
+              return `${airlineCode}|${origin}|${destination}|${stops}`;
             } else {
-              const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
-              const arrival = normalizeDepartureToMinute(flight.outboundSlice.arrival || '');
               const origin = flight.outboundSlice.origin?.code || '';
               const destination = flight.outboundSlice.destination?.code || '';
-              const flightNum = flight.outboundSlice.flights?.[0] || '';
               const stops = flight.outboundSlice.stops?.length || 0;
-              // NO cabin, NO duration, NO price - just route/time/stops/flight number
-              return `${airlineCode}|${flightNum}|${origin}|${destination}|${departure}|${arrival}|${stops}`;
+              // Group by: airline + origin + destination + stops
+              return `${airlineCode}|${origin}|${destination}|${stops}`;
             }
           };
 
@@ -842,10 +839,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             const fingerprint = getFlightFingerprint(group.primary);
             const airlineCode = getFlightAirlineCode(group.primary);
 
-            // Debug: Log fingerprints for Alaska flights
-            if (airlineCode === 'AS') {
-              console.log(`  🔍 [${idx}] Fingerprint: ${fingerprint}`);
-            }
+            // Debug: Log fingerprints
+            console.log(`  🔍 [${idx}] ${airlineCode} Fingerprint: ${fingerprint}`);
 
             if (!fingerprintMap.has(fingerprint)) {
               // First occurrence of this fingerprint
@@ -854,9 +849,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               // Duplicate found - merge into existing group
               const existing = fingerprintMap.get(fingerprint)!;
 
-              if (airlineCode === 'AS') {
-                console.log(`    ⚠️ DUPLICATE FINGERPRINT FOUND - Merging!`);
-              }
+              console.log(`    ⚠️ ${airlineCode} DUPLICATE FINGERPRINT - Merging into existing group!`);
 
               // Add all similar flights from this group
               existing.similar.push(...group.similar);
