@@ -781,7 +781,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           // Re-group the flights in this stop category
           const stopGrouped = groupSimilarFlights(groupFlights);
 
-          // Debug: Log all groups from initial grouping
+          // Debug: Log all groups from initial grouping with cabin details
           console.log(`📦 Stop ${stopCount}: ${stopGrouped.length} groups BEFORE fingerprint dedup`);
           stopGrouped.forEach((group, idx) => {
             const flight = group.primary;
@@ -791,7 +791,20 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               const flightNum = firstSlice.flights?.[0] || '';
               const departure = normalizeDepartureToMinute(firstSlice.departure || '');
               const price = flight.displayTotal || 0;
-              console.log(`  [${idx}] ${airlineCode} ${flightNum} @ ${departure} - $${price} (${group.similar.length} similar)`);
+              const cabin = firstSlice.cabins?.[0] || '';
+              console.log(`  [${idx}] ${airlineCode} ${flightNum} @ ${departure} - $${price} [${cabin}] (${group.similar.length} similar)`);
+
+              // Log similar flights to see cabin variations
+              if (group.similar.length > 0) {
+                group.similar.forEach((simFlight, simIdx) => {
+                  if ('id' in simFlight) {
+                    const simSlice = simFlight.slices[0];
+                    const simCabin = simSlice.cabins?.[0] || '';
+                    const simPrice = simFlight.displayTotal || 0;
+                    console.log(`      → Similar[${simIdx}]: $${simPrice} [${simCabin}]`);
+                  }
+                });
+              }
             }
           });
 
