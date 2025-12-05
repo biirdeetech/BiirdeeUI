@@ -781,6 +781,20 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           // Re-group the flights in this stop category
           const stopGrouped = groupSimilarFlights(groupFlights);
 
+          // Debug: Log all groups from initial grouping
+          console.log(`📦 Stop ${stopCount}: ${stopGrouped.length} groups BEFORE fingerprint dedup`);
+          stopGrouped.forEach((group, idx) => {
+            const flight = group.primary;
+            const airlineCode = getFlightAirlineCode(flight);
+            if ('id' in flight) {
+              const firstSlice = flight.slices[0];
+              const flightNum = firstSlice.flights?.[0] || '';
+              const departure = normalizeDepartureToMinute(firstSlice.departure || '');
+              const price = flight.displayTotal || 0;
+              console.log(`  [${idx}] ${airlineCode} ${flightNum} @ ${departure} - $${price} (${group.similar.length} similar)`);
+            }
+          });
+
           // Helper to create a detailed flight fingerprint for aggressive deduplication
           // IMPORTANT: DO NOT include cabin in fingerprint - cabin variations should be shown as options, not separate cards
           const getFlightFingerprint = (flight: FlightSolution | GroupedFlight): string => {
@@ -813,33 +827,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
           stopGrouped.forEach((group, idx) => {
             const fingerprint = getFlightFingerprint(group.primary);
-            const airlineCode = getFlightAirlineCode(group.primary);
-
-            // Debug logging for Alaska flights
-            if (airlineCode === 'AS') {
-              const flight = group.primary;
-              if ('id' in flight) {
-                const firstSlice = flight.slices[0];
-                console.log(`[AS Debug ${idx}] Fingerprint: ${fingerprint}`);
-                console.log(`  ID: ${flight.id}, Flight#: ${firstSlice.flights?.[0]}, Similar: ${group.similar.length}`);
-                console.log(`  Departure: ${firstSlice.departure}, Arrival: ${firstSlice.arrival}`);
-                console.log(`  Price: ${flight.displayTotal}, Duration: ${firstSlice.duration}`);
-              }
-            }
 
             if (!fingerprintMap.has(fingerprint)) {
               // First occurrence of this fingerprint
               fingerprintMap.set(fingerprint, { primary: group.primary, similar: [...group.similar] });
-              if (airlineCode === 'AS') {
-                console.log(`  ✨ NEW group created`);
-              }
             } else {
               // Duplicate found - merge into existing group
               const existing = fingerprintMap.get(fingerprint)!;
-
-              if (airlineCode === 'AS') {
-                console.log(`  ✅ MERGING into existing group`);
-              }
 
               // Add all similar flights from this group
               existing.similar.push(...group.similar);
@@ -853,6 +847,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
           // Convert back to array
           const deduplicatedStopGrouped = Array.from(fingerprintMap.values());
+
+          // Debug: Log final count after deduplication
+          console.log(`✅ Stop ${stopCount}: ${deduplicatedStopGrouped.length} groups AFTER fingerprint dedup (removed ${stopGrouped.length - deduplicatedStopGrouped.length})`);
 
           return deduplicatedStopGrouped.map((group, index) => (
             <FlightCardGroup
