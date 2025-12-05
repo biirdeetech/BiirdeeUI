@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code } from 'lucide-react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code, Link } from 'lucide-react';
 import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
@@ -28,6 +28,11 @@ interface FlightCardProps {
   showSimilarOptions?: boolean; // Whether to show similar options indicator
   onToggleSimilarOptions?: () => void; // Callback to toggle similar options
   isSimilarOptionsExpanded?: boolean; // Whether similar options are expanded
+  codeShareFlights?: (FlightSolution | GroupedFlight)[]; // Code-share flights (same segments, different airlines)
+  codeShareFlightsCount?: number; // Count of code-share flights
+  showCodeShareOptions?: boolean; // Whether to show code-share options indicator
+  onToggleCodeShareOptions?: () => void; // Callback to toggle code-share options
+  isCodeShareOptionsExpanded?: boolean; // Whether code-share options are expanded
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -202,7 +207,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     const date = new Date(dateStr);
@@ -1678,12 +1683,33 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       ? 'bg-slate-500/10 text-slate-300'
                       : 'bg-gray-800/30 text-gray-500 hover:bg-gray-700/40 hover:text-gray-400'
                   }`}
-                  title={import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT === 'true' 
+                  title={import.meta.env.VITE_ALLOW_VIEW_SIMILAR_FLIGHT === 'true'
                     ? `${similarFlightsCount} similar option${similarFlightsCount !== 1 ? 's' : ''}`
                     : 'Similar flights disabled'}
                 >
                   <span>{similarFlightsCount}</span>
                   <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isSimilarOptionsExpanded ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </div>
+
+            {/* Code-Share Options Indicator - Fixed width to prevent layout shift */}
+            <div className="w-[40px] flex items-center justify-center flex-shrink-0">
+              {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleCodeShareOptions?.();
+                  }}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
+                    isCodeShareOptionsExpanded
+                      ? 'bg-blue-500/10 text-blue-300'
+                      : 'bg-gray-800/30 text-gray-500 hover:bg-gray-700/40 hover:text-gray-400'
+                  }`}
+                  title={`${codeShareFlightsCount} code-share option${codeShareFlightsCount !== 1 ? 's' : ''}`}
+                >
+                  <span>{codeShareFlightsCount}</span>
+                  <Link className={`h-2.5 w-2.5 transition-transform duration-200 ${isCodeShareOptionsExpanded ? 'rotate-12' : ''}`} />
                 </button>
               )}
             </div>
