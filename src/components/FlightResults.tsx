@@ -832,6 +832,13 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             }
           };
 
+          // Helper to get unique flight ID
+          const getFlightId = (f: FlightSolution | GroupedFlight): string => {
+            if ('id' in f) return f.id;
+            // For grouped flights, use a combination of outbound slice details
+            return `${f.outboundSlice.flights?.[0]}-${f.outboundSlice.departure}-${f.outboundSlice.arrival}`;
+          };
+
           // Aggressive deduplication: Merge groups with identical flight fingerprints
           const fingerprintMap = new Map<string, { primary: FlightSolution | GroupedFlight; similar: (FlightSolution | GroupedFlight)[] }>();
 
