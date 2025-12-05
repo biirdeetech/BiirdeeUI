@@ -840,6 +840,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
           stopGrouped.forEach((group, idx) => {
             const fingerprint = getFlightFingerprint(group.primary);
+            const airlineCode = getFlightAirlineCode(group.primary);
+
+            // Debug: Log fingerprints for Alaska flights
+            if (airlineCode === 'AS') {
+              console.log(`  🔍 [${idx}] Fingerprint: ${fingerprint}`);
+            }
 
             if (!fingerprintMap.has(fingerprint)) {
               // First occurrence of this fingerprint
@@ -847,6 +853,10 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             } else {
               // Duplicate found - merge into existing group
               const existing = fingerprintMap.get(fingerprint)!;
+
+              if (airlineCode === 'AS') {
+                console.log(`    ⚠️ DUPLICATE FINGERPRINT FOUND - Merging!`);
+              }
 
               // Add all similar flights from this group
               existing.similar.push(...group.similar);
