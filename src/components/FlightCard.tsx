@@ -1546,13 +1546,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
           {/* Center: Badges & Best Deals */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Nonstop Badge */}
-            {isNonstop && (
-              <div className="px-2 py-0.5 bg-success-500/15 text-success-400 text-[10px] font-medium rounded border border-success-500/30">
-                Nonstop
-              </div>
-            )}
-            
             {/* Round Trip Badge */}
             {slices.length > 1 && (
               <div className="px-2 py-0.5 bg-slate-500/10 text-slate-300 text-[10px] font-medium rounded border border-slate-600/30">
@@ -1887,7 +1880,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       switchToCabinFlight();
                     }
                   }}
-                  className={`flex flex-col items-center justify-center min-w-[70px] px-2 py-1.5 rounded border transition-all ${
+                  className={`flex flex-col items-center justify-center min-w-[70px] max-w-[90px] px-2 py-1.5 rounded border transition-all ${
                     isSelected && pricing && displayPrice !== null
                       ? cabinKey === 'FIRST' || cabinKey === 'BUSINESS' || cabinKey === 'BUSINESS_PREMIUM'
                         ? 'bg-purple-500/20 border-purple-500/40'
