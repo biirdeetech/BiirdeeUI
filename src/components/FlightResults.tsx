@@ -780,73 +780,60 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
           // Re-group the flights in this stop category
           const stopGrouped = groupSimilarFlights(groupFlights);
-          
-          // Final deduplication: Remove duplicate groups (same airline, route, time - NO cabin)
-          const deduplicatedStopGrouped: Array<{ primary: FlightSolution | GroupedFlight; similar: (FlightSolution | GroupedFlight)[] }> = [];
-          const seenRouteKeys = new Set<string>();
 
-          stopGrouped.forEach(group => {
-            const flight = group.primary;
+          // Helper to create a detailed flight fingerprint for aggressive deduplication
+          const getFlightFingerprint = (flight: FlightSolution | GroupedFlight): string => {
             const airlineCode = getFlightAirlineCode(flight);
-            let routeKey = '';
-
             if ('id' in flight) {
               const firstSlice = flight.slices[0];
               const lastSlice = flight.slices[flight.slices.length - 1];
               const departure = normalizeDepartureToMinute(firstSlice.departure || '');
+              const arrival = normalizeDepartureToMinute(lastSlice.arrival || '');
               const origin = firstSlice.origin?.code || '';
               const destination = lastSlice.destination?.code || '';
-              // NO cabin in key - group all cabins for same airline together
-              routeKey = `${airlineCode}-${origin}-${destination}-${departure}`;
+              const stops = flight.slices.map(s => s.stops?.length || 0).join(',');
+              const duration = flight.slices.reduce((sum, s) => sum + s.duration, 0);
+              const cabin = firstSlice.cabins?.join(',') || '';
+              // Key includes all visible attributes
+              return `${airlineCode}|${origin}|${destination}|${departure}|${arrival}|${stops}|${duration}|${cabin}`;
             } else {
               const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
+              const arrival = normalizeDepartureToMinute(flight.outboundSlice.arrival || '');
               const origin = flight.outboundSlice.origin?.code || '';
               const destination = flight.outboundSlice.destination?.code || '';
-              // NO cabin in key - group all cabins for same airline together
-              routeKey = `${airlineCode}-${origin}-${destination}-${departure}`;
+              const stops = flight.outboundSlice.stops?.length || 0;
+              const duration = flight.outboundSlice.duration;
+              const cabin = flight.outboundSlice.cabins?.join(',') || '';
+              return `${airlineCode}|${origin}|${destination}|${departure}|${arrival}|${stops}|${duration}|${cabin}`;
             }
+          };
 
-            // Only add if we haven't seen this exact route+time combination (regardless of cabin)
-            if (!seenRouteKeys.has(routeKey)) {
-              seenRouteKeys.add(routeKey);
-              deduplicatedStopGrouped.push(group);
+          // Aggressive deduplication: Merge groups with identical flight fingerprints
+          const fingerprintMap = new Map<string, { primary: FlightSolution | GroupedFlight; similar: (FlightSolution | GroupedFlight)[] }>();
+
+          stopGrouped.forEach(group => {
+            const fingerprint = getFlightFingerprint(group.primary);
+
+            if (!fingerprintMap.has(fingerprint)) {
+              // First occurrence of this fingerprint
+              fingerprintMap.set(fingerprint, { primary: group.primary, similar: [...group.similar] });
             } else {
-              // If duplicate found, merge the similar flights into the existing group
-              const existingGroup = deduplicatedStopGrouped.find(g => {
-                const existingFlight = g.primary;
-                const existingAirlineCode = getFlightAirlineCode(existingFlight);
-                let existingRouteKey = '';
+              // Duplicate found - merge into existing group
+              const existing = fingerprintMap.get(fingerprint)!;
 
-                if ('id' in existingFlight) {
-                  const firstSlice = existingFlight.slices[0];
-                  const lastSlice = existingFlight.slices[existingFlight.slices.length - 1];
-                  const departure = normalizeDepartureToMinute(firstSlice.departure || '');
-                  const origin = firstSlice.origin?.code || '';
-                  const destination = lastSlice.destination?.code || '';
-                  // NO cabin in key
-                  existingRouteKey = `${existingAirlineCode}-${origin}-${destination}-${departure}`;
-                } else {
-                  const departure = normalizeDepartureToMinute(existingFlight.outboundSlice.departure || '');
-                  const origin = existingFlight.outboundSlice.origin?.code || '';
-                  const destination = existingFlight.outboundSlice.destination?.code || '';
-                  // NO cabin in key
-                  existingRouteKey = `${existingAirlineCode}-${origin}-${destination}-${departure}`;
-                }
+              // Add all similar flights from this group
+              existing.similar.push(...group.similar);
 
-                return existingRouteKey === routeKey;
-              });
-
-              if (existingGroup) {
-                // Merge similar flights
-                existingGroup.similar = [...existingGroup.similar, ...group.similar];
-                // Also add the primary if it's different
-                if (getFlightId(group.primary) !== getFlightId(existingGroup.primary)) {
-                  existingGroup.similar.push(group.primary);
-                }
+              // Add the primary as a similar flight if it has a different ID
+              if (getFlightId(group.primary) !== getFlightId(existing.primary)) {
+                existing.similar.push(group.primary);
               }
             }
           });
-          
+
+          // Convert back to array
+          const deduplicatedStopGrouped = Array.from(fingerprintMap.values());
+
           return deduplicatedStopGrouped.map((group, index) => (
             <FlightCardGroup
               key={`flight-group-${stopCount}-${index}`}
