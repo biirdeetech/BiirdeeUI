@@ -782,6 +782,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           const stopGrouped = groupSimilarFlights(groupFlights);
 
           // Helper to create a detailed flight fingerprint for aggressive deduplication
+          // IMPORTANT: DO NOT include cabin in fingerprint - cabin variations should be shown as options, not separate cards
           const getFlightFingerprint = (flight: FlightSolution | GroupedFlight): string => {
             const airlineCode = getFlightAirlineCode(flight);
             if ('id' in flight) {
@@ -791,35 +792,54 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               const arrival = normalizeDepartureToMinute(lastSlice.arrival || '');
               const origin = firstSlice.origin?.code || '';
               const destination = lastSlice.destination?.code || '';
+              const flightNum = firstSlice.flights?.[0] || '';
               const stops = flight.slices.map(s => s.stops?.length || 0).join(',');
-              const duration = flight.slices.reduce((sum, s) => sum + s.duration, 0);
-              const cabin = firstSlice.cabins?.join(',') || '';
-              // Key includes all visible attributes
-              return `${airlineCode}|${origin}|${destination}|${departure}|${arrival}|${stops}|${duration}|${cabin}`;
+              // NO cabin, NO duration, NO price - just route/time/stops/flight number
+              return `${airlineCode}|${flightNum}|${origin}|${destination}|${departure}|${arrival}|${stops}`;
             } else {
               const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
               const arrival = normalizeDepartureToMinute(flight.outboundSlice.arrival || '');
               const origin = flight.outboundSlice.origin?.code || '';
               const destination = flight.outboundSlice.destination?.code || '';
+              const flightNum = flight.outboundSlice.flights?.[0] || '';
               const stops = flight.outboundSlice.stops?.length || 0;
-              const duration = flight.outboundSlice.duration;
-              const cabin = flight.outboundSlice.cabins?.join(',') || '';
-              return `${airlineCode}|${origin}|${destination}|${departure}|${arrival}|${stops}|${duration}|${cabin}`;
+              // NO cabin, NO duration, NO price - just route/time/stops/flight number
+              return `${airlineCode}|${flightNum}|${origin}|${destination}|${departure}|${arrival}|${stops}`;
             }
           };
 
           // Aggressive deduplication: Merge groups with identical flight fingerprints
           const fingerprintMap = new Map<string, { primary: FlightSolution | GroupedFlight; similar: (FlightSolution | GroupedFlight)[] }>();
 
-          stopGrouped.forEach(group => {
+          stopGrouped.forEach((group, idx) => {
             const fingerprint = getFlightFingerprint(group.primary);
+            const airlineCode = getFlightAirlineCode(group.primary);
+
+            // Debug logging for Alaska flights
+            if (airlineCode === 'AS') {
+              const flight = group.primary;
+              if ('id' in flight) {
+                const firstSlice = flight.slices[0];
+                console.log(`[AS Debug ${idx}] Fingerprint: ${fingerprint}`);
+                console.log(`  ID: ${flight.id}, Flight#: ${firstSlice.flights?.[0]}, Similar: ${group.similar.length}`);
+                console.log(`  Departure: ${firstSlice.departure}, Arrival: ${firstSlice.arrival}`);
+                console.log(`  Price: ${flight.displayTotal}, Duration: ${firstSlice.duration}`);
+              }
+            }
 
             if (!fingerprintMap.has(fingerprint)) {
               // First occurrence of this fingerprint
               fingerprintMap.set(fingerprint, { primary: group.primary, similar: [...group.similar] });
+              if (airlineCode === 'AS') {
+                console.log(`  ✨ NEW group created`);
+              }
             } else {
               // Duplicate found - merge into existing group
               const existing = fingerprintMap.get(fingerprint)!;
+
+              if (airlineCode === 'AS') {
+                console.log(`  ✅ MERGING into existing group`);
+              }
 
               // Add all similar flights from this group
               existing.similar.push(...group.similar);
