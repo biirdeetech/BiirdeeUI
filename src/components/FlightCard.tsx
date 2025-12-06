@@ -2607,65 +2607,76 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </div>
                   )}
                 </div>
-
-                {/* Award Button - Fixed width on right */}
-                {hasAwardOptions && (() => {
-                  // Filter awards for this slice and selected cabin
-                  const sliceAwardOptions = allAwardOptions.filter(award => {
-                    const routeMatch = award.enrichmentOrigin === slice.origin.code &&
-                                      award.enrichmentDestination === slice.destination.code;
-                    if (!routeMatch) return false;
-
-                    // Check cabin match
-                    const awardCabin = award.cabin?.toUpperCase() || '';
-                    if (selectedCabin === 'ECONOMY') {
-                      return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-                    } else if (selectedCabin === 'BUSINESS') {
-                      return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-                      return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'FIRST') {
-                      return awardCabin.includes('FIRST');
-                    }
-                    return false;
-                  });
-
-                  if (sliceAwardOptions.length === 0) return null;
-
-                  // Use selected award if available, otherwise show cheapest
-                  const selectedAwardId = selectedAwardPerSlice[sliceIndex];
-                  let displayAward = selectedAwardId
-                    ? sliceAwardOptions.find(a => a.id === selectedAwardId)
-                    : null;
-
-                  // If no selected award, find cheapest
-                  if (!displayAward) {
-                    displayAward = sliceAwardOptions.reduce((best, award) => {
-                      const value = (award.miles * perCentValue) + award.tax;
-                      const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
-                      return value < bestValue ? award : best;
-                    }, null as any);
-                  }
-
-                  if (!displayAward) return null;
-
-                  const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
-
-                  return (
-                    <div className="flex flex-col items-center justify-center min-w-[120px] px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Award className="h-3 w-3 text-yellow-500" />
-                        <span className="text-[9px] text-yellow-400 font-semibold">AWARD</span>
-                      </div>
-                      <div className="text-xs text-yellow-400 font-bold">{displayAward.miles.toLocaleString()}</div>
-                      <div className="text-[9px] text-gray-400">miles</div>
-                      <div className="text-xs text-green-400 font-semibold mt-0.5">+{formatPrice(displayAward.tax, displayAward.currency || 'USD', false)}</div>
-                      <div className="text-[8px] text-gray-500 mt-0.5">≈{formatPrice(cashValue, displayAward.currency || 'USD', false)}</div>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
+
+            {/* Award Box - Left aligned between segment and flight info */}
+            {hasAwardOptions && (() => {
+              // Filter awards for this slice and selected cabin
+              const sliceAwardOptions = allAwardOptions.filter(award => {
+                const routeMatch = award.enrichmentOrigin === slice.origin.code &&
+                                  award.enrichmentDestination === slice.destination.code;
+                if (!routeMatch) return false;
+
+                // Check cabin match
+                const awardCabin = award.cabin?.toUpperCase() || '';
+                if (selectedCabin === 'ECONOMY') {
+                  return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+                } else if (selectedCabin === 'BUSINESS') {
+                  return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                  return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'FIRST') {
+                  return awardCabin.includes('FIRST');
+                }
+                return false;
+              });
+
+              if (sliceAwardOptions.length === 0) return null;
+
+              // Use selected award if available, otherwise show cheapest
+              const selectedAwardId = selectedAwardPerSlice[sliceIndex];
+              let displayAward = selectedAwardId
+                ? sliceAwardOptions.find(a => a.id === selectedAwardId)
+                : null;
+
+              // If no selected award, find cheapest
+              if (!displayAward) {
+                displayAward = sliceAwardOptions.reduce((best, award) => {
+                  const value = (award.miles * perCentValue) + award.tax;
+                  const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
+                  return value < bestValue ? award : best;
+                }, null as any);
+              }
+
+              if (!displayAward) return null;
+
+              const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
+
+              return (
+                <div className="px-3 py-2 bg-yellow-500/10 border-l-2 border-yellow-500/30">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <Award className="h-3.5 w-3.5 text-yellow-500" />
+                      <span className="text-[10px] text-yellow-400 font-semibold uppercase">Award</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm text-yellow-400 font-bold">{displayAward.miles.toLocaleString()}</span>
+                        <span className="text-[10px] text-gray-400">miles</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs text-green-400 font-semibold">+{formatPrice(displayAward.tax, displayAward.currency || 'USD', false)}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[10px] text-gray-500">≈</span>
+                        <span className="text-xs text-gray-400">{formatPrice(cashValue, displayAward.currency || 'USD', false)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Slice Details */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between text-xs lg:text-sm text-gray-300 mb-3 lg:mb-4 gap-2 lg:gap-4">
