@@ -2239,48 +2239,55 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             if (cabinAwardOptions.length === 0) return null;
 
             return (
-              <div className="px-4 py-3 bg-yellow-500/5 border-b border-yellow-500/20 space-y-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className="h-4 w-4 text-yellow-500" />
-                  <span className="text-xs font-semibold text-yellow-400">Award Options</span>
-                  <span className="text-[10px] text-gray-500">({cabinAwardOptions.length} available)</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {cabinAwardOptions.map((award, idx) => {
-                    const cashValue = (award.miles * perCentValue) + award.tax;
-                    const isSelected = selectedAwardPerSlice[0] === award.id;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedAwardPerSlice(prev => ({
-                            ...prev,
-                            [0]: award.id
-                          }));
-                        }}
-                        className={`px-2.5 py-1.5 rounded border transition-all ${
-                          isSelected
-                            ? 'bg-yellow-500/20 border-yellow-500/40 hover:bg-yellow-500/30'
-                            : 'bg-gray-700/40 border-gray-600/40 hover:bg-gray-700/60 hover:border-gray-500/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-xs font-bold ${isSelected ? 'text-yellow-400' : 'text-gray-200'}`}>
-                            {award.miles.toLocaleString()}
-                          </span>
-                          <span className={`text-[10px] ${isSelected ? 'text-yellow-500/70' : 'text-gray-400'}`}>miles</span>
-                          <span className={`text-[10px] ${isSelected ? 'text-yellow-500/50' : 'text-gray-500'}`}>+</span>
-                          <span className={`text-xs font-semibold ${isSelected ? 'text-green-400' : 'text-green-500/70'}`}>
-                            {formatPrice(award.tax, award.currency || 'USD', false)}
-                          </span>
-                        </div>
-                        <div className={`text-[9px] mt-0.5 ${isSelected ? 'text-gray-400' : 'text-gray-500'}`}>
-                          ≈{formatPrice(cashValue, award.currency || 'USD', false)} value
-                        </div>
-                      </button>
-                    );
-                  })}
+              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30 space-y-2">
+                <div className="flex items-center gap-3 flex-1">
+                  <span className="text-xs font-semibold text-gray-300 whitespace-nowrap flex items-center gap-2">
+                    <Award className="h-3.5 w-3.5 text-yellow-500" />
+                    Award Options:
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {cabinAwardOptions.map((award, idx) => {
+                      const cashValue = (award.miles * perCentValue) + award.tax;
+                      const isSelected = selectedAwardPerSlice[0] === award.id;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Toggle selection
+                            if (isSelected) {
+                              setSelectedAwardPerSlice(prev => {
+                                const newState = { ...prev };
+                                delete newState[0];
+                                return newState;
+                              });
+                            } else {
+                              setSelectedAwardPerSlice(prev => ({
+                                ...prev,
+                                [0]: award.id
+                              }));
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded border transition-all ${
+                            isSelected
+                              ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30'
+                              : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold">
+                              {award.miles.toLocaleString()}
+                            </span>
+                            <span className="text-[10px]">mi</span>
+                            <span className="text-[10px] opacity-50">@</span>
+                            <span className="text-xs font-semibold">
+                              {formatPrice(cashValue, award.currency || 'USD', false)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
@@ -2419,6 +2426,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             </div>
           </div>
 
+          {/* Award Segment Viewer - Show when award is selected */}
+          {(() => {
+            const selectedAwardId = selectedAwardPerSlice[0];
+            if (!selectedAwardId || !hasAwardOptions) return null;
+
+            const selectedAward = allAwardOptions.find(a => a.id === selectedAwardId);
+            if (!selectedAward) return null;
+
+            return (
+              <div className="px-4 py-3 border-t border-yellow-500/20 bg-yellow-500/5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm font-semibold text-yellow-400">Selected Award Segments</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {selectedAward.programName} • {selectedAward.cabin}
+                  </div>
+                </div>
+                {selectedAward.segments && selectedAward.segments.length > 0 && (
+                  <FlightSegmentViewer
+                    segments={selectedAward.segments}
+                    originTimezone={originTimezone}
+                  />
+                )}
+              </div>
+            );
+          })()}
+
           {/* Selected Mileage Badge - If selected */}
           {(() => {
             const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
@@ -2468,62 +2504,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         </div>
       )}
 
-        {/* V2 Mileage Enrichment - Display best award if available */}
-        {hasAwardOptions && slices.length > 0 && (() => {
-          // Get best award for the first slice (outbound)
-          const firstSlice = slices[0];
-          const sliceAwardOptions = allAwardOptions.filter(award => {
-            // First check enrichment segment metadata (more reliable for route matching)
-            if (award.enrichmentOrigin && award.enrichmentDestination) {
-              if (award.enrichmentOrigin === firstSlice.origin.code &&
-                  award.enrichmentDestination === firstSlice.destination.code) {
-                return true;
-              }
-            }
-            
-            // Fallback to itinerary segments if metadata not available
-            const itinerary = award.itineraries?.[0];
-            if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
-            const firstSegment = itinerary.segments[0];
-            const lastSegment = itinerary.segments[itinerary.segments.length - 1];
-            return firstSegment.departure?.iataCode === firstSlice.origin.code &&
-                   lastSegment.arrival?.iataCode === firstSlice.destination.code;
-          });
-
-          if (sliceAwardOptions.length === 0) return null;
-
-          // Get best award for this slice
-          const bestAward = [...sliceAwardOptions].sort((a, b) => {
-            const aValue = (a.miles * perCentValue) + a.tax;
-            const bValue = (b.miles * perCentValue) + b.tax;
-            return aValue - bValue;
-          })[0];
-
-          if (!bestAward) return null;
-
-          const cashValue = (bestAward.miles * perCentValue) + bestAward.tax;
-
-            return (
-              <div className="px-4 py-2 border-t border-gray-800/30 bg-purple-500/8 border-l-2 border-purple-500/40">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-3.5 w-3.5 text-purple-400" />
-                    <div>
-                      <div className="text-xs font-semibold text-white">Best Award Available</div>
-                      <div className="text-[10px] text-gray-400">{bestAward.cabin} • {sliceAwardOptions.length} options</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-purple-300 font-semibold">{bestAward.miles.toLocaleString()} mi</span>
-                    <span className="text-gray-500">+</span>
-                    <span className="text-success-400 font-semibold">${bestAward.tax.toFixed(2)}</span>
-                    <span className="text-gray-500">=</span>
-                    <span className="text-purple-200 font-semibold">${cashValue.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 
@@ -2774,7 +2754,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         const tooltipKey = `day-indicator-${sliceIndex}`;
                         return (
                           <div className="relative">
-                            <span 
+                            <span
                               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-500/10 text-slate-300 border border-slate-600/30 whitespace-nowrap cursor-help"
                               onMouseEnter={() => setTooltipStates(prev => ({ ...prev, [tooltipKey]: true }))}
                               onMouseLeave={() => setTooltipStates(prev => ({ ...prev, [tooltipKey]: false }))}
@@ -2813,6 +2793,55 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </div>
                   )}
                 </div>
+
+                {/* Award Button - Fixed width on right */}
+                {hasAwardOptions && (() => {
+                  // Filter awards for this slice and selected cabin
+                  const sliceAwardOptions = allAwardOptions.filter(award => {
+                    const routeMatch = award.enrichmentOrigin === slice.origin.code &&
+                                      award.enrichmentDestination === slice.destination.code;
+                    if (!routeMatch) return false;
+
+                    // Check cabin match
+                    const awardCabin = award.cabin?.toUpperCase() || '';
+                    if (selectedCabin === 'ECONOMY') {
+                      return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+                    } else if (selectedCabin === 'BUSINESS') {
+                      return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+                    } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                      return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+                    } else if (selectedCabin === 'FIRST') {
+                      return awardCabin.includes('FIRST');
+                    }
+                    return false;
+                  });
+
+                  if (sliceAwardOptions.length === 0) return null;
+
+                  // Find cheapest award
+                  const cheapestAward = sliceAwardOptions.reduce((best, award) => {
+                    const value = (award.miles * perCentValue) + award.tax;
+                    const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
+                    return value < bestValue ? award : best;
+                  }, null as any);
+
+                  if (!cheapestAward) return null;
+
+                  const cashValue = (cheapestAward.miles * perCentValue) + cheapestAward.tax;
+
+                  return (
+                    <div className="flex flex-col items-center justify-center min-w-[120px] px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded">
+                      <div className="flex items-center gap-1 mb-1">
+                        <Award className="h-3 w-3 text-yellow-500" />
+                        <span className="text-[9px] text-yellow-400 font-semibold">AWARD</span>
+                      </div>
+                      <div className="text-xs text-yellow-400 font-bold">{cheapestAward.miles.toLocaleString()}</div>
+                      <div className="text-[9px] text-gray-400">miles</div>
+                      <div className="text-xs text-green-400 font-semibold mt-0.5">+{formatPrice(cheapestAward.tax, cheapestAward.currency || 'USD', false)}</div>
+                      <div className="text-[8px] text-gray-500 mt-0.5">≈{formatPrice(cashValue, cheapestAward.currency || 'USD', false)}</div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2866,56 +2895,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </div>
                   );
                 })()}
-
-                {/* Compact Award Display for Selected Cabin */}
-                {hasAwardOptions && (() => {
-                  // Filter awards for this slice and selected cabin
-                  const sliceAwardOptions = allAwardOptions.filter(award => {
-                    // Check route match
-                    const routeMatch = award.enrichmentOrigin === slice.origin.code &&
-                                      award.enrichmentDestination === slice.destination.code;
-                    if (!routeMatch) return false;
-
-                    // Check cabin match
-                    const awardCabin = award.cabin?.toUpperCase() || '';
-                    if (selectedCabin === 'ECONOMY') {
-                      return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-                    } else if (selectedCabin === 'BUSINESS') {
-                      return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-                      return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'FIRST') {
-                      return awardCabin.includes('FIRST');
-                    }
-                    return false;
-                  });
-
-                  if (sliceAwardOptions.length === 0) return null;
-
-                  // Find cheapest award option by cash value
-                  const cheapestAward = sliceAwardOptions.reduce((best, award) => {
-                    const value = (award.miles * perCentValue) + award.tax;
-                    const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
-                    return value < bestValue ? award : best;
-                  }, null as any);
-
-                  if (!cheapestAward) return null;
-
-                  const cashValue = (cheapestAward.miles * perCentValue) + cheapestAward.tax;
-
-                  return (
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded">
-                      <Award className="h-3 w-3 text-yellow-500" />
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className="text-yellow-400 font-semibold">{cheapestAward.miles.toLocaleString()}</span>
-                        <span className="text-gray-400">miles</span>
-                        <span className="text-gray-500">+</span>
-                        <span className="text-green-400 font-semibold">{formatPrice(cheapestAward.tax, cheapestAward.currency || 'USD', false)}</span>
-                        <span className="text-gray-500 text-[10px]">≈{formatPrice(cashValue, cheapestAward.currency || 'USD', false)}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             </div>
 
@@ -2930,11 +2909,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
-            {/* Cabin Filter Bar - Quick filter for all mileage options */}
+            {/* Cabin Filter Bar - Quick filter for Aero mileage options only */}
             {(() => {
-              // Collect all available cabins from both Aero and Award options
+              // Collect all available cabins from Aero flights only
               const allCabins = new Set<string>();
-              
+
               // From Aero flights
               if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
                 slice.mileageBreakdown.forEach(breakdown => {
@@ -2946,16 +2925,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   }
                 });
               }
-              
-              // From Award options
-              if (hasAwardOptions) {
-                allAwardOptions.forEach(award => {
-                  if (award.cabin) {
-                    allCabins.add(award.cabin.toUpperCase());
-                  }
-                });
-              }
-              
+
               if (allCabins.size <= 1) return null; // No need to filter if only one cabin
               
               const cabinOrder = ['FIRST', 'BUSINESS', 'PREMIUM_ECONOMY', 'PREMIUM', 'ECONOMY', 'COACH'];
