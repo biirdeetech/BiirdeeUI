@@ -124,7 +124,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             similarFlightsCount={similarFlights.length}
             codeShareFlights={codeShareFlights}
             codeShareFlightsCount={codeShareFlights.length}
-            showCodeShareOptions={codeShareFlights.length > 0}
+            showCodeShareOptions={true}
             onToggleCodeShareOptions={() => setIsCodeShareExpanded(!isCodeShareExpanded)}
             isCodeShareOptionsExpanded={isCodeShareExpanded}
           />
@@ -155,7 +155,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             isSimilarOptionsExpanded={isExpanded}
             codeShareFlights={codeShareFlights}
             codeShareFlightsCount={codeShareFlights.length}
-            showCodeShareOptions={codeShareFlights.length > 0}
+            showCodeShareOptions={true}
             onToggleCodeShareOptions={() => setIsCodeShareExpanded(!isCodeShareExpanded)}
             isCodeShareOptionsExpanded={isCodeShareExpanded}
           />
