@@ -1962,27 +1962,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })}
 
-            {/* Code-Share Link - Next to Chevron */}
-            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleCodeShareOptions?.();
-                }}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${
-                  isCodeShareOptionsExpanded
-                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                    : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/60 hover:text-yellow-400 border border-gray-700/50 hover:border-yellow-500/30'
-                }`}
-                title={`${codeShareFlightsCount} code-share option${codeShareFlightsCount !== 1 ? 's' : ''} - Same route, different airlines`}
-              >
-                <Link className={`h-3.5 w-3.5 ${isCodeShareOptionsExpanded ? 'text-yellow-400' : ''}`} />
-                <span className="text-[11px] font-medium whitespace-nowrap">Code-Share</span>
-                <span className="text-[10px] opacity-70">({codeShareFlightsCount})</span>
-              </button>
-            )}
-
-            {/* Expand/Collapse Chevron - Far Right */}
+            {/* Expand/Collapse Chevron */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1992,6 +1972,27 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             >
               <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
+
+            {/* Code-Share Icon - Right of Chevron */}
+            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCodeShareOptions?.();
+                }}
+                className={`relative p-1.5 hover:bg-gray-800/50 rounded transition-colors ml-1 ${
+                  isCodeShareOptionsExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
+                }`}
+                title="Code-share"
+              >
+                <Link className="h-4 w-4" />
+                <span className={`absolute -top-1 -right-1 text-[9px] font-bold px-1 rounded ${
+                  isCodeShareOptionsExpanded ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300'
+                }`}>
+                  {codeShareFlightsCount}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>
