@@ -1569,90 +1569,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
-            {/* Best Deal Indicator */}
-            {(() => {
-              // Calculate if there's a better deal
-              const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
-              
-              let bestMileageValue = null;
-              if (hasSelectedMileage) {
-                let totalMileage = 0;
-                let totalPrice = 0;
-                
-                slices.forEach((slice, idx) => {
-                  const selectedCarrier = selectedMileagePerSlice[idx];
-                  if (selectedCarrier && slice.mileageBreakdown) {
-                    const programs = groupMileageByProgram(slice.mileageBreakdown);
-                    const selectedProgram = programs.find(p => p.carrierCode === selectedCarrier);
-                    if (selectedProgram) {
-                      totalMileage += selectedProgram.totalMileage;
-                      totalPrice += selectedProgram.totalPrice;
-                    }
-                  }
-                });
-                
-                if (totalMileage > 0) {
-                  bestMileageValue = (totalMileage * perCentValue) + totalPrice;
-                }
-              }
-
-              let bestAwardValue = null;
-              if (hasAwardOptions && allAwardOptions.length > 0) {
-                let selectedAward: any = null;
-                for (let idx = 0; idx < slices.length; idx++) {
-                  const selectedAwardId = selectedAwardPerSlice[idx];
-                  if (selectedAwardId) {
-                    const sliceAwardOptions = allAwardOptions.filter(award => {
-                      if (award.enrichmentOrigin && award.enrichmentDestination) {
-                        if (award.enrichmentOrigin === slices[idx].origin.code &&
-                            award.enrichmentDestination === slices[idx].destination.code) {
-                          return true;
-                        }
-                      }
-                      const itinerary = award.itineraries?.[0];
-                      if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) return false;
-                      const firstSegment = itinerary.segments[0];
-                      const lastSegment = itinerary.segments[itinerary.segments.length - 1];
-                      return firstSegment.departure?.iataCode === slices[idx].origin.code &&
-                             lastSegment.arrival?.iataCode === slices[idx].destination.code;
-                    });
-                    selectedAward = sliceAwardOptions.find(a => a.id === selectedAwardId);
-                    if (selectedAward) break;
-                  }
-                }
-                
-                const bestAward = selectedAward || [...allAwardOptions].sort((a, b) => {
-                  const aValue = (a.miles * perCentValue) + a.tax;
-                  const bValue = (b.miles * perCentValue) + b.tax;
-                  return aValue - bValue;
-                })[0];
-                if (bestAward) {
-                  bestAwardValue = (bestAward.miles * perCentValue) + bestAward.tax;
-                }
-              }
-
-              const cashPrice = displayTotal;
-              const bestAlternativeValue = bestMileageValue && bestAwardValue
-                ? Math.min(bestMileageValue, bestAwardValue)
-                : bestMileageValue || bestAwardValue;
-              
-              const showBestDeal = bestAlternativeValue && bestAlternativeValue < cashPrice * 0.85;
-
-              if (showBestDeal) {
-                const savings = cashPrice - bestAlternativeValue;
-                const savingsPercent = Math.round((savings / cashPrice) * 100);
-                const dealType = bestMileageValue && bestAwardValue
-                  ? (bestMileageValue <= bestAwardValue ? 'Miles' : 'Award')
-                  : (bestMileageValue ? 'Miles' : 'Award');
-                
-                return (
-                  <div className="px-2 py-0.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 text-[10px] font-bold rounded border border-purple-400/40">
-                    💎 Save {savingsPercent}% ({dealType})
-                  </div>
-                );
-              }
-              return null;
-            })()}
 
             {/* Loading Award Indicator */}
             {isEnriching && !hasV2Enrichment && (
@@ -1974,16 +1890,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             </button>
 
             {/* Code-Share Icon - Right of Chevron */}
-            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
+            {showCodeShareOptions && codeShareFlightsCount !== undefined && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleCodeShareOptions?.();
+                  if (codeShareFlightsCount > 0) {
+                    onToggleCodeShareOptions?.();
+                  }
                 }}
                 className={`relative p-1.5 hover:bg-gray-800/50 rounded transition-colors ml-1 ${
                   isCodeShareOptionsExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
                 }`}
                 title="Code-share"
+                disabled={codeShareFlightsCount === 0}
               >
                 <Link className="h-4 w-4" />
                 <span className={`absolute -top-1 -right-1 text-[9px] font-bold px-1 rounded ${
