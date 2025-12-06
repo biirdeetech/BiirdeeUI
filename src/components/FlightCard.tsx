@@ -209,7 +209,9 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
 const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false }) => {
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
+    if (!dateStr) return '';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
     const defaultOptions: Intl.DateTimeFormatOptions = {
       hour: 'numeric',
       minute: '2-digit',
@@ -221,7 +223,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   };
 
   const formatDateInOriginTZ = (dateStr: string) => {
+    if (!dateStr) return '';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
     const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
