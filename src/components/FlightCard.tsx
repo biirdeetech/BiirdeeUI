@@ -5,7 +5,6 @@ import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import AddToProposalModal from './AddToProposalModal';
-import MileageDealsDropdown from './MileageDealsDropdown';
 import FlightSegmentDetails from './FlightSegmentDetails';
 import FlightSummaryModal from './FlightSummaryModal';
 import MileageSegmentTooltip from './MileageSegmentTooltip';
