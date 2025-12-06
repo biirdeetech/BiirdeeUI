@@ -1693,26 +1693,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               )}
             </div>
 
-            {/* Code-Share Options Indicator - Fixed width to prevent layout shift */}
-            <div className="w-[40px] flex items-center justify-center flex-shrink-0">
-              {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleCodeShareOptions?.();
-                  }}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
-                    isCodeShareOptionsExpanded
-                      ? 'bg-blue-500/10 text-blue-300'
-                      : 'bg-gray-800/30 text-gray-500 hover:bg-gray-700/40 hover:text-gray-400'
-                  }`}
-                  title={`${codeShareFlightsCount} code-share option${codeShareFlightsCount !== 1 ? 's' : ''}`}
-                >
-                  <span>{codeShareFlightsCount}</span>
-                  <Link className={`h-2.5 w-2.5 transition-transform duration-200 ${isCodeShareOptionsExpanded ? 'rotate-12' : ''}`} />
-                </button>
-              )}
-            </div>
+            {/* Code-Share Options Indicator - Shows code-share flight alternatives */}
+            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleCodeShareOptions?.();
+                }}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-medium transition-all ${
+                  isCodeShareOptionsExpanded
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/60 hover:text-gray-300 border border-gray-700/50'
+                }`}
+                title={`${codeShareFlightsCount} code-share option${codeShareFlightsCount !== 1 ? 's' : ''} - Same route, different airlines`}
+              >
+                <Link className={`h-3 w-3 transition-transform duration-200 ${isCodeShareOptionsExpanded ? 'rotate-12' : ''}`} />
+                <span className="whitespace-nowrap">Code-Share ({codeShareFlightsCount})</span>
+                <ChevronDown className={`h-2.5 w-2.5 transition-transform duration-200 ${isCodeShareOptionsExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            )}
             {/* Cabin Pricing Sections */}
             {(['ECONOMY', 'BUSINESS', 'BUSINESS_PREMIUM', 'FIRST'] as const).map((cabinKey) => {
               const pricing = cabinPricing[cabinKey];
@@ -2448,7 +2447,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 {selectedAward.segments && selectedAward.segments.length > 0 && (
                   <FlightSegmentViewer
                     segments={selectedAward.segments}
-                    originTimezone={originTimezone}
+                    formatTime={formatTime}
+                    formatDate={formatDate}
+                    formatDuration={(duration: string) => {
+                      // Convert ISO duration or minutes to formatted string
+                      if (typeof duration === 'string' && duration.includes('PT')) {
+                        const match = duration.match(/PT(\d+H)?(\d+M)?/);
+                        const hours = match?.[1] ? parseInt(match[1]) : 0;
+                        const mins = match?.[2] ? parseInt(match[2]) : 0;
+                        return `${hours}h ${mins}m`;
+                      }
+                      const minutes = parseInt(duration);
+                      return formatDuration(minutes);
+                    }}
+                    showCabin={true}
+                    compact={false}
                   />
                 )}
               </div>
