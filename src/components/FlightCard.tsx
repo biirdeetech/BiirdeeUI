@@ -1750,7 +1750,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             )}
 
             {/* Match Type Badge */}
-            {matchType && matchType !== 'none' && (
+            {matchType && matchType !== 'none' && false && (
               <div
                 className={`px-2 py-0.5 text-[10px] font-medium rounded border cursor-help ${
                   matchType === 'exact'
