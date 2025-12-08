@@ -1019,11 +1019,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       return aCashValue - bCashValue;
     });
 
-    // Auto-select the cheapest award (first in sorted array)
+    // Auto-select the cheapest award ONLY if no selection exists or current selection is invalid
     if (sortedAwards.length > 0) {
-      setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
+      const currentSelection = selectedAwardPerSlice[0];
+      const isCurrentSelectionValid = currentSelection && sortedAwards.some(a => a.id === currentSelection);
+
+      // Only update if there's no selection or the current selection is not in the filtered awards
+      if (!currentSelection || !isCurrentSelectionValid) {
+        setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
+      }
     }
-  }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue]);
+  }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue, selectedAwardPerSlice]);
 
   // Auto-scroll to keep selected award visible
   useEffect(() => {
