@@ -1751,11 +1751,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             {/* Match Type Badge */}
             {matchType && matchType !== 'none' && (
-              <div className={`px-2 py-0.5 text-[10px] font-medium rounded border ${
-                matchType === 'exact'
-                  ? 'bg-success-500/15 text-success-400 border-success-500/30'
-                  : 'bg-amber-500/10 text-amber-300 border-amber-600/30'
-              }`}>
+              <div
+                className={`px-2 py-0.5 text-[10px] font-medium rounded border cursor-help ${
+                  matchType === 'exact'
+                    ? 'bg-success-500/15 text-success-400 border-success-500/30'
+                    : 'bg-amber-500/10 text-amber-300 border-amber-600/30'
+                }`}
+                title={matchType === 'exact'
+                  ? 'Exact Match: Aero found flights matching this route, airline, and timing'
+                  : 'Partial Match: Aero found flights for this route but with different timing or airlines'}
+              >
                 Aero {matchType === 'exact' ? '✓' : '~'}
               </div>
             )}
@@ -3210,10 +3215,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       <span className="text-gray-400">Segments:</span>
                       <span className="text-gray-300">{segments.length}</span>
                       <span className="text-gray-400 ml-3">Match Type:</span>
-                      <span className={`font-medium ${
-                        selectedProgram.matchType === 'exact' ? 'text-green-400' :
-                        selectedProgram.matchType === 'mixed' ? 'text-purple-300' : 'text-yellow-300'
-                      }`}>
+                      <span
+                        className={`font-medium cursor-help ${
+                          selectedProgram.matchType === 'exact' ? 'text-green-400' :
+                          selectedProgram.matchType === 'mixed' ? 'text-purple-300' : 'text-yellow-300'
+                        }`}
+                        title={
+                          selectedProgram.matchType === 'exact'
+                            ? 'Exact Match: All segments match exactly (route, airline, timing)'
+                            : selectedProgram.matchType === 'mixed'
+                            ? 'Mixed Match: Some segments match exactly, others partially'
+                            : 'Partial Match: Segments match the route but may have different timing or airlines'
+                        }
+                      >
                         {selectedProgram.matchType === 'exact' ? 'Exact Match' :
                          selectedProgram.matchType === 'mixed' ? 'Mixed Match' : 'Partial Match'}
                       </span>
@@ -3363,8 +3377,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
-            {/* Mileage Options Section - HIDDEN: Now using inline award options */}
-            {false && ((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
+            {/* Mileage Options Section */}
+            {((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
               // Check if we have award options for this slice
               let sliceAwardOptions = hasAwardOptions ? allAwardOptions.filter(award => {
                 // First check enrichment segment metadata (more reliable for route matching)
@@ -3794,6 +3808,27 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                           />
                                           <span className="text-sm font-semibold text-white">{altFlight.flightNumber}</span>
                                           <span className="text-xs text-gray-400">{carrierName}</span>
+                                          {/* Match Type Indicator */}
+                                          {altFlight.matchType && (
+                                            <span
+                                              className={`px-1.5 py-0.5 text-[9px] font-medium rounded border cursor-help ${
+                                                altFlight.exactMatch
+                                                  ? 'bg-success-500/15 text-success-400 border-success-500/30'
+                                                  : altFlight.carrierMatch
+                                                  ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                                                  : 'bg-amber-500/10 text-amber-300 border-amber-600/30'
+                                              }`}
+                                              title={
+                                                altFlight.exactMatch
+                                                  ? 'Exact Match: Same flight, airline, route, and timing'
+                                                  : altFlight.carrierMatch
+                                                  ? 'Carrier Match: Same airline and route, different timing'
+                                                  : 'Route Match: Same route, different airline or timing'
+                                              }
+                                            >
+                                              {altFlight.exactMatch ? '✓ Exact' : altFlight.carrierMatch ? '~ Carrier' : '~ Route'}
+                                            </span>
+                                          )}
                                           {hasAlternatives && (
                                             <span className="px-1.5 py-0.5 bg-slate-500/15 text-slate-300 text-[9px] font-medium rounded border border-slate-600/30">
                                               +{((group.alternativeArrivals?.length || 0) + (group.alternativeLayovers?.length || 0))} similar
