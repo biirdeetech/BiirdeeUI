@@ -1434,6 +1434,59 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 </div>
               </div>
 
+               {/* Award Box - After flight segment display */}
+            {hasAwardOptions && (() => {
+              // Get all award options for the selected cabin
+              if (!selectedCabin) return null;
+
+              const cabinAwardOptions = allAwardOptions.filter(award => {
+                const awardCabin = award.cabin?.toUpperCase() || '';
+                if (selectedCabin === 'ECONOMY') {
+                  return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+                } else if (selectedCabin === 'BUSINESS') {
+                  return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                  return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'FIRST') {
+                  return awardCabin.includes('FIRST');
+                }
+                return false;
+              });
+
+              if (cabinAwardOptions.length === 0) return null;
+
+              // Use selected award if available, otherwise show cheapest
+              const selectedAwardId = selectedAwardPerSlice[0];
+              let displayAward = selectedAwardId
+                ? cabinAwardOptions.find(a => a.id === selectedAwardId)
+                : null;
+
+              // If no selected award, find cheapest
+              if (!displayAward) {
+                displayAward = cabinAwardOptions.reduce((best, award) => {
+                  const value = (award.miles * perCentValue) + award.tax;
+                  const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
+                  return value < bestValue ? award : best;
+                }, null as any);
+              }
+
+              if (!displayAward) return null;
+
+              const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
+
+              return (
+                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/10 border-yellow-500/30">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Award className="h-3 w-3 text-yellow-500" />
+                    <span className="text-[9px] text-yellow-400 font-semibold uppercase">Award</span>
+                  </div>
+                  <div className="text-xs text-yellow-400 font-bold">{displayAward.miles.toLocaleString()}</div>
+                  <div className="text-[9px] text-gray-400">miles</div>
+                  <div className="text-[9px] text-green-400 font-semibold">+{formatPrice(displayAward.tax, displayAward.currency || 'USD', false)}</div>
+                </div>
+              );
+            })()}
+
               {/* Arrow & Duration */}
               <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
                 <div className="flex items-center gap-1.5">
@@ -1488,58 +1541,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             </div>
 
-            {/* Award Box - After flight segment display */}
-            {hasAwardOptions && (() => {
-              // Get all award options for the selected cabin
-              if (!selectedCabin) return null;
-
-              const cabinAwardOptions = allAwardOptions.filter(award => {
-                const awardCabin = award.cabin?.toUpperCase() || '';
-                if (selectedCabin === 'ECONOMY') {
-                  return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-                } else if (selectedCabin === 'BUSINESS') {
-                  return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-                } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-                  return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-                } else if (selectedCabin === 'FIRST') {
-                  return awardCabin.includes('FIRST');
-                }
-                return false;
-              });
-
-              if (cabinAwardOptions.length === 0) return null;
-
-              // Use selected award if available, otherwise show cheapest
-              const selectedAwardId = selectedAwardPerSlice[0];
-              let displayAward = selectedAwardId
-                ? cabinAwardOptions.find(a => a.id === selectedAwardId)
-                : null;
-
-              // If no selected award, find cheapest
-              if (!displayAward) {
-                displayAward = cabinAwardOptions.reduce((best, award) => {
-                  const value = (award.miles * perCentValue) + award.tax;
-                  const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
-                  return value < bestValue ? award : best;
-                }, null as any);
-              }
-
-              if (!displayAward) return null;
-
-              const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
-
-              return (
-                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/10 border-yellow-500/30">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <Award className="h-3 w-3 text-yellow-500" />
-                    <span className="text-[9px] text-yellow-400 font-semibold uppercase">Award</span>
-                  </div>
-                  <div className="text-xs text-yellow-400 font-bold">{displayAward.miles.toLocaleString()}</div>
-                  <div className="text-[9px] text-gray-400">miles</div>
-                  <div className="text-[9px] text-green-400 font-semibold">+{formatPrice(displayAward.tax, displayAward.currency || 'USD', false)}</div>
-                </div>
-              );
-            })()}
+           
 
             {/* Flight Info: Airline Name & Flight Number */}
             <div className="flex flex-col items-start min-w-[120px] ml-2">
