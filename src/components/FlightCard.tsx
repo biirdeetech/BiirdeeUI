@@ -2293,34 +2293,34 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             return (
               <div className="px-4 py-3 border-t border-yellow-500/20 bg-yellow-500/5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-semibold text-yellow-400">Selected Award Segments</span>
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {selectedAward.programName} • {selectedAward.cabin}
-                  </div>
-                </div>
                 {selectedAward.segments && selectedAward.segments.length > 0 && (
-                  <FlightSegmentViewer
-                    segments={selectedAward.segments}
-                    formatTime={formatTimeInOriginTZ}
-                    formatDate={formatDateInOriginTZ}
-                    formatDuration={(duration: string) => {
-                      // Convert ISO duration or minutes to formatted string
-                      if (typeof duration === 'string' && duration.includes('PT')) {
-                        const match = duration.match(/PT(\d+H)?(\d+M)?/);
-                        const hours = match?.[1] ? parseInt(match[1]) : 0;
-                        const mins = match?.[2] ? parseInt(match[2]) : 0;
-                        return `${hours}h ${mins}m`;
-                      }
-                      const minutes = parseInt(duration);
-                      return formatDuration(minutes);
-                    }}
-                    showCabin={true}
-                    compact={false}
-                  />
+                  <div>
+                    <FlightSegmentViewer
+                      segments={selectedAward.segments}
+                      formatTime={formatTimeInOriginTZ}
+                      formatDate={formatDateInOriginTZ}
+                      formatDuration={(duration: string) => {
+                        // Convert ISO duration or minutes to formatted string
+                        if (typeof duration === 'string' && duration.includes('PT')) {
+                          const match = duration.match(/PT(\d+H)?(\d+M)?/);
+                          const hours = match?.[1] ? parseInt(match[1]) : 0;
+                          const mins = match?.[2] ? parseInt(match[2]) : 0;
+                          return `${hours}h ${mins}m`;
+                        }
+                        const minutes = parseInt(duration);
+                        return formatDuration(minutes);
+                      }}
+                      showCabin={true}
+                      compact={false}
+                    />
+                    <div className="mt-3 flex items-center gap-2 text-left">
+                      <Award className="h-4 w-4 text-yellow-500" />
+                      <span className="text-sm font-semibold text-yellow-400">Selected Award Segments</span>
+                      <span className="text-xs text-gray-400">
+                        {selectedAward.programName} • {selectedAward.cabin}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             );
