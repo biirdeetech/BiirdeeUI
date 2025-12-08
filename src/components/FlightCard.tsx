@@ -1672,10 +1672,54 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 </div>
               );
             })()}
-              
+
+            {/* Aero Box - Show selected Aero mileage option */}
+            {(() => {
+              // Only show if we have mileage breakdown and a selected program
+              const selectedCarrierCode = selectedMileagePerSlice[0];
+              if (!selectedCarrierCode || !slices[0].mileageBreakdown) return null;
+
+              const groupedPrograms = groupMileageByProgram(slices[0].mileageBreakdown);
+              const selectedProgram = groupedPrograms.find(p => p.carrierCode === selectedCarrierCode);
+
+              if (!selectedProgram) return null;
+
+              // Filter by selected cabin if applicable
+              if (selectedCabin) {
+                const programCabin = selectedProgram.cabin?.toUpperCase() || '';
+                let cabinMatches = false;
+
+                if (selectedCabin === 'ECONOMY') {
+                  cabinMatches = programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                } else if (selectedCabin === 'BUSINESS') {
+                  cabinMatches = programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                  cabinMatches = programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                } else if (selectedCabin === 'FIRST') {
+                  cabinMatches = programCabin.includes('FIRST');
+                }
+
+                if (!cabinMatches) return null;
+              }
+
+              return (
+                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-orange-500/5 border-orange-500/30">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Award className="h-3 w-3 text-orange-500" />
+                    <span className="text-[9px] text-orange-400 font-semibold uppercase">Aero</span>
+                  </div>
+                  <div className="text-xs text-orange-400 font-bold">{selectedProgram.totalMileage.toLocaleString()}</div>
+                  <div className="text-[9px] text-gray-400">miles</div>
+                  <div className="text-[9px] text-green-400 font-semibold">
+                    {selectedProgram.totalPrice > 0 ? `+${formatPrice(selectedProgram.totalPrice, 'USD', false)}` : '$0'}
+                  </div>
+                </div>
+              );
+            })()}
+
             </div>
 
-           
+
 
             {/* Flight Info: Airline Name & Flight Number */}
             <div className="flex flex-col items-start min-w-[120px] ml-2">
