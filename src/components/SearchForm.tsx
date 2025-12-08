@@ -122,6 +122,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     const envValue = import.meta.env.VITE_AWARD_ENABLED;
     return envValue === undefined || envValue === '' ? true : envValue === 'true';
   });
+  const [frtEnabled, setFrtEnabled] = useState(false);
   const [airlines, setAirlines] = useState('');
   const [strictAirlineMatch, setStrictAirlineMatch] = useState(false);
   const [timeTolerance, setTimeTolerance] = useState(960);
@@ -215,6 +216,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         const envValue = import.meta.env.VITE_AWARD_ENABLED;
         setAwardEnabled(envValue === undefined || envValue === '' ? true : envValue === 'true');
       }
+      setFrtEnabled(searchParams.get('frtEnabled') === 'true');
       setAirlines(searchParams.get('airlines') || '');
       setStrictAirlineMatch(searchParams.get('strict_airline_match') === 'true');
       setTimeTolerance(parseInt(searchParams.get('time_tolerance') || '960'));
@@ -629,6 +631,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
     // Add aero options
     searchParams.append('aero', aeroEnabled.toString());
     searchParams.append('awardEnabled', awardEnabled.toString());
+    searchParams.append('frtEnabled', frtEnabled.toString());
     if (airlines) {
       searchParams.append('airlines', airlines);
     }
@@ -766,6 +769,18 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               />
               <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
               <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Award Enabled</span>
+            </label>
+
+            {/* FRT Toggle */}
+            <label className="relative inline-flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={frtEnabled}
+                onChange={(e) => setFrtEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">FRT Enabled</span>
             </label>
 
             {/* Divider - hide on small screens */}
