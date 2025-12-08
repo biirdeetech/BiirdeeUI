@@ -1537,7 +1537,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
 
               return (
-                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/10 border-yellow-500/30">
+                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/5 border-yellow-500/30">
                   <div className="flex items-center gap-1 mb-0.5">
                     <Award className="h-3 w-3 text-yellow-500" />
                     <span className="text-[9px] text-yellow-400 font-semibold uppercase">Award</span>
