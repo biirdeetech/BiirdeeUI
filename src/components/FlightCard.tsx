@@ -2469,6 +2469,114 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             );
           })()}
 
+          {/* Aero Options - Inline with Award Options */}
+          {(() => {
+            const hasAeroMileage = slices.some(slice => slice.mileageBreakdown && slice.mileageBreakdown.length > 0);
+            if (!hasAeroMileage || !selectedCabin) return null;
+
+            // Get all aero programs for the first slice
+            const slice = slices[0];
+            if (!slice.mileageBreakdown || slice.mileageBreakdown.length === 0) return null;
+
+            const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+
+            // Filter programs by selected cabin
+            const filteredPrograms = selectedCabin ? groupedPrograms.filter(program => {
+              const programCabin = program.cabin?.toUpperCase() || '';
+              if (selectedCabin === 'ECONOMY') {
+                return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+              } else if (selectedCabin === 'BUSINESS') {
+                return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+              } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+              } else if (selectedCabin === 'FIRST') {
+                return programCabin.includes('FIRST');
+              }
+              return false;
+            }) : groupedPrograms;
+
+            if (filteredPrograms.length === 0) return null;
+
+            // Sort programs by total mileage value (cheapest first)
+            const sortedPrograms = [...filteredPrograms].sort((a, b) => {
+              const aValue = (a.totalMileage * perCentValue) + a.totalPrice;
+              const bValue = (b.totalMileage * perCentValue) + b.totalPrice;
+              return aValue - bValue;
+            });
+
+            const selectedCarrierCode = selectedMileagePerSlice[0];
+            const currentIndex = selectedCarrierCode ? sortedPrograms.findIndex(p => p.carrierCode === selectedCarrierCode) : 0;
+            const totalPrograms = sortedPrograms.length;
+
+            return (
+              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                    Aero Options:
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const prevIndex = currentIndex > 0 ? currentIndex - 1 : totalPrograms - 1;
+                      setSelectedMileagePerSlice({ ...selectedMileagePerSlice, 0: sortedPrograms[prevIndex].carrierCode });
+                    }}
+                    disabled={totalPrograms <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                  </button>
+                  <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                    {sortedPrograms.map((program, idx) => {
+                      const programCashValue = (program.totalMileage * perCentValue) + program.totalPrice;
+                      const isSelected = selectedCarrierCode === program.carrierCode || (!selectedCarrierCode && idx === 0);
+
+                      // Determine match type for tooltip
+                      const matchTypeText = program.matchType === 'exact'
+                        ? 'Exact Match: All segments match exactly (route, airline, timing)'
+                        : program.matchType === 'mixed'
+                        ? 'Mixed Match: Some segments match exactly, others partially'
+                        : 'Partial Match: Segments match the route but may have different timing or airlines';
+
+                      return (
+                        <button
+                          key={program.carrierCode}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMileagePerSlice({ ...selectedMileagePerSlice, 0: program.carrierCode });
+                          }}
+                          title={matchTypeText}
+                          className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer cursor-help relative z-10 ${
+                            isSelected
+                              ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                              : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                          }`}
+                        >
+                          {program.carrierCode} · {program.totalMileage.toLocaleString()} mi @ ${programCashValue.toFixed(2)}
+                          {program.matchType === 'exact' && <span className="ml-1 text-success-400">✓</span>}
+                          {program.matchType === 'partial' && <span className="ml-1 text-amber-300">~</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextIndex = currentIndex < totalPrograms - 1 ? currentIndex + 1 : 0;
+                      setSelectedMileagePerSlice({ ...selectedMileagePerSlice, 0: sortedPrograms[nextIndex].carrierCode });
+                    }}
+                    disabled={totalPrograms <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                  </button>
+                </div>
+                <div className="text-center text-[10px] text-gray-400 mt-2">
+                  Option {currentIndex + 1} of {totalPrograms}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Action Buttons - First 80px on right side */}
           <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
             {/* Details Button */}
@@ -2975,40 +3083,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </span>
                   </div>
                 )}
-                {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (() => {
-                  const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
-
-                  // Filter programs by selected cabin
-                  const filteredPrograms = selectedCabin ? groupedPrograms.filter(program => {
-                    const programCabin = program.cabin?.toUpperCase() || '';
-                    if (selectedCabin === 'ECONOMY') {
-                      return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
-                    } else if (selectedCabin === 'BUSINESS') {
-                      return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-                      return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
-                    } else if (selectedCabin === 'FIRST') {
-                      return programCabin.includes('FIRST');
-                    }
-                    return false;
-                  }) : groupedPrograms;
-
-                  return filteredPrograms.length > 0 && (
-                    <div className="mileage-selector-container" onClick={(e) => e.stopPropagation()}>
-                      <MileageSelector
-                        programs={filteredPrograms}
-                        selectedProgram={selectedMileagePerSlice[sliceIndex] || null}
-                        onSelect={(carrierCode) => {
-                          setSelectedMileagePerSlice(prev => ({
-                            ...prev,
-                            [sliceIndex]: carrierCode
-                          }));
-                        }}
-                        sliceIndex={sliceIndex}
-                      />
-                    </div>
-                  );
-                })()}
+                {/* Purple MileageSelector removed - Aero options now shown below similar to award options */}
               </div>
             </div>
 
@@ -3236,15 +3311,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       <div className="bg-orange-500/12 border border-orange-500/25 rounded px-2 py-1">
                         <span className="text-sm font-bold text-orange-400">{selectedProgram.totalMileage.toLocaleString()}</span>
                         <span className="text-[10px] text-orange-400/70"> mi</span>
-                        {selectedProgram.totalPrice > 0 && (
-                          <>
-                            <span className="text-sm text-orange-400/60"> + </span>
-                            <span className="text-sm font-semibold text-orange-400">${selectedProgram.totalPrice.toFixed(2)}</span>
-                          </>
-                        )}
                       </div>
                       <span className="text-xs text-gray-400">
-                        ≈ ${((selectedProgram.totalMileage * perCentValue) + selectedProgram.totalPrice).toFixed(2)}
+                        ≈ ${(selectedProgram.totalMileage * perCentValue).toFixed(2)}
                       </span>
                       <button
                         onClick={(e) => {
@@ -3377,8 +3446,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
-            {/* Mileage Options Section */}
-            {((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
+            {/* Mileage Options Section - HIDDEN: Using new inline approach */}
+            {false && ((slice.mileageBreakdown && slice.mileageBreakdown.length > 0) || hasAwardOptions) && (() => {
               // Check if we have award options for this slice
               let sliceAwardOptions = hasAwardOptions ? allAwardOptions.filter(award => {
                 // First check enrichment segment metadata (more reliable for route matching)
