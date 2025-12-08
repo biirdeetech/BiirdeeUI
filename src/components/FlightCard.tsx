@@ -10,7 +10,7 @@ import FlightSummaryModal from './FlightSummaryModal';
 import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
-import AwardCards from './AwardCards';
+import AwardNavigator from './AwardNavigator';
 import { useProposalContext } from '../contexts/ProposalContext';
 
 interface FlightCardProps {
@@ -1872,21 +1872,60 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         const hasPriceOptions = pricing.priceOptions && pricing.priceOptions.allPrices.length > 1;
                         const hasTimeOptions = pricing.timeOptions && pricing.timeOptions.allTimeKeys.length > 1;
                         const shouldShowOptions = hasPriceOptions || hasTimeOptions;
-                        
+
                         if (!shouldShowOptions) return null;
-                        
+
                         // Calculate actual options count from price and time options
                         const priceOptionsCount = hasPriceOptions ? pricing.priceOptions!.allPrices.length : 0;
                         const timeOptionsCount = hasTimeOptions ? pricing.timeOptions!.allTimeKeys.length : 0;
                         // If both exist, don't double count - use the max
                         const actualOptionsCount = Math.max(priceOptionsCount, timeOptionsCount);
-                        
+
                         return actualOptionsCount > 1 ? (
                           <div className="text-[9px] text-gray-500 mt-0.5">
                             ({actualOptionsCount} options)
                           </div>
                         ) : null;
                       })()}
+                    </>
+                  ) : cabinHasAwards ? (
+                    <>
+                      <div className={`text-xs font-bold ${
+                        isSelected ? 'text-yellow-400' : 'text-yellow-500'
+                      }`}>
+                        {(() => {
+                          // Find cheapest award for this cabin
+                          const cabinAwards = allAwardOptions.filter(award => {
+                            const awardCabin = award.cabin?.toUpperCase() || '';
+                            if (cabinKey === 'ECONOMY') {
+                              return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+                            } else if (cabinKey === 'BUSINESS') {
+                              return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+                            } else if (cabinKey === 'BUSINESS_PREMIUM') {
+                              return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+                            } else if (cabinKey === 'FIRST') {
+                              return awardCabin.includes('FIRST');
+                            }
+                            return false;
+                          });
+
+                          if (cabinAwards.length === 0) return 'N/A';
+
+                          const cheapestAward = cabinAwards.reduce((best, award) => {
+                            const value = (award.miles * perCentValue) + award.tax;
+                            const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
+                            return value < bestValue ? award : best;
+                          }, null as any);
+
+                          if (!cheapestAward) return 'N/A';
+
+                          const cashValue = (cheapestAward.miles * perCentValue) + cheapestAward.tax;
+                          return `$${cashValue.toFixed(0)}`;
+                        })()}
+                      </div>
+                      <div className="text-[9px] text-yellow-500/70 mt-0.5">
+                        award
+                      </div>
                     </>
                   ) : (
                     <div className="text-[10px] text-gray-600">N/A</div>
@@ -2289,45 +2328,39 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             </div>
           </div>
 
-          {/* Award Segment Viewer - Show when award is selected */}
+          {/* Award Navigator - Show awards filtered by selected cabin */}
           {(() => {
-            const selectedAwardId = selectedAwardPerSlice[0];
-            if (!selectedAwardId || !hasAwardOptions) return null;
+            if (!hasAwardOptions || !selectedCabin) return null;
 
-            const selectedAward = allAwardOptions.find(a => a.id === selectedAwardId);
-            if (!selectedAward) return null;
+            // Filter awards by selected cabin
+            const cabinAwardOptions = allAwardOptions.filter(award => {
+              const awardCabin = award.cabin?.toUpperCase() || '';
+              if (selectedCabin === 'ECONOMY') {
+                return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+              } else if (selectedCabin === 'BUSINESS') {
+                return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+              } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+              } else if (selectedCabin === 'FIRST') {
+                return awardCabin.includes('FIRST');
+              }
+              return false;
+            });
+
+            if (cabinAwardOptions.length === 0) return null;
 
             return (
               <div className="px-4 py-3 border-t border-yellow-500/20 bg-yellow-500/5">
-                {selectedAward.segments && selectedAward.segments.length > 0 && (
-                  <div>
-                    <FlightSegmentViewer
-                      segments={selectedAward.segments}
-                      formatTime={formatTimeInOriginTZ}
-                      formatDate={formatDateInOriginTZ}
-                      formatDuration={(duration: string) => {
-                        // Convert ISO duration or minutes to formatted string
-                        if (typeof duration === 'string' && duration.includes('PT')) {
-                          const match = duration.match(/PT(\d+H)?(\d+M)?/);
-                          const hours = match?.[1] ? parseInt(match[1]) : 0;
-                          const mins = match?.[2] ? parseInt(match[2]) : 0;
-                          return `${hours}h ${mins}m`;
-                        }
-                        const minutes = parseInt(duration);
-                        return formatDuration(minutes);
-                      }}
-                      showCabin={true}
-                      compact={false}
-                    />
-                    <div className="mt-3 flex items-center gap-2 text-left">
-                      <Award className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-semibold text-yellow-400">Selected Award Segments</span>
-                      <span className="text-xs text-gray-400">
-                        {selectedAward.programName} • {selectedAward.cabin}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <AwardNavigator
+                  awardOptions={cabinAwardOptions}
+                  perCentValue={perCentValue}
+                  selectedAwardId={selectedAwardPerSlice[0]}
+                  onSelect={(awardId) => {
+                    setSelectedAwardPerSlice({ ...selectedAwardPerSlice, 0: awardId });
+                  }}
+                  formatTimeInOriginTZ={formatTimeInOriginTZ}
+                  formatDateInOriginTZ={formatDateInOriginTZ}
+                />
               </div>
             );
           })()}
