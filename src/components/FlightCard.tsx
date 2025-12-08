@@ -4,6 +4,7 @@ import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
+import BiirdeeService from '../services/biirdeeApi';
 import AddToProposalModal from './AddToProposalModal';
 import FlightSegmentDetails from './FlightSegmentDetails';
 import FlightSummaryModal from './FlightSummaryModal';
@@ -4621,17 +4622,122 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       <FrtConfigModal
         isOpen={showFrtConfig}
         onClose={() => setShowFrtConfig(false)}
-        onSearch={(config) => {
+        onSearch={async (config) => {
           console.log('FRT Search Config:', config);
           setShowFrtConfig(false);
           setIsFetchingFrt(true);
-          // TODO: Implement FRT search API call here
-          // For now, just simulate with empty results
-          setTimeout(() => {
+
+          try {
+            // Build list of return airports to search
+            const returnAirports: string[] = [];
+
+            if (config.includeDirect) {
+              returnAirports.push(slices[0].origin.code);
+            }
+
+            if (config.includeNearby) {
+              // Fetch nearby airports
+              try {
+                const nearbyResult = await ITAMatrixService.geoSearch({
+                  center: slices[0].origin.code,
+                  radiusMiles: config.searchRadius,
+                  pageSize: 10
+                });
+
+                // Add nearby airports (excluding the origin itself)
+                nearbyResult.locations?.forEach(loc => {
+                  if (loc.code && loc.code !== slices[0].origin.code && !returnAirports.includes(loc.code)) {
+                    returnAirports.push(loc.code);
+                  }
+                });
+              } catch (error) {
+                console.error('Failed to fetch nearby airports:', error);
+              }
+            }
+
+            console.log('Searching FRT for return airports:', returnAirports);
+
+            // Search for return flights from destination to each return airport
+            const frtResults: any[] = [];
+            const destinationCode = slices[slices.length - 1].destination.code;
+
+            // Determine return date (use departure date + 7 days as default, or actual return date if round-trip)
+            const departureDate = new Date(slices[0].departure);
+            const returnDate = slices.length > 1
+              ? new Date(slices[slices.length - 1].departure)
+              : new Date(departureDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const returnDateStr = returnDate.toISOString().split('T')[0];
+
+            // Get passenger count from the original flight (assume adults only)
+            const passengers = 1; // Default to 1, can be enhanced to extract from flight data
+
+            for (const returnAirport of returnAirports) {
+              try {
+                console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
+
+                // Build search params for one-way return flight
+                const searchParams = {
+                  origin: destinationCode,
+                  destination: returnAirport,
+                  departDate: returnDateStr,
+                  tripType: 'oneWay' as const,
+                  cabin: config.cabinClass,
+                  maxStops: -1, // Allow any number of stops
+                  passengers: passengers,
+                  pageSize: 50,
+                  aero: false,
+                  currency: currency,
+                  slices: [{
+                    origins: [destinationCode],
+                    destinations: [returnAirport],
+                    departDate: returnDateStr,
+                    via: config.viaAirports.length > 0 ? config.viaAirports.join(' ') : undefined,
+                    nonstop: false,
+                    maxStops: -1,
+                    extraStops: -1,
+                    allowAirportChanges: true,
+                    showOnlyAvailable: true,
+                    aero: false
+                  }]
+                };
+
+                // Call v3 API for this return flight
+                const result = await BiirdeeService.searchFlights(searchParams);
+
+                if (result.solutionList.solutions.length > 0) {
+                  // Get the cheapest option
+                  const cheapestReturn = result.solutionList.solutions.reduce((best, current) => {
+                    return current.totalAmount < best.totalAmount ? current : best;
+                  });
+
+                  // Calculate total FRT price (original one-way + return)
+                  const frtTotalPrice = totalAmount + cheapestReturn.totalAmount;
+
+                  frtResults.push({
+                    returnAirport: returnAirport,
+                    returnFlight: cheapestReturn,
+                    totalPrice: frtTotalPrice,
+                    currency: cheapestReturn.currency,
+                    savings: totalAmount - frtTotalPrice // Negative if FRT is more expensive
+                  });
+
+                  console.log(`Found FRT option via ${returnAirport}: $${frtTotalPrice.toFixed(2)}`);
+                }
+              } catch (error) {
+                console.error(`Failed to search return to ${returnAirport}:`, error);
+              }
+            }
+
+            // Sort FRT options by total price (cheapest first)
+            frtResults.sort((a, b) => a.totalPrice - b.totalPrice);
+
+            setFrtOptions(frtResults);
+            console.log(`FRT search complete: Found ${frtResults.length} options`);
+          } catch (error) {
+            console.error('FRT search failed:', error);
+          } finally {
             setIsFetchingFrt(false);
-            // Mock FRT options for demonstration
-            setFrtOptions([]);
-          }, 1000);
+          }
         }}
         originCode={slices[0].origin.code}
         destinationCode={slices[slices.length - 1].destination.code}
