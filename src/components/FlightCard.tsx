@@ -747,6 +747,53 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   }, [slices, selectedCabin, cabinPricing]);
 
+  // Reset and auto-select cheapest award when cabin changes
+  useEffect(() => {
+    if (!selectedCabin || !hasAwardOptions) return;
+
+    // Filter awards by selected cabin
+    const cabinAwardOptions = allAwardOptions.filter(award => {
+      const awardCabin = award.cabin?.toUpperCase() || '';
+      if (selectedCabin === 'ECONOMY') {
+        return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+      } else if (selectedCabin === 'BUSINESS') {
+        return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+      } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+        return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+      } else if (selectedCabin === 'FIRST') {
+        return awardCabin.includes('FIRST');
+      }
+      return false;
+    });
+
+    if (cabinAwardOptions.length === 0) {
+      // No awards for this cabin, clear selection
+      setSelectedAwardPerSlice({});
+      return;
+    }
+
+    // Sort awards: fewest stops first, then by cash value (lowest first)
+    const sortedAwards = [...cabinAwardOptions].sort((a, b) => {
+      const aItinerary = a.itineraries?.[0];
+      const bItinerary = b.itineraries?.[0];
+      const aStops = aItinerary?.numberOfStops || 0;
+      const bStops = bItinerary?.numberOfStops || 0;
+
+      if (aStops !== bStops) {
+        return aStops - bStops;
+      }
+
+      const aCashValue = (a.miles * perCentValue) + a.tax;
+      const bCashValue = (b.miles * perCentValue) + b.tax;
+      return aCashValue - bCashValue;
+    });
+
+    // Auto-select the cheapest award (first in sorted array)
+    if (sortedAwards.length > 0) {
+      setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
+    }
+  }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue]);
+
   // Removed console.log for production
 
   // Check if this airline is currently being enriched
@@ -2235,6 +2282,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             const selectedAwardId = selectedAwardPerSlice[0];
             const currentIndex = selectedAwardId ? sortedAwards.findIndex(a => a.id === selectedAwardId) : 0;
             const totalAwards = sortedAwards.length;
+            const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+            // Auto-scroll to keep selected award visible
+            React.useEffect(() => {
+              if (scrollContainerRef.current && selectedAwardId) {
+                const selectedButton = scrollContainerRef.current.querySelector(`[data-award-id="${selectedAwardId}"]`);
+                if (selectedButton) {
+                  selectedButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+              }
+            }, [selectedAwardId]);
 
             return (
               <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
@@ -2253,7 +2311,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   >
                     <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
                   </button>
-                  <div className="flex items-center gap-2 overflow-x-auto flex-1">
+                  <div ref={scrollContainerRef} className="flex items-center gap-2 overflow-x-auto flex-1">
                     {sortedAwards.map((award, idx) => {
                       const awardCashValue = (award.miles * perCentValue) + award.tax;
                       const isSelected = selectedAwardId === award.id || (!selectedAwardId && idx === 0);
@@ -2261,6 +2319,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       return (
                         <button
                           key={award.id}
+                          data-award-id={award.id}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedAwardPerSlice({ ...selectedAwardPerSlice, 0: award.id });
@@ -2892,7 +2951,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         </>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <div className="bg-purple-500/12 border border-purple-500/25 rounded px-2 py-1">
                         <span className="text-sm font-bold text-purple-400">{selectedAward.miles.toLocaleString()}</span>
                         <span className="text-[10px] text-purple-400/70"> mi</span>
@@ -2902,6 +2961,64 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       <span className="text-xs text-gray-400">
                         ≈ ${((selectedAward.miles * perCentValue) + selectedAward.tax).toFixed(2)}
                       </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const awardId = `award-${selectedAward.id}`;
+                          if (addedItems.has(awardId)) {
+                            // Remove if already added
+                            setAddedItems(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(awardId);
+                              return newSet;
+                            });
+                            setPendingItems(prev => prev.filter(item => item.id !== awardId));
+                            if (pendingItems.length <= 1) {
+                              setShowAddToProposal(false);
+                              setSelectedMileageFlight(null);
+                            }
+                          } else {
+                            // Add new item
+                            const awardData = {
+                              ...selectedAward,
+                              carrierCode: carrier.code,
+                              mileage: selectedAward.miles,
+                              mileagePrice: selectedAward.tax,
+                              cabin: selectedAward.cabin
+                            };
+                            setSelectedMileageFlight(awardData);
+                            setAddedItems(prev => new Set(prev).add(awardId));
+                            setPendingItems(prev => {
+                              return [...prev, { type: 'award', id: awardId, data: awardData }];
+                            });
+                            setShowAddToProposal(true);
+                          }
+                        }}
+                        onMouseEnter={() => {
+                          const awardId = `award-${selectedAward.id}`;
+                          if (addedItems.has(awardId)) {
+                            setHoveredAddButton(awardId);
+                          }
+                        }}
+                        onMouseLeave={() => setHoveredAddButton(null)}
+                        className={`px-3 py-1.5 text-xs rounded border transition-colors flex items-center gap-1.5 ${
+                          addedItems.has(`award-${selectedAward.id}`)
+                            ? 'bg-success-500/20 hover:bg-error-500/20 text-success-300 hover:text-error-300 border-success-400/30 hover:border-error-400/30'
+                            : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                        }`}
+                      >
+                        {addedItems.has(`award-${selectedAward.id}`) ? (
+                          <>
+                            <span className="text-sm">✓</span>
+                            {hoveredAddButton === `award-${selectedAward.id}` ? 'Remove' : 'Added'}
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3" />
+                            Add
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
