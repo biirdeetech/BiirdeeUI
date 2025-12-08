@@ -747,53 +747,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   }, [slices, selectedCabin, cabinPricing]);
 
-  // Reset and auto-select cheapest award when cabin changes
-  useEffect(() => {
-    if (!selectedCabin || !hasAwardOptions) return;
-
-    // Filter awards by selected cabin
-    const cabinAwardOptions = allAwardOptions.filter(award => {
-      const awardCabin = award.cabin?.toUpperCase() || '';
-      if (selectedCabin === 'ECONOMY') {
-        return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-      } else if (selectedCabin === 'BUSINESS') {
-        return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-      } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-        return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-      } else if (selectedCabin === 'FIRST') {
-        return awardCabin.includes('FIRST');
-      }
-      return false;
-    });
-
-    if (cabinAwardOptions.length === 0) {
-      // No awards for this cabin, clear selection
-      setSelectedAwardPerSlice({});
-      return;
-    }
-
-    // Sort awards: fewest stops first, then by cash value (lowest first)
-    const sortedAwards = [...cabinAwardOptions].sort((a, b) => {
-      const aItinerary = a.itineraries?.[0];
-      const bItinerary = b.itineraries?.[0];
-      const aStops = aItinerary?.numberOfStops || 0;
-      const bStops = bItinerary?.numberOfStops || 0;
-
-      if (aStops !== bStops) {
-        return aStops - bStops;
-      }
-
-      const aCashValue = (a.miles * perCentValue) + a.tax;
-      const bCashValue = (b.miles * perCentValue) + b.tax;
-      return aCashValue - bCashValue;
-    });
-
-    // Auto-select the cheapest award (first in sorted array)
-    if (sortedAwards.length > 0) {
-      setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
-    }
-  }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue]);
-
   // Removed console.log for production
 
   // Check if this airline is currently being enriched
@@ -1022,7 +975,54 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   
   const allAwardOptions = getAllAwardOptions();
   const hasAwardOptions = allAwardOptions.length > 0;
-  
+
+  // Reset and auto-select cheapest award when cabin changes
+  useEffect(() => {
+    if (!selectedCabin || !hasAwardOptions) return;
+
+    // Filter awards by selected cabin
+    const cabinAwardOptions = allAwardOptions.filter(award => {
+      const awardCabin = award.cabin?.toUpperCase() || '';
+      if (selectedCabin === 'ECONOMY') {
+        return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+      } else if (selectedCabin === 'BUSINESS') {
+        return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+      } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+        return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+      } else if (selectedCabin === 'FIRST') {
+        return awardCabin.includes('FIRST');
+      }
+      return false;
+    });
+
+    if (cabinAwardOptions.length === 0) {
+      // No awards for this cabin, clear selection
+      setSelectedAwardPerSlice({});
+      return;
+    }
+
+    // Sort awards: fewest stops first, then by cash value (lowest first)
+    const sortedAwards = [...cabinAwardOptions].sort((a, b) => {
+      const aItinerary = a.itineraries?.[0];
+      const bItinerary = b.itineraries?.[0];
+      const aStops = aItinerary?.numberOfStops || 0;
+      const bStops = bItinerary?.numberOfStops || 0;
+
+      if (aStops !== bStops) {
+        return aStops - bStops;
+      }
+
+      const aCashValue = (a.miles * perCentValue) + a.tax;
+      const bCashValue = (b.miles * perCentValue) + b.tax;
+      return aCashValue - bCashValue;
+    });
+
+    // Auto-select the cheapest award (first in sorted array)
+    if (sortedAwards.length > 0) {
+      setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
+    }
+  }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue]);
+
   // Check if enrichment exists for this carrier (regardless of cabin match)
   // Used to determine if we should show the "Miles" button
   const hasAnyEnrichmentForCarrier = v2EnrichmentData && v2EnrichmentData.has(carrier.code);
