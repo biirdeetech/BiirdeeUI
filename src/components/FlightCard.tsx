@@ -2715,6 +2715,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           {(() => {
             const hasSelectedMileage = Object.keys(selectedMileagePerSlice).some(key => selectedMileagePerSlice[parseInt(key)]);
             if (!hasSelectedMileage) return null;
+          // disabled-* 
+          return null; 
 
             return (
               <div className="px-4 py-2 border-t border-gray-800/30">
