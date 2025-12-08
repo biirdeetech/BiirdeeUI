@@ -265,6 +265,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
   const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
 
+  // Refs for award options scrolling
+  const awardScrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Get the flight to display (either original or switched variant)
   const flightToDisplay = displayedFlight || flight;
@@ -1022,6 +1024,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       setSelectedAwardPerSlice({ 0: sortedAwards[0].id });
     }
   }, [selectedCabin, hasAwardOptions, allAwardOptions, perCentValue]);
+
+  // Auto-scroll to keep selected award visible
+  useEffect(() => {
+    const selectedAwardId = selectedAwardPerSlice[0];
+    if (awardScrollContainerRef.current && selectedAwardId) {
+      const selectedButton = awardScrollContainerRef.current.querySelector(`[data-award-id="${selectedAwardId}"]`);
+      if (selectedButton) {
+        selectedButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [selectedAwardPerSlice]);
 
   // Check if enrichment exists for this carrier (regardless of cabin match)
   // Used to determine if we should show the "Miles" button
@@ -2282,17 +2295,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             const selectedAwardId = selectedAwardPerSlice[0];
             const currentIndex = selectedAwardId ? sortedAwards.findIndex(a => a.id === selectedAwardId) : 0;
             const totalAwards = sortedAwards.length;
-            const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-            // Auto-scroll to keep selected award visible
-            React.useEffect(() => {
-              if (scrollContainerRef.current && selectedAwardId) {
-                const selectedButton = scrollContainerRef.current.querySelector(`[data-award-id="${selectedAwardId}"]`);
-                if (selectedButton) {
-                  selectedButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }
-              }
-            }, [selectedAwardId]);
 
             return (
               <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
@@ -2311,7 +2313,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   >
                     <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
                   </button>
-                  <div ref={scrollContainerRef} className="flex items-center gap-2 overflow-x-auto flex-1">
+                  <div ref={awardScrollContainerRef} className="flex items-center gap-2 overflow-x-auto flex-1">
                     {sortedAwards.map((award, idx) => {
                       const awardCashValue = (award.miles * perCentValue) + award.tax;
                       const isSelected = selectedAwardId === award.id || (!selectedAwardId && idx === 0);
