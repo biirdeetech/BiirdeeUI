@@ -3106,6 +3106,146 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
+            {/* Aero Segment Details - Show when aero program is selected */}
+            {(() => {
+              const selectedCarrierCode = selectedMileagePerSlice[sliceIndex];
+              if (!selectedCarrierCode || !slice.mileageBreakdown) return null;
+
+              const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+              const selectedProgram = groupedPrograms.find(p => p.carrierCode === selectedCarrierCode);
+
+              if (!selectedProgram || selectedProgram.flights.length === 0) return null;
+
+              // Build segments from the selected program's flights
+              const segments = selectedProgram.flights.map((flight: any) => ({
+                carrierCode: flight.carrierCode || flight.operatingCarrier,
+                number: flight.flightNumber,
+                departure: flight.departure,
+                arrival: flight.arrival,
+                cabin: flight.cabin,
+                duration: flight.duration,
+                aircraft: flight.aircraft
+              }));
+
+              // Calculate layovers between flights
+              const layovers: any[] = [];
+              for (let i = 0; i < segments.length - 1; i++) {
+                const currentSeg = segments[i];
+                const nextSeg = segments[i + 1];
+                if (currentSeg.arrival && nextSeg.departure) {
+                  const arrivalTime = new Date(currentSeg.arrival.at).getTime();
+                  const departureTime = new Date(nextSeg.departure.at).getTime();
+                  const layoverMinutes = Math.floor((departureTime - arrivalTime) / (1000 * 60));
+
+                  if (layoverMinutes > 0) {
+                    layovers.push({
+                      airport: currentSeg.arrival.iataCode,
+                      duration: `PT${Math.floor(layoverMinutes / 60)}H${layoverMinutes % 60}M`
+                    });
+                  }
+                }
+              }
+
+              return (
+                <div className="mb-4 border border-orange-500/20 bg-orange-500/5 rounded-lg p-4">
+                  <div className="text-xs font-semibold text-orange-400 mb-3 flex items-center gap-2">
+                    <Award className="h-3 w-3" />
+                    Aero Flight Details
+                  </div>
+                  <FlightSegmentViewer
+                    segments={segments}
+                    layovers={layovers}
+                    formatTime={formatTimeInOriginTZ}
+                    formatDate={formatDateInOriginTZ}
+                    showCabin={true}
+                    compact={false}
+                  />
+                  {/* Aero Value Summary */}
+                  <div className="mt-3 pt-3 border-t border-orange-500/20 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">Segments:</span>
+                      <span className="text-gray-300">{segments.length}</span>
+                      <span className="text-gray-400 ml-3">Match Type:</span>
+                      <span className={`font-medium ${
+                        selectedProgram.matchType === 'exact' ? 'text-green-400' :
+                        selectedProgram.matchType === 'mixed' ? 'text-purple-300' : 'text-yellow-300'
+                      }`}>
+                        {selectedProgram.matchType === 'exact' ? 'Exact Match' :
+                         selectedProgram.matchType === 'mixed' ? 'Mixed Match' : 'Partial Match'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-orange-500/12 border border-orange-500/25 rounded px-2 py-1">
+                        <span className="text-sm font-bold text-orange-400">{selectedProgram.totalMileage.toLocaleString()}</span>
+                        <span className="text-[10px] text-orange-400/70"> mi</span>
+                        {selectedProgram.totalPrice > 0 && (
+                          <>
+                            <span className="text-sm text-orange-400/60"> + </span>
+                            <span className="text-sm font-semibold text-orange-400">${selectedProgram.totalPrice.toFixed(2)}</span>
+                          </>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        ≈ ${((selectedProgram.totalMileage * perCentValue) + selectedProgram.totalPrice).toFixed(2)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const aeroId = `aero-${sliceIndex}-${selectedCarrierCode}`;
+                          if (addedItems.has(aeroId)) {
+                            // Remove if already added
+                            setAddedItems(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(aeroId);
+                              return newSet;
+                            });
+                            setPendingItems(prev => prev.filter(item => item.id !== aeroId));
+                            if (pendingItems.length <= 1) {
+                              setShowAddToProposal(false);
+                              setSelectedMileageFlight(null);
+                            }
+                          } else {
+                            // Add new item
+                            const aeroData = {
+                              carrierCode: selectedCarrierCode,
+                              mileage: selectedProgram.totalMileage,
+                              mileagePrice: selectedProgram.totalPrice,
+                              cabin: selectedProgram.cabin,
+                              flights: selectedProgram.flights,
+                              matchType: selectedProgram.matchType
+                            };
+                            setSelectedMileageFlight(aeroData);
+                            setAddedItems(prev => new Set(prev).add(aeroId));
+                            setPendingItems(prev => {
+                              return [...prev, { type: 'aero', id: aeroId, data: aeroData }];
+                            });
+                            setShowAddToProposal(true);
+                          }
+                        }}
+                        className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                          addedItems.has(`aero-${sliceIndex}-${selectedCarrierCode}`)
+                            ? 'bg-green-500/20 hover:bg-red-500/20 text-green-300 hover:text-red-300 border-green-400/30 hover:border-red-400/30'
+                            : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-400/30'
+                        }`}
+                      >
+                        {addedItems.has(`aero-${sliceIndex}-${selectedCarrierCode}`) ? (
+                          <>
+                            <span className="text-[10px]">✓</span>
+                            {hoveredAddButton === `aero-${sliceIndex}-${selectedCarrierCode}` ? 'Remove' : 'Added'}
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3" />
+                            Add
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Cabin Filter Bar - Quick filter for Aero mileage options only */}
             {(() => {
               // Collect all available cabins from Aero flights only
