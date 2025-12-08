@@ -1042,6 +1042,64 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   }, [selectedAwardPerSlice]);
 
+  // Auto-select cheapest aero program when cabin changes (similar to award logic)
+  useEffect(() => {
+    if (!selectedCabin) return;
+
+    // Process each slice
+    slices.forEach((slice, sliceIndex) => {
+      if (!slice.mileageBreakdown || slice.mileageBreakdown.length === 0) return;
+
+      const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
+
+      // Filter programs by selected cabin
+      const filteredPrograms = groupedPrograms.filter(program => {
+        const programCabin = program.cabin?.toUpperCase() || '';
+        if (selectedCabin === 'ECONOMY') {
+          return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+        } else if (selectedCabin === 'BUSINESS') {
+          return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+        } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+          return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+        } else if (selectedCabin === 'FIRST') {
+          return programCabin.includes('FIRST');
+        }
+        return false;
+      });
+
+      if (filteredPrograms.length === 0) {
+        // No programs for this cabin, clear selection
+        setSelectedMileagePerSlice(prev => {
+          const newState = { ...prev };
+          delete newState[sliceIndex];
+          return newState;
+        });
+        return;
+      }
+
+      // Sort by value (already sorted by groupMileageByProgram, but let's be explicit)
+      const sortedPrograms = [...filteredPrograms].sort((a, b) => {
+        const aValue = a.totalMileage + (a.totalPrice * 100);
+        const bValue = b.totalMileage + (b.totalPrice * 100);
+        return aValue - bValue;
+      });
+
+      // Auto-select the cheapest program ONLY if no selection exists or current selection is invalid
+      if (sortedPrograms.length > 0) {
+        const currentSelection = selectedMileagePerSlice[sliceIndex];
+        const isCurrentSelectionValid = currentSelection && filteredPrograms.some(p => p.carrierCode === currentSelection);
+
+        // Only update if there's no selection or the current selection is not in the filtered programs
+        if (!currentSelection || !isCurrentSelectionValid) {
+          setSelectedMileagePerSlice(prev => ({
+            ...prev,
+            [sliceIndex]: sortedPrograms[0].carrierCode
+          }));
+        }
+      }
+    });
+  }, [selectedCabin, slices, selectedMileagePerSlice]);
+
   // Check if enrichment exists for this carrier (regardless of cabin match)
   // Used to determine if we should show the "Miles" button
   const hasAnyEnrichmentForCarrier = v2EnrichmentData && v2EnrichmentData.has(carrier.code);
@@ -2871,10 +2929,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 {slice.mileageBreakdown && slice.mileageBreakdown.some(mb => mb.allMatchingFlights && mb.allMatchingFlights.length > 0) && (() => {
                   const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
 
-                  return groupedPrograms.length > 0 && (
+                  // Filter programs by selected cabin
+                  const filteredPrograms = selectedCabin ? groupedPrograms.filter(program => {
+                    const programCabin = program.cabin?.toUpperCase() || '';
+                    if (selectedCabin === 'ECONOMY') {
+                      return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                    } else if (selectedCabin === 'BUSINESS') {
+                      return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                    } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                      return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                    } else if (selectedCabin === 'FIRST') {
+                      return programCabin.includes('FIRST');
+                    }
+                    return false;
+                  }) : groupedPrograms;
+
+                  return filteredPrograms.length > 0 && (
                     <div className="mileage-selector-container" onClick={(e) => e.stopPropagation()}>
                       <MileageSelector
-                        programs={groupedPrograms}
+                        programs={filteredPrograms}
                         selectedProgram={selectedMileagePerSlice[sliceIndex] || null}
                         onSelect={(carrierCode) => {
                           setSelectedMileagePerSlice(prev => ({
@@ -3153,9 +3226,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               
               if (hasAeroForSlice) {
                 const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
-                if (groupedPrograms.length > 0) {
+
+                // Filter programs by selected cabin
+                const filteredPrograms = selectedCabin ? groupedPrograms.filter(program => {
+                  const programCabin = program.cabin?.toUpperCase() || '';
+                  if (selectedCabin === 'ECONOMY') {
+                    return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                  } else if (selectedCabin === 'BUSINESS') {
+                    return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                  } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                    return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                  } else if (selectedCabin === 'FIRST') {
+                    return programCabin.includes('FIRST');
+                  }
+                  return false;
+                }) : groupedPrograms;
+
+                if (filteredPrograms.length > 0) {
                   // Get cheapest aero option
-                  const cheapestAero = groupedPrograms.reduce((best, program) => {
+                  const cheapestAero = filteredPrograms.reduce((best, program) => {
                     const value = (program.totalMileage * perCentValue) + program.totalPrice;
                     const bestValue = best ? (best.totalMileage * perCentValue) + best.totalPrice : Infinity;
                     return value < bestValue ? program : best;
@@ -3245,7 +3334,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   {/* Aero Tab Content */}
                   {showAeroTab && hasAeroForSlice && slice.mileageBreakdown && (
                     <>
-                      {groupMileageByProgram(slice.mileageBreakdown).map((program) => {
+                      {(() => {
+                        const allPrograms = groupMileageByProgram(slice.mileageBreakdown);
+
+                        // Filter programs by selected cabin
+                        const cabinFilteredPrograms = selectedCabin ? allPrograms.filter(program => {
+                          const programCabin = program.cabin?.toUpperCase() || '';
+                          if (selectedCabin === 'ECONOMY') {
+                            return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                          } else if (selectedCabin === 'BUSINESS') {
+                            return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                          } else if (selectedCabin === 'BUSINESS_PREMIUM') {
+                            return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                          } else if (selectedCabin === 'FIRST') {
+                            return programCabin.includes('FIRST');
+                          }
+                          return false;
+                        }) : allPrograms;
+
+                        return cabinFilteredPrograms.map((program) => {
                         const airlineKey = `${sliceIndex}-${program.carrierCode}`;
                         if (!expandedSliceAirlines[airlineKey]) {
                           return null;
@@ -3847,7 +3954,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             </div>
                           </div>
                         );
-                      })}
+                      });
+                      })()}
                     </>
                   )}
 
