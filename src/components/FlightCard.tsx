@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code, Link } from 'lucide-react';
+import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code, Link, RefreshCw } from 'lucide-react';
 import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
@@ -11,6 +11,7 @@ import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
 import AwardNavigator from './AwardNavigator';
+import FrtConfigModal from './FrtConfigModal';
 import { useProposalContext } from '../contexts/ProposalContext';
 
 interface FlightCardProps {
@@ -264,6 +265,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [selectedPriceOption, setSelectedPriceOption] = useState<Record<string, number>>({}); // cabin -> selected price
   const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
   const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
+
+  // FRT (Fake Round Trip) state
+  const [frtOptions, setFrtOptions] = useState<any[]>([]); // Array of FRT options for this flight
+  const [selectedFrtIndex, setSelectedFrtIndex] = useState<number>(0); // Selected FRT option index
+  const [showFrtConfig, setShowFrtConfig] = useState<boolean>(false); // Show FRT configuration modal
+  const [isFetchingFrt, setIsFetchingFrt] = useState<boolean>(false); // Is fetching FRT options
 
   // Refs for award options scrolling
   const awardScrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -1717,6 +1724,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
+            {/* FRT Box - Show selected FRT option */}
+            {(() => {
+              if (frtOptions.length === 0) return null;
+
+              const selectedFrt = frtOptions[selectedFrtIndex];
+              if (!selectedFrt) return null;
+
+              return (
+                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-blue-500/5 border-blue-500/30">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <RefreshCw className="h-3 w-3 text-blue-500" />
+                    <span className="text-[9px] text-blue-400 font-semibold uppercase">FRT</span>
+                  </div>
+                  <div className="text-xs text-blue-400 font-bold">{formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}</div>
+                  <div className="text-[9px] text-gray-400">round-trip</div>
+                  <div className="text-[9px] text-green-400 font-semibold">
+                    Save {formatPrice(totalAmount - selectedFrt.totalPrice, currency, false)}
+                  </div>
+                </div>
+              );
+            })()}
+
             </div>
 
 
@@ -2275,92 +2304,151 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               }
             };
 
+            const currentPriceIndex = hasPriceOptions ? selectedCabinPricing.priceOptions!.allPrices.indexOf(currentSelectedPrice) : -1;
+            const totalPrices = hasPriceOptions ? selectedCabinPricing.priceOptions!.allPrices.length : 0;
+            const currentTimeIndex = hasTimeOptions && currentSelectedTime ? selectedCabinPricing.timeOptions!.allTimeKeys.indexOf(currentSelectedTime) : -1;
+            const totalTimes = hasTimeOptions ? selectedCabinPricing.timeOptions!.allTimeKeys.length : 0;
+
             return (
-              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30 space-y-3">
+              <div className="space-y-0">
                 {/* Price Options */}
                 {hasPriceOptions && (
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
-                      Price Options:
-                    </span>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {selectedCabinPricing.priceOptions!.allPrices.map((price, idx) => {
-                        const isSelected = price === currentSelectedPrice;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Set price option state first
-                              setSelectedPriceOption(prev => ({
-                                ...prev,
-                                [selectedCabin!]: price
-                              }));
-                              // Switch to the first flight with this price
-                              const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(price) || [];
-                              if (flightsAtPrice.length > 0) {
-                                // Use setTimeout to ensure state is set before switching
-                                setTimeout(() => {
-                                  switchToFlight(flightsAtPrice[0].flight);
-                                }, 0);
-                              }
-                            }}
-                            className={`px-2.5 py-1 rounded border transition-all ${
-                              isSelected
-                                ? 'bg-success-500/20 border-success-500/40 text-success-400 hover:bg-success-500/30'
-                                : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
-                            }`}
-                          >
-                            <span className="text-xs font-bold">
+                  <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                        Price Options:
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const prevIndex = currentPriceIndex > 0 ? currentPriceIndex - 1 : totalPrices - 1;
+                          const prevPrice = selectedCabinPricing.priceOptions!.allPrices[prevIndex];
+                          setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: prevPrice }));
+                          const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(prevPrice) || [];
+                          if (flightsAtPrice.length > 0) {
+                            setTimeout(() => switchToFlight(flightsAtPrice[0].flight), 0);
+                          }
+                        }}
+                        disabled={totalPrices <= 1}
+                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                      >
+                        <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                      </button>
+                      <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                        {selectedCabinPricing.priceOptions!.allPrices.map((price, idx) => {
+                          const isSelected = price === currentSelectedPrice;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: price }));
+                                const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(price) || [];
+                                if (flightsAtPrice.length > 0) {
+                                  setTimeout(() => switchToFlight(flightsAtPrice[0].flight), 0);
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
+                                isSelected
+                                  ? 'bg-success-500/20 border-success-500/40 text-success-300'
+                                  : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                              }`}
+                            >
                               {formatPrice(price, selectedCabinPricing.currency, false)}
-                            </span>
-                          </button>
-                        );
-                      })}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextIndex = currentPriceIndex < totalPrices - 1 ? currentPriceIndex + 1 : 0;
+                          const nextPrice = selectedCabinPricing.priceOptions!.allPrices[nextIndex];
+                          setSelectedPriceOption(prev => ({ ...prev, [selectedCabin!]: nextPrice }));
+                          const flightsAtPrice = selectedCabinPricing.priceOptions!.flightsByPrice.get(nextPrice) || [];
+                          if (flightsAtPrice.length > 0) {
+                            setTimeout(() => switchToFlight(flightsAtPrice[0].flight), 0);
+                          }
+                        }}
+                        disabled={totalPrices <= 1}
+                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                      >
+                        <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                      </button>
+                    </div>
+                    <div className="text-center text-[10px] text-gray-400 mt-2">
+                      Option {currentPriceIndex + 1} of {totalPrices}
                     </div>
                   </div>
                 )}
 
                 {/* Time Options */}
                 {hasTimeOptions && (
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
-                      Time Options:
-                    </span>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {selectedCabinPricing.timeOptions!.allTimeKeys.map((timeKey, idx) => {
-                        const isSelected = timeKey === currentSelectedTime;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Set time option state first
-                              setSelectedTimeOption(prev => ({
-                                ...prev,
-                                [selectedCabin!]: timeKey
-                              }));
-                              // Switch to the first flight with this time
-                              const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(timeKey) || [];
-                              if (flightsAtTime.length > 0) {
-                                // Use setTimeout to ensure state is set before switching
-                                setTimeout(() => {
-                                  switchToFlight(flightsAtTime[0].flight);
-                                }, 0);
-                              }
-                            }}
-                            className={`px-2.5 py-1 rounded border transition-all ${
-                              isSelected
-                                ? 'bg-success-500/20 border-success-500/40 text-success-400 hover:bg-success-500/30'
-                                : 'bg-gray-700/40 border-gray-600/40 text-gray-200 hover:bg-gray-700/60 hover:border-gray-500/60'
-                            }`}
-                          >
-                            <span className="text-xs font-bold font-mono">
+                  <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                        Time Options:
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const prevIndex = currentTimeIndex > 0 ? currentTimeIndex - 1 : totalTimes - 1;
+                          const prevTime = selectedCabinPricing.timeOptions!.allTimeKeys[prevIndex];
+                          setSelectedTimeOption(prev => ({ ...prev, [selectedCabin!]: prevTime }));
+                          const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(prevTime) || [];
+                          if (flightsAtTime.length > 0) {
+                            setTimeout(() => switchToFlight(flightsAtTime[0].flight), 0);
+                          }
+                        }}
+                        disabled={totalTimes <= 1}
+                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                      >
+                        <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                      </button>
+                      <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                        {selectedCabinPricing.timeOptions!.allTimeKeys.map((timeKey, idx) => {
+                          const isSelected = timeKey === currentSelectedTime;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTimeOption(prev => ({ ...prev, [selectedCabin!]: timeKey }));
+                                const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(timeKey) || [];
+                                if (flightsAtTime.length > 0) {
+                                  setTimeout(() => switchToFlight(flightsAtTime[0].flight), 0);
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
+                                isSelected
+                                  ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
+                                  : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                              }`}
+                            >
                               {timeKey}
-                            </span>
-                          </button>
-                        );
-                      })}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextIndex = currentTimeIndex < totalTimes - 1 ? currentTimeIndex + 1 : 0;
+                          const nextTime = selectedCabinPricing.timeOptions!.allTimeKeys[nextIndex];
+                          setSelectedTimeOption(prev => ({ ...prev, [selectedCabin!]: nextTime }));
+                          const flightsAtTime = selectedCabinPricing.timeOptions!.flightsByTime.get(nextTime) || [];
+                          if (flightsAtTime.length > 0) {
+                            setTimeout(() => switchToFlight(flightsAtTime[0].flight), 0);
+                          }
+                        }}
+                        disabled={totalTimes <= 1}
+                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                      >
+                        <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                      </button>
+                    </div>
+                    <div className="text-center text-[10px] text-gray-400 mt-2">
+                      Option {currentTimeIndex + 1} of {totalTimes}
                     </div>
                   </div>
                 )}
@@ -2572,6 +2660,82 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 </div>
                 <div className="text-center text-[10px] text-gray-400 mt-2">
                   Option {currentIndex + 1} of {totalPrograms}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* FRT Options - Inline with Award/Aero Options */}
+          {(() => {
+            if (frtOptions.length === 0) return null;
+
+            const totalFrtOptions = frtOptions.length;
+
+            return (
+              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                    FRT Options:
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : totalFrtOptions - 1;
+                      setSelectedFrtIndex(prevIndex);
+                    }}
+                    disabled={totalFrtOptions <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                  </button>
+                  <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                    {frtOptions.map((frt, idx) => {
+                      const isSelected = idx === selectedFrtIndex;
+                      const savings = totalAmount - frt.totalPrice;
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFrtIndex(idx);
+                          }}
+                          className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
+                            isSelected
+                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                              : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                          }`}
+                        >
+                          {frt.returnAirport} · {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
+                          {savings > 0 && <span className="ml-1 text-success-400">↓ {formatPrice(savings, currency, false)}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextIndex = selectedFrtIndex < totalFrtOptions - 1 ? selectedFrtIndex + 1 : 0;
+                      setSelectedFrtIndex(nextIndex);
+                    }}
+                    disabled={totalFrtOptions <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFrtConfig(true);
+                    }}
+                    className="p-1 bg-blue-600/40 hover:bg-blue-600/60 rounded border border-blue-500/40 transition-colors flex items-center gap-1 px-2"
+                  >
+                    <RefreshCw className="h-3 w-3 text-blue-300" />
+                    <span className="text-xs text-blue-300">Configure</span>
+                  </button>
+                </div>
+                <div className="text-center text-[10px] text-gray-400 mt-2">
+                  Option {selectedFrtIndex + 1} of {totalFrtOptions}
                 </div>
               </div>
             );
@@ -4442,13 +4606,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         isOpen={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
         solutionId={
-          flightId || 
+          flightId ||
           (isGroupedFlightDisplay ? (flightToDisplay as GroupedFlight).returnOptions[selectedReturnIndex]?.originalFlightId : '') ||
           (isGroupedFlight ? (flight as GroupedFlight).returnOptions[selectedReturnIndex]?.originalFlightId : '') ||
           ''
         }
         session={session}
         solutionSet={solutionSet}
+      />
+    )}
+
+    {/* FRT Configuration Modal */}
+    {showFrtConfig && (
+      <FrtConfigModal
+        isOpen={showFrtConfig}
+        onClose={() => setShowFrtConfig(false)}
+        onSearch={(config) => {
+          console.log('FRT Search Config:', config);
+          setShowFrtConfig(false);
+          setIsFetchingFrt(true);
+          // TODO: Implement FRT search API call here
+          // For now, just simulate with empty results
+          setTimeout(() => {
+            setIsFetchingFrt(false);
+            // Mock FRT options for demonstration
+            setFrtOptions([]);
+          }, 1000);
+        }}
+        originCode={slices[0].origin.code}
+        destinationCode={slices[slices.length - 1].destination.code}
       />
     )}
     </>
