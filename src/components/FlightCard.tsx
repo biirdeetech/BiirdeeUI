@@ -172,6 +172,17 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
       slice.mileageBreakdown.forEach((breakdown: any) => {
         if (breakdown.allMatchingFlights && Array.isArray(breakdown.allMatchingFlights)) {
           breakdown.allMatchingFlights.forEach((flight: any) => {
+            // Validate match quality before including in cabin grouping
+            const isCarrierMatch = flight.carrierCode === breakdown.carrier;
+            const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
+                                flight.arrival?.iataCode === breakdown.destination;
+            const hasExactMatch = breakdown.exactMatch === true || flight.exactMatch === true;
+
+            // Only include flights that have some level of match
+            if (!hasExactMatch && !isCarrierMatch && !isRouteMatch) {
+              return; // Skip this flight
+            }
+
             const cabin = flight.cabin || 'UNKNOWN';
             const mileage = flight.mileage || 0;
 
@@ -853,31 +864,72 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
               for (const breakdown of slice.mileageBreakdown) {
                 if (breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0) {
-                  const mileageFlight = breakdown.allMatchingFlights[0];
-                  const enrichmentCarrier = mileageFlight.carrierCode || mileageFlight.operatingCarrier;
-                  const enrichmentCabin = normalizeCabin(mileageFlight.cabin || mileageFlight.cabinClass || 'COACH');
-                  
-                  // Match BOTH carrier AND cabin
-                  if (enrichmentCarrier === carrier.code && enrichmentCabin === currentCabinNormalized) {
-                    // Calculate total value (mileage * perCentValue + cash price)
-                    const mileageValue = (enrichment.totalMileage * perCentValue);
-                    const cashPrice = parseFloat(enrichment.totalMileagePrice || 0);
-                    const totalValue = mileageValue + cashPrice;
-                    
-                    if (totalValue < bestValue || !bestEnrichment) {
-                      bestValue = totalValue;
-                      bestEnrichment = {
-                        program: enrichmentCarrier,
-                        mileage: enrichment.totalMileage,
-                        price: enrichment.totalMileagePrice || 0,
-                        priceFormatted: typeof enrichment.totalMileagePrice === 'number' 
-                          ? `USD ${enrichment.totalMileagePrice.toFixed(2)}`
-                          : enrichment.totalMileagePrice,
-                        cabin: enrichmentCabin,
-                        matchType: enrichment.itinerary?.slices?.[0]?.matchType || 'partial-match',
-                        fullyEnriched: enrichment.fullyEnriched || false
-                      };
-                      console.log(`✅ FlightCard: Found matching enrichment - ${enrichmentCarrier} ${enrichmentCabin}: ${enrichment.totalMileage} miles + ${enrichment.totalMileagePrice}`);
+                  // Find the best matching aero flight (prioritize exact matches)
+                  let bestMatchingFlight = null;
+                  let bestMatchScore = 0;
+
+                  for (const flight of breakdown.allMatchingFlights) {
+                    const enrichmentCarrier = flight.carrierCode || flight.operatingCarrier;
+
+                    // Skip if carrier doesn't match what we're looking for
+                    if (enrichmentCarrier !== carrier.code) {
+                      continue;
+                    }
+
+                    // Calculate match score
+                    let matchScore = 0;
+
+                    // Check if marked as exact match
+                    if (breakdown.exactMatch === true || flight.exactMatch === true) {
+                      matchScore += 100;
+                    }
+
+                    // Check carrier match
+                    const isCarrierMatch = enrichmentCarrier === breakdown.carrier;
+                    if (isCarrierMatch) {
+                      matchScore += 50;
+                    }
+
+                    // Check route match
+                    const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
+                                        flight.arrival?.iataCode === breakdown.destination;
+                    if (isRouteMatch) {
+                      matchScore += 30;
+                    }
+
+                    // Only consider flights with some level of match
+                    if (matchScore > 0 && matchScore > bestMatchScore) {
+                      bestMatchScore = matchScore;
+                      bestMatchingFlight = flight;
+                    }
+                  }
+
+                  if (bestMatchingFlight) {
+                    const enrichmentCarrier = bestMatchingFlight.carrierCode || bestMatchingFlight.operatingCarrier;
+                    const enrichmentCabin = normalizeCabin(bestMatchingFlight.cabin || bestMatchingFlight.cabinClass || 'COACH');
+
+                    // Match BOTH carrier AND cabin
+                    if (enrichmentCarrier === carrier.code && enrichmentCabin === currentCabinNormalized) {
+                      // Calculate total value (mileage * perCentValue + cash price)
+                      const mileageValue = (enrichment.totalMileage * perCentValue);
+                      const cashPrice = parseFloat(enrichment.totalMileagePrice || 0);
+                      const totalValue = mileageValue + cashPrice;
+
+                      if (totalValue < bestValue || !bestEnrichment) {
+                        bestValue = totalValue;
+                        bestEnrichment = {
+                          program: enrichmentCarrier,
+                          mileage: enrichment.totalMileage,
+                          price: enrichment.totalMileagePrice || 0,
+                          priceFormatted: typeof enrichment.totalMileagePrice === 'number'
+                            ? `USD ${enrichment.totalMileagePrice.toFixed(2)}`
+                            : enrichment.totalMileagePrice,
+                          cabin: enrichmentCabin,
+                          matchType: enrichment.itinerary?.slices?.[0]?.matchType || 'partial-match',
+                          fullyEnriched: enrichment.fullyEnriched || false
+                        };
+                        console.log(`✅ FlightCard: Found matching enrichment (score: ${bestMatchScore}) - ${enrichmentCarrier} ${enrichmentCabin}: ${enrichment.totalMileage} miles + ${enrichment.totalMileagePrice}`);
+                      }
                     }
                   }
                 }
@@ -1142,8 +1194,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     breakdown.forEach(bd => {
       if (bd.allMatchingFlights) {
         bd.allMatchingFlights.forEach((flight: any) => {
+          // Validate match quality before counting
           const carrier = flight.operatingCarrier || flight.carrierCode;
-          if (carrier) uniqueCarriers.add(carrier);
+          if (!carrier) return;
+
+          const isCarrierMatch = carrier === bd.carrier;
+          const isRouteMatch = flight.departure?.iataCode === bd.origin &&
+                              flight.arrival?.iataCode === bd.destination;
+          const hasExactMatch = bd.exactMatch === true || flight.exactMatch === true;
+
+          // Only count flights that have some level of match
+          if (hasExactMatch || isCarrierMatch || isRouteMatch) {
+            uniqueCarriers.add(carrier);
+          }
         });
       }
     });
@@ -1183,6 +1246,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       segment.allMatchingFlights.forEach((flight: any) => {
         const carrierCode = flight.operatingCarrier || flight.carrierCode;
         if (!carrierCode) return;
+
+        // Validate match quality before including in program grouping
+        const isCarrierMatch = carrierCode === segment.carrier;
+        const isRouteMatch = flight.departure?.iataCode === segment.origin &&
+                            flight.arrival?.iataCode === segment.destination;
+        const hasExactMatch = segment.exactMatch === true || flight.exactMatch === true;
+
+        // Only include flights that have some level of match
+        if (!hasExactMatch && !isCarrierMatch && !isRouteMatch) {
+          return; // Skip this flight
+        }
 
         // Include cabin in the grouping key
         const cabin = flight.cabin || 'COACH';
@@ -3792,14 +3866,41 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           return null;
                         }
 
-                        // Get flights for THIS airline only
+                        // Get flights for THIS airline only with proper segment matching
                         const allFlights: any[] = [];
-                        slice.mileageBreakdown!.forEach(breakdown => {
-                          if (breakdown.allMatchingFlights) {
+                        const itaFlights = slice.flights || [];
+
+                        slice.mileageBreakdown!.forEach((breakdown, segmentIndex) => {
+                          if (breakdown.allMatchingFlights && breakdown.allMatchingFlights.length > 0) {
+                            // Get the ITA flight for this segment
+                            const itaFlightNumber = itaFlights[segmentIndex];
+                            const itaCarrier = breakdown.carrier || itaFlightNumber?.substring(0, 2);
+
                             breakdown.allMatchingFlights.forEach((flight: any) => {
-                              // Filter by carrier code
-                              if (flight.carrierCode === program.carrierCode) {
-                                allFlights.push(flight);
+                              // Filter by carrier code matching the program
+                              if (flight.carrierCode !== program.carrierCode) {
+                                return;
+                              }
+
+                              // Validate that this aero flight actually matches THIS ITA segment
+                              const isCarrierMatch = flight.carrierCode === itaCarrier;
+                              const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
+                                                    flight.arrival?.iataCode === breakdown.destination;
+
+                              // Check if exactMatch flag is set
+                              const hasExactMatch = breakdown.exactMatch === true || flight.exactMatch === true;
+
+                              // Only include if:
+                              // 1. It's marked as exact match, OR
+                              // 2. Carrier matches AND route matches, OR
+                              // 3. Route matches with reasonable time proximity
+                              if (hasExactMatch || (isCarrierMatch && isRouteMatch) || isRouteMatch) {
+                                allFlights.push({
+                                  ...flight,
+                                  segmentIndex,
+                                  itaCarrier,
+                                  matchQuality: hasExactMatch ? 'exact' : (isCarrierMatch && isRouteMatch ? 'good' : 'partial')
+                                });
                               }
                             });
                           }
