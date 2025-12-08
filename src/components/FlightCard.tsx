@@ -1488,9 +1488,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   {slices[slices.length - 1].destination.code}
                 </div>
               </div>
-
-                 {/* Award Box - After flight segment display */}
-            {hasAwardOptions && (() => {
+            
+            {/* Loading Award Indicator */}
+            {isEnriching && !hasV2Enrichment && (
+              <div className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-[10px] font-medium rounded border border-amber-600/30 flex items-center gap-1 animate-pulse">
+                <Zap className="h-2.5 w-2.5" />
+                Fetching...
+              </div>
+            )}
+            {/* Award Box - After flight segment display */}
+            {hasAwardOptions && !isEnriching && (() => {
               // Get all award options for the selected cabin
               if (!selectedCabin) return null;
 
@@ -1586,13 +1593,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             )}
 
 
-            {/* Loading Award Indicator */}
-            {isEnriching && !hasV2Enrichment && (
-              <div className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-[10px] font-medium rounded border border-amber-600/30 flex items-center gap-1 animate-pulse">
-                <Zap className="h-2.5 w-2.5" />
-                Fetching...
-              </div>
-            )}
+          
           </div>
 
           {/* Right: Similar Options Indicator + Cabin Sections */}
