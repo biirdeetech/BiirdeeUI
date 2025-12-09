@@ -772,6 +772,143 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   }, [slices, selectedCabin, cabinPricing]);
 
+  // Auto-trigger FRT when frtEnabled is true in URL params
+  useEffect(() => {
+    const frtEnabled = searchParams.get('frtEnabled') === 'true';
+
+    // Only trigger once per flight card and only if FRT is enabled
+    if (frtEnabled && !frtAutoTriggered.current && !isFetchingFrt && frtOptions.length === 0) {
+      frtAutoTriggered.current = true;
+
+      // Auto-trigger with 50mi radius and current cabin
+      const currentCabin = slices[0]?.cabins?.[0] || 'COACH';
+      const originCode = slices[0]?.origin?.code;
+
+      if (originCode) {
+        // Trigger FRT search automatically
+        setIsFetchingFrt(true);
+
+        // Build auto-config for fastest, least stops, cheapest
+        const autoConfig = {
+          returnAirports: [originCode],
+          viaAirports: [],
+          cabinClass: currentCabin,
+          searchRadius: 50,
+          includeDirect: true,
+          includeNearby: true
+        };
+
+        // Start FRT search with auto-config
+        (async () => {
+          try {
+            const returnAirports = [originCode];
+
+            if (autoConfig.includeNearby) {
+              try {
+                const nearbyResult = await ITAMatrixService.geoSearch({
+                  center: originCode,
+                  radiusMiles: 50,
+                  pageSize: 10
+                });
+
+                nearbyResult.locations?.forEach(loc => {
+                  if (loc.code && loc.code !== originCode && !returnAirports.includes(loc.code)) {
+                    returnAirports.push(loc.code);
+                  }
+                });
+              } catch (error) {
+                console.error('Failed to fetch nearby airports:', error);
+              }
+            }
+
+            setFrtProgress({ current: 0, total: returnAirports.length });
+
+            const frtResults: any[] = [];
+            const destinationCode = slices[slices.length - 1].destination.code;
+            const departureDate = new Date(slices[0].departure);
+            const returnDate = slices.length > 1
+              ? new Date(slices[slices.length - 1].departure)
+              : new Date(departureDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const returnDateStr = returnDate.toISOString().split('T')[0];
+
+            for (let i = 0; i < returnAirports.length; i++) {
+              const returnAirport = returnAirports[i];
+              setFrtProgress({ current: i + 1, total: returnAirports.length });
+
+              try {
+                const searchParams = {
+                  origin: destinationCode,
+                  destination: returnAirport,
+                  departDate: returnDateStr,
+                  tripType: 'oneWay' as const,
+                  cabin: currentCabin,
+                  maxStops: -1,
+                  passengers: 1,
+                  pageSize: 20,
+                  aero: false,
+                  currency: currency,
+                  slices: [{
+                    origins: [destinationCode],
+                    destinations: [returnAirport],
+                    departDate: returnDateStr,
+                    via: undefined,
+                    nonstop: false,
+                    maxStops: -1,
+                    extraStops: -1,
+                    allowAirportChanges: true,
+                    showOnlyAvailable: true,
+                    aero: false
+                  }]
+                };
+
+                const result = await BiirdeeService.searchFlights(searchParams);
+
+                if (result.solutionList.solutions.length > 0) {
+                  // Get cheapest, fastest, least stops option
+                  const sortedFlights = result.solutionList.solutions
+                    .slice(0, 20)
+                    .sort((a, b) => {
+                      // Prioritize: 1. Least stops, 2. Shortest duration, 3. Cheapest
+                      const aStops = a.slices[0].segments.length - 1;
+                      const bStops = b.slices[0].segments.length - 1;
+                      if (aStops !== bStops) return aStops - bStops;
+
+                      if (a.slices[0].duration !== b.slices[0].duration) {
+                        return a.slices[0].duration - b.slices[0].duration;
+                      }
+
+                      return a.totalAmount - b.totalAmount;
+                    });
+
+                  const bestReturn = sortedFlights[0];
+                  const frtTotalPrice = totalAmount + bestReturn.totalAmount;
+
+                  frtResults.push({
+                    returnAirport: returnAirport,
+                    returnFlight: bestReturn,
+                    totalPrice: frtTotalPrice,
+                    currency: bestReturn.currency,
+                    savings: totalAmount - frtTotalPrice
+                  });
+                }
+              } catch (error) {
+                console.error(`Failed to search return to ${returnAirport}:`, error);
+              }
+            }
+
+            frtResults.sort((a, b) => a.totalPrice - b.totalPrice);
+            setFrtOptions(frtResults);
+          } catch (error) {
+            console.error('Auto FRT search failed:', error);
+          } finally {
+            setIsFetchingFrt(false);
+            setFrtProgress(null);
+          }
+        })();
+      }
+    }
+  }, [searchParams, slices, isFetchingFrt, frtOptions.length, totalAmount, currency]);
+
   // Removed console.log for production
 
   // Check if this airline is currently being enriched
@@ -1952,6 +2089,24 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 return false;
               });
 
+              // Check if aero is available for this cabin
+              const hasAeroMileage = slices.some(slice => slice.mileageBreakdown && slice.mileageBreakdown.length > 0);
+              const cabinHasAero = hasAeroMileage && slices[0].mileageBreakdown?.some((breakdown: any) => {
+                return breakdown.allMatchingFlights?.some((flight: any) => {
+                  const programCabin = (flight.cabin || '').toUpperCase();
+                  if (cabinKey === 'ECONOMY') {
+                    return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                  } else if (cabinKey === 'BUSINESS') {
+                    return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                  } else if (cabinKey === 'BUSINESS_PREMIUM') {
+                    return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                  } else if (cabinKey === 'FIRST') {
+                    return programCabin.includes('FIRST');
+                  }
+                  return false;
+                });
+              }) || false;
+
               // Get the actual price for the currently displayed flight for this cabin
               const getDisplayPrice = () => {
                 if (!pricing) return null;
@@ -2150,9 +2305,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   }`}
                   disabled={!hasFlightOrAward}
                 >
-                  {cabinHasAwards && (
-                    <div className="absolute -top-1 -right-1">
-                      <Award className="h-3 w-3 text-yellow-500 fill-yellow-500/20" />
+                  {/* Badges for Awards and Aero */}
+                  {(cabinHasAwards || cabinHasAero || isEnriching) && (
+                    <div className="absolute -top-1 -right-1 flex items-center gap-0.5">
+                      {cabinHasAwards && (
+                        <Award className="h-3 w-3 text-yellow-500 fill-yellow-500/20" />
+                      )}
+                      {cabinHasAero && !isEnriching && (
+                        <div className="h-3 w-3 bg-blue-500/20 border border-blue-500/40 rounded-sm flex items-center justify-center">
+                          <Plane className="h-2 w-2 text-blue-400" />
+                        </div>
+                      )}
+                      {isEnriching && !cabinHasAero && (
+                        <div className="h-3 w-3 bg-gray-700/40 border border-gray-600/40 rounded-sm flex items-center justify-center">
+                          <span className="text-[6px] text-gray-400 font-bold">N/A</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className={`text-[9px] font-semibold mb-0.5 ${
@@ -2411,7 +2579,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               <div className="space-y-0">
                 {/* Price Options */}
                 {hasPriceOptions && (
-                  <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                  <div className="px-4 py-3 border-b border-gray-800/30">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
                         Price Options:
@@ -2482,7 +2650,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                 {/* Time Options */}
                 {hasTimeOptions && (
-                  <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+                  <div className="px-4 py-3 border-b border-gray-800/30">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
                         Time Options:
@@ -2596,7 +2764,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             const totalAwards = sortedAwards.length;
 
             return (
-              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+              <div className="px-4 py-3 border-b border-gray-800/30">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
                     Award Options:
@@ -2695,7 +2863,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             const totalPrograms = sortedPrograms.length;
 
             return (
-              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
+              <div className="px-4 py-3 border-b border-gray-800/30">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
                     Aero Options:
@@ -2768,10 +2936,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             if (frtOptions.length === 0) return null;
 
             const totalFrtOptions = frtOptions.length;
+            const selectedFrt = frtOptions[selectedFrtIndex];
+            if (!selectedFrt) return null;
+
+            const returnFlight = selectedFrt.returnFlight;
+            const returnSlice = returnFlight?.slices?.[0];
 
             return (
-              <div className="px-4 py-3 bg-gray-800/40 border-b border-gray-800/30">
-                <div className="flex items-center gap-3">
+              <div className="px-4 py-3 border-b border-gray-800/30">
+                {/* Header with Navigation */}
+                <div className="flex items-center gap-3 mb-3">
                   <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
                     FRT Options:
                   </span>
@@ -2786,29 +2960,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   >
                     <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
                   </button>
-                  <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
-                    {frtOptions.map((frt, idx) => {
-                      const isSelected = idx === selectedFrtIndex;
-                      const savings = totalAmount - frt.totalPrice;
-
-                      return (
-                        <button
-                          key={idx}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFrtIndex(idx);
-                          }}
-                          className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
-                            isSelected
-                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                              : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
-                          }`}
-                        >
-                          {frt.returnAirport} · {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
-                          {savings > 0 && <span className="ml-1 text-success-400">↓ {formatPrice(savings, currency, false)}</span>}
-                        </button>
-                      );
-                    })}
+                  <div className="flex-1 text-center">
+                    <div className="text-xs text-gray-400">
+                      Option {selectedFrtIndex + 1} of {totalFrtOptions}
+                    </div>
                   </div>
                   <button
                     onClick={(e) => {
@@ -2832,9 +2987,89 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     <span className="text-xs text-blue-300">Configure</span>
                   </button>
                 </div>
-                <div className="text-center text-[10px] text-gray-400 mt-2">
-                  Option {selectedFrtIndex + 1} of {totalFrtOptions}
-                </div>
+
+                {/* FRT Details */}
+                {returnSlice && (
+                  <div className="bg-gray-800/30 rounded-lg p-3 space-y-2">
+                    {/* Summary */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-blue-300">
+                          Return via {selectedFrt.returnAirport}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {returnSlice.origin?.code} → {returnSlice.destination?.code}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-blue-300">
+                          {formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}
+                        </div>
+                        <div className="text-[10px] text-gray-400">round-trip</div>
+                        {selectedFrt.savings > 0 && (
+                          <div className="text-[10px] text-green-400 font-semibold">
+                            Save {formatPrice(selectedFrt.savings, currency, false)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Segment Details */}
+                    <div className="flex items-center gap-3 text-xs">
+                      {/* Departure Time */}
+                      <div className="flex flex-col">
+                        <span className="text-white font-semibold">
+                          {formatTime(returnSlice.departure)}
+                        </span>
+                        <span className="text-gray-400 text-[10px]">
+                          {returnSlice.origin?.code}
+                        </span>
+                      </div>
+
+                      {/* Duration & Stops */}
+                      <div className="flex-1 flex flex-col items-center">
+                        <div className="w-full h-[1px] bg-gray-600 relative">
+                          <Plane className="h-3 w-3 text-gray-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800" />
+                        </div>
+                        <div className="text-gray-400 text-[10px] mt-1">
+                          {Math.floor(returnSlice.duration / 60)}h {returnSlice.duration % 60}m
+                        </div>
+                        {returnSlice.segments && returnSlice.segments.length > 1 && (
+                          <div className="text-amber-400 text-[10px]">
+                            {returnSlice.segments.length - 1} stop{returnSlice.segments.length - 1 !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Arrival Time */}
+                      <div className="flex flex-col">
+                        <span className="text-white font-semibold">
+                          {formatTime(returnSlice.arrival)}
+                        </span>
+                        <span className="text-gray-400 text-[10px]">
+                          {returnSlice.destination?.code}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Carrier Info */}
+                    {returnSlice.segments && returnSlice.segments.length > 0 && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
+                        <img
+                          src={`https://www.gstatic.com/flights/airline_logos/35px/${returnSlice.segments[0].operating?.carrierCode || returnSlice.segments[0].marketing?.carrierCode}.png`}
+                          alt="Carrier"
+                          className="h-4 w-4 object-contain"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <span className="text-xs text-gray-300">
+                          {returnSlice.segments.map(seg =>
+                            `${seg.marketing?.carrierCode}${seg.marketing?.number}`
+                          ).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}
