@@ -36,6 +36,8 @@ interface FlightCardProps {
   onToggleCodeShareOptions?: () => void; // Callback to toggle code-share options
   isCodeShareOptionsExpanded?: boolean; // Whether code-share options are expanded
   shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
+  isSearchComplete?: boolean;
+  searchKey?: string;
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -219,10 +221,11 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '' }) => {
   // Get URL search params to check for FRT auto-trigger
   const [searchParams] = useSearchParams();
   const frtAutoTriggered = useRef(false);
+  const frtSearchKey = useRef<string>('');
 
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
@@ -777,8 +780,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   useEffect(() => {
     const frtEnabled = searchParams.get('frtEnabled') === 'true';
 
-    // Only trigger once per flight card and only if FRT is enabled AND this is a top 5 flight
-    if (frtEnabled && shouldAutoTriggerFrt && !frtAutoTriggered.current && !isFetchingFrt && frtOptions.length === 0) {
+    // Reset FRT if search key changed (new search)
+    if (searchKey && frtSearchKey.current !== searchKey) {
+      frtAutoTriggered.current = false;
+      frtSearchKey.current = searchKey;
+      setFrtOptions([]);
+    }
+
+    // Only trigger once per flight card and only if:
+    // - FRT is enabled
+    // - This is a top 5 flight
+    // - Search is complete (not streaming)
+    // - Haven't already triggered
+    // - Not currently fetching
+    // - No existing FRT options
+    if (frtEnabled && shouldAutoTriggerFrt && isSearchComplete && !frtAutoTriggered.current && !isFetchingFrt && frtOptions.length === 0) {
       frtAutoTriggered.current = true;
 
       // Auto-trigger with 50mi radius and current cabin
@@ -912,7 +928,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         })();
       }
     }
-  }, [searchParams, slices, isFetchingFrt, frtOptions.length, displayTotal, currency]);
+  }, [searchParams, slices, isFetchingFrt, frtOptions.length, displayTotal, currency, isSearchComplete, searchKey, shouldAutoTriggerFrt]);
 
   // Removed console.log for production
 

@@ -23,6 +23,8 @@ interface FlightResultsProps {
   v2EnrichmentData?: Map<string, any[]>;
   onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
   enrichingAirlines?: Set<string>;
+  isSearchComplete?: boolean;
+  searchKey?: string;
 }
 
 const groupFlightsByOutbound = (flights: FlightSolution[]): (FlightSolution | GroupedFlight)[] => {
@@ -145,7 +147,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   perCentValue = 0.015,
   v2EnrichmentData = new Map(),
   onEnrichFlight,
-  enrichingAirlines = new Set()
+  enrichingAirlines = new Set(),
+  isSearchComplete = false,
+  searchKey = ''
 }) => {
   // ALL HOOKS MUST BE CALLED AT THE TOP, BEFORE ANY EARLY RETURNS
   // State to track which stop group is expanded - will be initialized after we know available groups
@@ -914,6 +918,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               onEnrichFlight={onEnrichFlight}
               enrichingAirlines={enrichingAirlines}
               shouldAutoTriggerFrt={shouldAutoTriggerFrt}
+              isSearchComplete={isSearchComplete}
+              searchKey={searchKey}
             />
             );
           });

@@ -41,6 +41,7 @@ const SearchPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamComplete, setStreamComplete] = useState(false);
+  const [isSearchComplete, setIsSearchComplete] = useState(false);
   const [originTimezone, setOriginTimezone] = useState<string | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [v2EnrichmentData, setV2EnrichmentData] = useState<Map<string, any[]>>(new Map());
@@ -51,6 +52,7 @@ const SearchPage: React.FC = () => {
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
+  const currentSearchKey = useRef<string | null>(null);
 
   // Redirect to sign-in if not authenticated
   useEffect(() => {
@@ -382,11 +384,12 @@ const SearchPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setHasSearched(false);
+    setIsSearchComplete(false);
 
     // Generate cache key (without pageNum) to detect param changes
     const searchCacheKey = flightCache.generateCacheKey({ ...extractedParams, pageNum: 1 });
 
-    // If search params changed (route, date, cabin, etc.), clear the old cache
+    // If search params changed (route, date, cabin, etc.), clear the old cache and reset search complete state
     if (lastSearchKey.current && lastSearchKey.current !== searchCacheKey) {
       console.log('🗑️  SearchPage: Search params changed, clearing old cache');
       // Clear all cache since we can't clear by old key
@@ -394,6 +397,7 @@ const SearchPage: React.FC = () => {
       if (cachedPages.length > 0) {
         flightCache.clear(extractedParams);
       }
+      currentSearchKey.current = searchCacheKey;
     }
     lastSearchKey.current = searchCacheKey;
 
@@ -406,6 +410,7 @@ const SearchPage: React.FC = () => {
       setResults(cachedResult);
       setHasSearched(true);
       setLoading(false);
+      setIsSearchComplete(true);
       isSearching.current = false;
       lastLoadedPage.current = currentPage;
       return;
@@ -480,12 +485,13 @@ const SearchPage: React.FC = () => {
 
       setResults(finalResults);
       setHasSearched(true);
+      setIsSearchComplete(true);
       lastLoadedPage.current = currentPage;
 
       // Cache the results for this page
       flightCache.set(extractedParams, currentPage, finalResults);
       console.log(`💾 SearchPage: Cached results for page ${currentPage}`);
-      
+
       // Reset enrichment trigger flag for new search
       if (currentPage === 1) {
         enrichmentTriggeredRef.current = false;
@@ -1068,8 +1074,10 @@ const SearchPage: React.FC = () => {
     setResults(null);
     setFilteredResults(null);
     setError(null);
+    setIsSearchComplete(false);
     lastLoadedPage.current = null;
     lastSearchKey.current = null; // Force search re-trigger even with same params
+    currentSearchKey.current = null;
   };
 
   const handleFiltersChange = (newFilters: FlightFilterState) => {
@@ -1185,6 +1193,8 @@ const SearchPage: React.FC = () => {
               v2EnrichmentData={v2EnrichmentData}
               onEnrichFlight={handleEnrichFlight}
               enrichingAirlines={enrichingAirlines}
+              isSearchComplete={isSearchComplete}
+              searchKey={currentSearchKey.current || ''}
             />
           </div>
         </div>
