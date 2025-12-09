@@ -2952,72 +2952,96 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             );
           })()}
 
-          {/* FRT Options - Progressive Rendering */}
+          {/* FRT Options - Slider Navigation */}
           {frtOptions.length > 0 && (
             <div className="px-4 py-3 border-b border-gray-800/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-blue-300">
-                  FRT Options ({frtOptions.length})
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                  FRT Options:
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : frtOptions.length - 1;
+                    setSelectedFrtIndex(prevIndex);
+                  }}
+                  disabled={frtOptions.length <= 1}
+                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                >
+                  <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                </button>
+                <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                  {frtOptions.map((frt, index) => {
+                    const returnSlice = frt.returnFlight?.slices?.[0];
+                    if (!returnSlice) return null;
+
+                    const isSelected = selectedFrtIndex === index;
+                    const stops = returnSlice.segments?.length - 1 || 0;
+                    const hours = Math.floor(returnSlice.duration / 60);
+                    const mins = returnSlice.duration % 60;
+
+                    return (
+                      <button
+                        key={`frt-${index}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFrtIndex(index);
+                        }}
+                        className={`flex flex-col items-start px-2.5 py-1.5 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 min-w-fit ${
+                          isSelected
+                            ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                            : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                        }`}
+                      >
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-mono text-[11px]">
+                            {returnSlice.origin?.code}→{returnSlice.destination?.code}
+                          </span>
+                          <span className="text-[9px] opacity-70">
+                            {stops === 0 ? 'nonstop' : `${stops}stop`}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-mono text-[10px] opacity-70">
+                            {hours}h{mins}m
+                          </span>
+                          <span className="text-xs font-semibold">
+                            @ {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
+                          </span>
+                        </div>
+                        {frt.savings > 0 && (
+                          <div className="text-[9px] text-green-400 font-medium">
+                            save {formatPrice(frt.savings, currency, false)}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const nextIndex = selectedFrtIndex < frtOptions.length - 1 ? selectedFrtIndex + 1 : 0;
+                    setSelectedFrtIndex(nextIndex);
+                  }}
+                  disabled={frtOptions.length <= 1}
+                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                >
+                  <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowFrtConfig(true);
                   }}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
+                  title="Reconfigure FRT"
                 >
-                  <RefreshCw className="h-3 w-3" />
-                  Configure
+                  <RefreshCw className="h-3 w-3 text-gray-300" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {frtOptions.map((frt, index) => {
-                  const returnSlice = frt.returnFlight?.slices?.[0];
-                  if (!returnSlice) return null;
-
-                  const stops = returnSlice.segments?.length - 1 || 0;
-                  const hours = Math.floor(returnSlice.duration / 60);
-                  const mins = returnSlice.duration % 60;
-
-                  return (
-                    <button
-                      key={`frt-${index}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFrtIndex(index);
-                      }}
-                      className={`
-                        flex flex-col items-start px-2.5 py-2 rounded-lg border transition-all text-left
-                        ${selectedFrtIndex === index
-                          ? 'bg-blue-500/20 border-blue-500/50 shadow-lg shadow-blue-500/10'
-                          : 'bg-gray-800/40 border-gray-700/50 hover:bg-gray-800/60 hover:border-gray-600/50'
-                        }
-                      `}
-                    >
-                      <div className="flex items-baseline gap-1.5 mb-0.5">
-                        <span className="font-mono text-[11px] text-gray-300">
-                          {returnSlice.origin?.code}→{returnSlice.destination?.code}
-                        </span>
-                        <span className="text-[9px] text-gray-500">
-                          {stops === 0 ? 'nonstop' : `${stops}stop`}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="font-mono text-[10px] text-gray-400">
-                          {hours}h{mins}m
-                        </span>
-                        <span className="text-xs font-semibold text-blue-300">
-                          @ {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
-                        </span>
-                      </div>
-                      {frt.savings > 0 && (
-                        <div className="text-[9px] text-green-400 font-medium">
-                          save {formatPrice(frt.savings, currency, false)}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="text-center text-[10px] text-gray-400 mt-2">
+                Option {selectedFrtIndex + 1} of {frtOptions.length}
               </div>
             </div>
           )}
