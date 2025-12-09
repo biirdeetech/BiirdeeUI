@@ -15,6 +15,7 @@ interface FlightCardGroupProps {
   v2EnrichmentData?: Map<string, any[]>;
   onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
   enrichingAirlines?: Set<string>;
+  shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
 }
 
 const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
@@ -27,7 +28,8 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   solutionSet,
   v2EnrichmentData = new Map(),
   onEnrichFlight,
-  enrichingAirlines = new Set()
+  enrichingAirlines = new Set(),
+  shouldAutoTriggerFrt = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCodeShareExpanded, setIsCodeShareExpanded] = useState(false);
@@ -127,6 +129,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             showCodeShareOptions={true}
             onToggleCodeShareOptions={() => setIsCodeShareExpanded(!isCodeShareExpanded)}
             isCodeShareOptionsExpanded={isCodeShareExpanded}
+            shouldAutoTriggerFrt={shouldAutoTriggerFrt}
           />
         )}
       </>
@@ -158,6 +161,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             showCodeShareOptions={true}
             onToggleCodeShareOptions={() => setIsCodeShareExpanded(!isCodeShareExpanded)}
             isCodeShareOptionsExpanded={isCodeShareExpanded}
+            shouldAutoTriggerFrt={shouldAutoTriggerFrt}
           />
         )}
 

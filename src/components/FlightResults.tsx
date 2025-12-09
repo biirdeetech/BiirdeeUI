@@ -874,7 +874,33 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           // Debug: Log final count after deduplication
           console.log(`✅ Stop ${stopCount}: ${deduplicatedStopGrouped.length} groups AFTER fingerprint dedup (removed ${stopGrouped.length - deduplicatedStopGrouped.length})`);
 
-          return deduplicatedStopGrouped.map((group, index) => (
+          // Identify top 5 flights for FRT auto-trigger (cheapest and fastest)
+          // Sort all flights across all stop groups by: 1. Price (cheapest), 2. Duration (fastest)
+          const allFlightsForFrtRanking = processedFlights.map(flight => {
+            const price = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
+            const duration = 'id' in flight
+              ? flight.slices.reduce((sum, slice) => sum + slice.duration, 0)
+              : (flight.outboundSlice.duration + (flight.returnOptions[0]?.returnSlice?.duration || 0));
+            const flightId = 'id' in flight ? flight.id : `${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
+            return { flight, price, duration, flightId };
+          }).sort((a, b) => {
+            // Sort by price first (cheapest)
+            if (a.price !== b.price) return a.price - b.price;
+            // Then by duration (fastest)
+            return a.duration - b.duration;
+          });
+
+          // Get top 5 flight IDs
+          const top5FlightIds = new Set(allFlightsForFrtRanking.slice(0, 5).map(f => f.flightId));
+
+          return deduplicatedStopGrouped.map((group, index) => {
+            // Check if this group's primary flight is in top 5
+            const primaryFlightId = 'id' in group.primary
+              ? group.primary.id
+              : `${group.primary.outboundSlice.flights?.[0]}-${group.primary.outboundSlice.departure}`;
+            const shouldAutoTriggerFrt = top5FlightIds.has(primaryFlightId);
+
+            return (
             <FlightCardGroup
               key={`flight-group-${stopCount}-${index}`}
               primaryFlight={group.primary}
@@ -887,8 +913,10 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               v2EnrichmentData={v2EnrichmentData}
               onEnrichFlight={onEnrichFlight}
               enrichingAirlines={enrichingAirlines}
+              shouldAutoTriggerFrt={shouldAutoTriggerFrt}
             />
-          ));
+            );
+          });
         })}
       </div>
 

@@ -35,6 +35,7 @@ interface FlightCardProps {
   showCodeShareOptions?: boolean; // Whether to show code-share options indicator
   onToggleCodeShareOptions?: () => void; // Callback to toggle code-share options
   isCodeShareOptionsExpanded?: boolean; // Whether code-share options are expanded
+  shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -218,7 +219,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false }) => {
   // Get URL search params to check for FRT auto-trigger
   const [searchParams] = useSearchParams();
   const frtAutoTriggered = useRef(false);
@@ -772,12 +773,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     }
   }, [slices, selectedCabin, cabinPricing]);
 
-  // Auto-trigger FRT when frtEnabled is true in URL params
+  // Auto-trigger FRT when frtEnabled is true in URL params (only for top 5 flights)
   useEffect(() => {
     const frtEnabled = searchParams.get('frtEnabled') === 'true';
 
-    // Only trigger once per flight card and only if FRT is enabled
-    if (frtEnabled && !frtAutoTriggered.current && !isFetchingFrt && frtOptions.length === 0) {
+    // Only trigger once per flight card and only if FRT is enabled AND this is a top 5 flight
+    if (frtEnabled && shouldAutoTriggerFrt && !frtAutoTriggered.current && !isFetchingFrt && frtOptions.length === 0) {
       frtAutoTriggered.current = true;
 
       // Auto-trigger with 50mi radius and current cabin
