@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code, Link, RefreshCw } from 'lucide-react';
 import FlightSegmentViewer from './FlightSegmentViewer';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
@@ -172,14 +173,12 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
       slice.mileageBreakdown.forEach((breakdown: any) => {
         if (breakdown.allMatchingFlights && Array.isArray(breakdown.allMatchingFlights)) {
           breakdown.allMatchingFlights.forEach((flight: any) => {
-            // Validate match quality before including in cabin grouping
+            // STRICT: Validate carrier match before including in cabin grouping
             const isCarrierMatch = flight.carrierCode === breakdown.carrier;
-            const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
-                                flight.arrival?.iataCode === breakdown.destination;
             const hasExactMatch = breakdown.exactMatch === true || flight.exactMatch === true;
 
-            // Only include flights that have some level of match
-            if (!hasExactMatch && !isCarrierMatch && !isRouteMatch) {
+            // STRICT FILTERING: Only include if carrier matches OR marked as exact match
+            if (!hasExactMatch && !isCarrierMatch) {
               return; // Skip this flight
             }
 
@@ -220,6 +219,10 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
 };
 
 const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false }) => {
+  // Get URL search params to check for FRT auto-trigger
+  const [searchParams] = useSearchParams();
+  const frtAutoTriggered = useRef(false);
+
   // Helper function to format times in origin timezone
   const formatTimeInOriginTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
     if (!dateStr) return '';
@@ -283,6 +286,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [selectedFrtIndex, setSelectedFrtIndex] = useState<number>(0); // Selected FRT option index
   const [showFrtConfig, setShowFrtConfig] = useState<boolean>(false); // Show FRT configuration modal
   const [isFetchingFrt, setIsFetchingFrt] = useState<boolean>(false); // Is fetching FRT options
+  const [frtProgress, setFrtProgress] = useState<{current: number; total: number} | null>(null); // FRT search progress
 
   // Refs for award options scrolling
   const awardScrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -876,29 +880,29 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       continue;
                     }
 
-                    // Calculate match score
+                    // STRICT: Calculate match score (carrier match is required)
+                    const isCarrierMatch = enrichmentCarrier === breakdown.carrier;
+                    const hasExactMatch = breakdown.exactMatch === true || flight.exactMatch === true;
+
+                    // STRICT FILTERING: Only consider if carrier matches OR marked as exact match
+                    if (!hasExactMatch && !isCarrierMatch) {
+                      continue; // Skip this flight
+                    }
+
                     let matchScore = 0;
 
-                    // Check if marked as exact match
-                    if (breakdown.exactMatch === true || flight.exactMatch === true) {
+                    // Prioritize exact matches
+                    if (hasExactMatch) {
                       matchScore += 100;
                     }
 
-                    // Check carrier match
-                    const isCarrierMatch = enrichmentCarrier === breakdown.carrier;
+                    // Then carrier matches
                     if (isCarrierMatch) {
                       matchScore += 50;
                     }
 
-                    // Check route match
-                    const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
-                                        flight.arrival?.iataCode === breakdown.destination;
-                    if (isRouteMatch) {
-                      matchScore += 30;
-                    }
-
-                    // Only consider flights with some level of match
-                    if (matchScore > 0 && matchScore > bestMatchScore) {
+                    // Select best match
+                    if (matchScore > bestMatchScore) {
                       bestMatchScore = matchScore;
                       bestMatchingFlight = flight;
                     }
@@ -1194,17 +1198,15 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     breakdown.forEach(bd => {
       if (bd.allMatchingFlights) {
         bd.allMatchingFlights.forEach((flight: any) => {
-          // Validate match quality before counting
+          // STRICT: Validate carrier match before counting
           const carrier = flight.operatingCarrier || flight.carrierCode;
           if (!carrier) return;
 
           const isCarrierMatch = carrier === bd.carrier;
-          const isRouteMatch = flight.departure?.iataCode === bd.origin &&
-                              flight.arrival?.iataCode === bd.destination;
           const hasExactMatch = bd.exactMatch === true || flight.exactMatch === true;
 
-          // Only count flights that have some level of match
-          if (hasExactMatch || isCarrierMatch || isRouteMatch) {
+          // STRICT FILTERING: Only count if carrier matches OR marked as exact match
+          if (hasExactMatch || isCarrierMatch) {
             uniqueCarriers.add(carrier);
           }
         });
@@ -1247,14 +1249,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         const carrierCode = flight.operatingCarrier || flight.carrierCode;
         if (!carrierCode) return;
 
-        // Validate match quality before including in program grouping
+        // STRICT: Validate carrier match before including in program grouping
         const isCarrierMatch = carrierCode === segment.carrier;
-        const isRouteMatch = flight.departure?.iataCode === segment.origin &&
-                            flight.arrival?.iataCode === segment.destination;
         const hasExactMatch = segment.exactMatch === true || flight.exactMatch === true;
 
-        // Only include flights that have some level of match
-        if (!hasExactMatch && !isCarrierMatch && !isRouteMatch) {
+        // STRICT FILTERING: Only include if carrier matches OR marked as exact match
+        if (!hasExactMatch && !isCarrierMatch) {
           return; // Skip this flight
         }
 
@@ -1603,11 +1603,34 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
   return (
     <>
-      <div 
+      <div
         className={`bg-gray-900/80 backdrop-blur-sm border border-gray-800/60 rounded-lg hover:border-gray-700/60 hover:bg-gray-900 transition-all duration-200 ${
           matchType && matchType !== 'none' ? 'border-gray-700/60' : ''
         }`}
       >
+      {/* FRT Progress Bar */}
+      {frtProgress && (
+        <div className="relative h-1 bg-gray-800 overflow-hidden rounded-t-lg">
+          <div
+            className="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${(frtProgress.current / frtProgress.total) * 100}%` }}
+          />
+        </div>
+      )}
+
+      {/* FRT Progress Text */}
+      {frtProgress && (
+        <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-3.5 w-3.5 text-blue-400 animate-spin" />
+            <span className="text-xs font-medium text-blue-300">Searching FRT options...</span>
+          </div>
+          <span className="text-xs font-mono text-blue-400">
+            {frtProgress.current} / {frtProgress.total} airports
+          </span>
+        </div>
+      )}
+
       {/* Main Flight Bar - Ultra Compact Google Flights Style */}
       <div className="px-4 py-3 border-b border-gray-800/30">
         <div className="flex items-center justify-between gap-4">
@@ -3911,19 +3934,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                 return;
                               }
 
-                              // Validate that this aero flight actually matches THIS ITA segment
+                              // STRICT: Validate that this aero flight matches the ITA carrier
                               const isCarrierMatch = flight.carrierCode === itaCarrier;
-                              const isRouteMatch = flight.departure?.iataCode === breakdown.origin &&
-                                                    flight.arrival?.iataCode === breakdown.destination;
-
-                              // Check if exactMatch flag is set
                               const hasExactMatch = breakdown.exactMatch === true || flight.exactMatch === true;
 
-                              // Only include if:
-                              // 1. It's marked as exact match, OR
-                              // 2. Carrier matches AND route matches, OR
-                              // 3. Route matches with reasonable time proximity
-                              if (hasExactMatch || (isCarrierMatch && isRouteMatch) || isRouteMatch) {
+                              // STRICT FILTERING: Only include if carrier matches OR marked as exact match
+                              // Do NOT show aero flights from different carriers even if route matches
+                              if (hasExactMatch || isCarrierMatch) {
                                 allFlights.push({
                                   ...flight,
                                   segmentIndex,
@@ -4787,6 +4804,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             console.log('Searching FRT for return airports:', returnAirports);
 
+            // Initialize progress tracking
+            setFrtProgress({ current: 0, total: returnAirports.length });
+
             // Search for return flights from destination to each return airport
             const frtResults: any[] = [];
             const destinationCode = slices[slices.length - 1].destination.code;
@@ -4801,7 +4821,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             // Get passenger count from the original flight (assume adults only)
             const passengers = 1; // Default to 1, can be enhanced to extract from flight data
 
-            for (const returnAirport of returnAirports) {
+            for (let i = 0; i < returnAirports.length; i++) {
+              const returnAirport = returnAirports[i];
+
+              // Update progress
+              setFrtProgress({ current: i + 1, total: returnAirports.length });
               try {
                 console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
 
@@ -4867,6 +4891,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             console.error('FRT search failed:', error);
           } finally {
             setIsFetchingFrt(false);
+            setFrtProgress(null); // Clear progress when done
           }
         }}
         originCode={slices[0].origin.code}
