@@ -2864,6 +2864,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
+            {/* FRT Button */}
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFrtConfig(true);
+                }}
+                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, frt: true }))}
+                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, frt: false }))}
+                disabled={isFetchingFrt}
+                className="flex flex-col items-center gap-1.5 p-2 hover:bg-blue-500/15 rounded transition-colors text-blue-300 hover:text-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isFetchingFrt ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span className="text-[10px] font-medium">
+                  {frtOptions.length > 0 ? 'FRT' : 'FRT'}
+                </span>
+              </button>
+              {tooltipStates.frt && (
+                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                  {frtOptions.length > 0 ? 'Reconfigure Fake Round Trip' : 'Find Fake Round Trip'}
+                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                </div>
+              )}
+            </div>
+
             {/* Hacks Button */}
             <div className="relative">
               <button
