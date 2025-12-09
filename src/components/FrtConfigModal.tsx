@@ -34,14 +34,14 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
   const [searchRadius, setSearchRadius] = useState<number>(defaultConfig?.searchRadius || 300);
   const [includeDirect, setIncludeDirect] = useState<boolean>(defaultConfig?.includeDirect !== undefined ? defaultConfig.includeDirect : true);
   const [includeNearby, setIncludeNearby] = useState<boolean>(defaultConfig?.includeNearby !== undefined ? defaultConfig.includeNearby : true);
-  const [newViaAirport, setNewViaAirport] = useState<string>('');
+  const [newViaAirport, setNewViaAirport] = useState<{ code: string; name: string } | null>(null);
 
   if (!isOpen) return null;
 
   const handleAddVia = () => {
-    if (newViaAirport && !viaAirports.includes(newViaAirport)) {
-      setViaAirports([...viaAirports, newViaAirport]);
-      setNewViaAirport('');
+    if (newViaAirport?.code && !viaAirports.includes(newViaAirport.code)) {
+      setViaAirports([...viaAirports, newViaAirport.code]);
+      setNewViaAirport(null);
     }
   };
 
@@ -157,17 +157,22 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2" onKeyDown={(e) => {
+                if (e.key === 'Enter' && newViaAirport?.code) {
+                  e.preventDefault();
+                  handleAddVia();
+                }
+              }}>
                 <div className="flex-1">
                   <LocationSearchInputWithCallback
                     value={newViaAirport}
-                    onSelect={(code) => setNewViaAirport(code)}
+                    onChange={(location) => setNewViaAirport(location)}
                     placeholder="Add VIA airport..."
                   />
                 </div>
                 <button
                   onClick={handleAddVia}
-                  disabled={!newViaAirport}
+                  disabled={!newViaAirport?.code}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
