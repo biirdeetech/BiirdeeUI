@@ -881,14 +881,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     });
 
                   const bestReturn = sortedFlights[0];
-                  const frtTotalPrice = totalAmount + bestReturn.totalAmount;
+                  const frtTotalPrice = displayTotal + bestReturn.totalAmount;
 
                   frtResults.push({
                     returnAirport: returnAirport,
                     returnFlight: bestReturn,
                     totalPrice: frtTotalPrice,
                     currency: bestReturn.currency,
-                    savings: totalAmount - frtTotalPrice
+                    savings: displayTotal - frtTotalPrice
                   });
                 }
               } catch (error) {
@@ -907,7 +907,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         })();
       }
     }
-  }, [searchParams, slices, isFetchingFrt, frtOptions.length, totalAmount, currency]);
+  }, [searchParams, slices, isFetchingFrt, frtOptions.length, displayTotal, currency]);
 
   // Removed console.log for production
 
@@ -1975,7 +1975,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   <div className="text-xs text-blue-400 font-bold">{formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}</div>
                   <div className="text-[9px] text-gray-400">round-trip</div>
                   <div className="text-[9px] text-green-400 font-semibold">
-                    Save {formatPrice(totalAmount - selectedFrt.totalPrice, currency, false)}
+                    Save {formatPrice(displayTotal - selectedFrt.totalPrice, currency, false)}
                   </div>
                 </div>
               );
@@ -5100,14 +5100,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   });
 
                   // Calculate total FRT price (original one-way + return)
-                  const frtTotalPrice = totalAmount + cheapestReturn.totalAmount;
+                  const frtTotalPrice = displayTotal + cheapestReturn.totalAmount;
 
                   frtResults.push({
                     returnAirport: returnAirport,
                     returnFlight: cheapestReturn,
                     totalPrice: frtTotalPrice,
                     currency: cheapestReturn.currency,
-                    savings: totalAmount - frtTotalPrice // Negative if FRT is more expensive
+                    savings: displayTotal - frtTotalPrice // Negative if FRT is more expensive
                   });
 
                   console.log(`Found FRT option via ${returnAirport}: $${frtTotalPrice.toFixed(2)}`);
