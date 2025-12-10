@@ -313,9 +313,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   }, [selectedCabin, flight]);
 
   // FRT (Fake Round Trip) state - from context (cabin-specific)
-  const frtState = useMemo(() => {
-    return frtContext.getFrtState(getFrtKey(currentFrtCabin));
-  }, [frtContext, currentFrtCabin, flightId]);
+  // Note: Don't wrap in useMemo - we need this to re-compute on every render
+  // so that changes to the FRT context state trigger UI updates
+  const frtState = frtContext.getFrtState(getFrtKey(currentFrtCabin));
 
   const frtOptions = frtState.options;
   const selectedFrtIndex = frtState.selectedIndex;
@@ -5247,6 +5247,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       <FrtConfigModal
         isOpen={showFrtConfig}
         onClose={() => setShowFrtConfig(false)}
+        defaultConfig={{
+          returnAirports: [slices[0].origin.code],
+          viaAirports: [],
+          cabinClass: currentFrtCabin,
+          searchRadius: 300,
+          includeDirect: true,
+          includeNearby: true,
+          useManualAirports: false,
+          maxStops: -1,
+          bookingClasses: []
+        }}
         onSearch={async (config) => {
           console.log('FRT Search Config:', config);
           setShowFrtConfig(false);
