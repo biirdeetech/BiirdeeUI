@@ -3700,27 +3700,209 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const segments = itinerary?.segments || [];
               if (segments.length === 0) return null;
 
+              // Build award slice-like structure for rendering
+              // Calculate actual layovers from segment times if available
+              const actualLayovers = segments.slice(0, -1).map((seg: any, idx: number) => {
+                const nextSeg = segments[idx + 1];
+                if (!seg.arrival?.dateTime || !nextSeg.departure?.dateTime) return null;
+                const arrivalTime = new Date(seg.arrival.dateTime).getTime();
+                const departureTime = new Date(nextSeg.departure.dateTime).getTime();
+                const layoverMinutes = Math.round((departureTime - arrivalTime) / (1000 * 60));
+                return {
+                  duration: layoverMinutes,
+                  airportCode: nextSeg.departure?.airport || 'N/A'
+                };
+              }).filter(Boolean);
+
+              const awardSlice = {
+                departure: segments[0]?.departure,
+                arrival: segments[segments.length - 1]?.arrival,
+                origin: {
+                  code: segments[0]?.departure?.airport || 'N/A',
+                  name: segments[0]?.departure?.airportName || ''
+                },
+                destination: {
+                  code: segments[segments.length - 1]?.arrival?.airport || 'N/A',
+                  name: segments[segments.length - 1]?.arrival?.airportName || ''
+                },
+                duration: segments.reduce((acc: number, seg: any) => acc + (seg.duration || 0), 0),
+                stops: segments.slice(1).map((seg: any) => ({
+                  code: seg.departure?.airport || 'N/A'
+                })),
+                segments: segments,
+                cabins: segments.map((seg: any) => selectedAward.cabin),
+                flights: segments.map((seg: any) => `${seg.carrierCode}${seg.number}`)
+              };
+
+              // Use actual segment durations and layover times
+              const segmentTimes = segments.map((seg: any) => ({ duration: seg.duration || 0 }));
+              const layoverTimes = actualLayovers;
+              const isNonstop = segments.length === 1;
+
               return (
                 <div className="mb-4 border border-yellow-500/20 bg-yellow-500/5 rounded-lg p-4">
                   <div className="text-xs font-semibold text-yellow-400 mb-3 flex items-center gap-2">
                     <Award className="h-3 w-3" />
                     Award Flight Details
                   </div>
-                  <FlightSegmentViewer
-                    segments={segments.map((seg: any) => ({
-                      carrierCode: seg.carrierCode,
-                      number: seg.number,
-                      departure: seg.departure,
-                      arrival: seg.arrival,
-                      cabin: selectedAward.cabin,
-                      duration: seg.duration
-                    }))}
-                    layovers={itinerary?.layovers || []}
-                    formatTime={formatTimeInOriginTZ}
-                    formatDate={formatDateInOriginTZ}
-                    showCabin={true}
-                    compact={false}
-                  />
+
+                  {/* Compact Segment Viewer */}
+                  <div className="flex items-center justify-between mb-3 lg:mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 flex-1">
+                      {/* Departure Airport */}
+                      <div className="text-center min-w-[80px]">
+                        <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                          {formatTimeInOriginTZ(awardSlice.departure)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatDateInOriginTZ(awardSlice.departure)}
+                        </div>
+                        <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.origin.code}</div>
+                        {awardSlice.origin.name && (
+                          <div className="text-xs text-gray-400 hidden lg:block">{awardSlice.origin.name}</div>
+                        )}
+                        <div className="text-[10px] text-teal-200 mt-1">
+                          {selectedAward.cabin}
+                        </div>
+                        {awardSlice.flights[0] && (
+                          <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                            {awardSlice.flights[0]}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 px-1 sm:px-2 lg:px-4">
+                        {isNonstop ? (
+                          <>
+                            <div className="flex items-center gap-1 relative">
+                              <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                              <Plane className="h-3 w-3 text-emerald-400" />
+                              <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 mt-2">
+                              <div className="text-xs lg:text-sm font-medium text-gray-200 flex items-center gap-1">
+                                <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+                                {formatDuration(awardSlice.duration)}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1 text-gray-300 relative">
+                              <div className="flex-1 relative">
+                                <div className="border-t-2 border-gray-600"></div>
+                                {segmentTimes[0] && (
+                                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                                    {formatDuration(segmentTimes[0].duration)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {awardSlice.stops.map((stop: any, stopIdx: number) => {
+                                const nextFlightIdx = stopIdx + 1;
+                                const nextSegment = segments[nextFlightIdx];
+                                const hasNextSegment = segmentTimes[nextFlightIdx];
+
+                                return (
+                                  <React.Fragment key={stopIdx}>
+                                    <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                                      {nextSegment?.carrierCode && (
+                                        <img
+                                          src={`https://www.gstatic.com/flights/airline_logos/35px/${nextSegment.carrierCode}.png`}
+                                          alt={nextSegment.carrierCode}
+                                          className="h-3 w-3 object-contain"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      )}
+                                      <span className="text-[9px] text-gray-300 font-medium">
+                                        {stop.code}
+                                      </span>
+                                      {awardSlice.flights[nextFlightIdx] && (
+                                        <span className="text-[8px] text-gray-500 font-mono">
+                                          {awardSlice.flights[nextFlightIdx]}
+                                        </span>
+                                      )}
+                                      {layoverTimes[stopIdx] && (
+                                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
+                                          {formatDuration(layoverTimes[stopIdx].duration)}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {hasNextSegment && (
+                                      <div className="flex-1 relative">
+                                        <div className={`border-t-2 ${
+                                          stopIdx < awardSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                        }`}></div>
+                                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                                          {formatDuration(segmentTimes[nextFlightIdx].duration)}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+
+                            <div className="relative mt-8">
+                              <div className="border-t border-gray-700"></div>
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900 px-2">
+                                <div className="text-center text-[10px] font-medium text-gray-300 flex items-center gap-1">
+                                  <Clock className="h-2.5 w-2.5 inline" />
+                                  {formatDuration(awardSlice.duration)}
+                                </div>
+                              </div>
+                            </div>
+
+                            {awardSlice.stops.length > 0 && (
+                              <div className="text-center text-[10px] text-gray-400 mt-2">
+                                {awardSlice.stops.length === 1 ? '1 stop' : `${awardSlice.stops.length} stops`}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Arrival Airport */}
+                      <div className="text-center min-w-[80px]">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                            {formatTimeInOriginTZ(awardSlice.arrival)}
+                          </span>
+                          {(() => {
+                            const dayDiff = getDayDifference(awardSlice.departure, awardSlice.arrival);
+                            if (dayDiff > 0) {
+                              return (
+                                <div className="relative">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-500/10 text-slate-300 border border-slate-600/30 whitespace-nowrap cursor-help">
+                                    +{dayDiff}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatDateInOriginTZ(awardSlice.arrival)}
+                        </div>
+                        <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.destination.code}</div>
+                        {awardSlice.destination.name && (
+                          <div className="text-xs text-gray-400 hidden lg:block">{awardSlice.destination.name}</div>
+                        )}
+                        <div className="text-[10px] text-teal-200 mt-1">
+                          {selectedAward.cabin}
+                        </div>
+                        {awardSlice.flights[awardSlice.flights.length - 1] && (
+                          <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                            {awardSlice.flights[awardSlice.flights.length - 1]}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   {/* Transfer Partners */}
                   {selectedAward.transferOptions && selectedAward.transferOptions.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-yellow-500/20 flex items-center gap-2 text-xs">
