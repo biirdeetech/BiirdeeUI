@@ -2,12 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plane, Clock, ChevronDown, Target, Plus, ChevronRight, Zap, AlertCircle, Info, Eye, Award, Loader, Code, Link, RefreshCw } from 'lucide-react';
 import FlightSegmentViewer from './FlightSegmentViewer';
+import FlightSegmentDetails from './FlightSegmentDetails';
 import { FlightSolution, GroupedFlight, MileageDeal } from '../types/flight';
 import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 import ITAMatrixService from '../services/itaMatrixApi';
 import BiirdeeService from '../services/biirdeeApi';
 import AddToProposalModal from './AddToProposalModal';
-import FlightSegmentDetails from './FlightSegmentDetails';
 import FlightSummaryModal from './FlightSummaryModal';
 import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
@@ -4946,14 +4946,167 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         const returnSlice = returnFlight.slices?.[0];
         if (!returnSlice) return null;
 
+        const { segments: segmentTimes, layovers: layoverTimes } = calculateSegmentTimes(returnSlice);
+        const isNonstop = !returnSlice.stops || returnSlice.stops.length === 0;
+
         return (
-          <div className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg p-4">
+          <div className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg px-4 py-3">
             <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
               <RefreshCw className="h-3 w-3" />
-              FRT Return Flight Details
+              FRT Return Flight
             </div>
-            <FlightSegmentDetails slice={returnSlice} originTimezone={originTimezone} />
-            <div className="mt-3 pt-3 border-t border-blue-500/20 flex items-center justify-between text-xs">
+
+            {/* Compact Segment Viewer - Same as Main Search Results */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 flex-1">
+                {/* Departure Airport */}
+                <div className="text-center min-w-[80px]">
+                  <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                    {formatTime(returnSlice.departure)}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {formatDate(returnSlice.departure)}
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium text-gray-200">{returnSlice.origin?.code || 'N/A'}</div>
+                  {returnSlice.origin?.name && (
+                    <div className="text-xs text-gray-400 hidden lg:block">{returnSlice.origin.name}</div>
+                  )}
+                  {returnSlice.cabins && returnSlice.cabins.length > 0 && returnSlice.cabins[0] && (
+                    <div className="text-[10px] text-teal-200 mt-1">
+                      {returnSlice.cabins[0]}
+                    </div>
+                  )}
+                  {(!returnSlice.stops || returnSlice.stops.length > 0) && returnSlice.flights && returnSlice.flights.length > 0 && returnSlice.flights[0] && (
+                    <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                      {returnSlice.flights[0]}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 px-1 sm:px-2 lg:px-4">
+                  {isNonstop ? (
+                    <>
+                      <div className="flex items-center gap-1 relative">
+                        <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                        <Plane className="h-3 w-3 text-emerald-400" />
+                        <div className="flex-1 border-t-2 border-emerald-500/40"></div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <div className="text-xs lg:text-sm font-medium text-gray-200 flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+                          {formatDuration(returnSlice.duration)}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1 text-gray-300 relative">
+                        <div className="flex-1 relative">
+                          <div className="border-t-2 border-gray-600"></div>
+                          {segmentTimes[0] && (
+                            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                              {formatDuration(segmentTimes[0].duration)}
+                            </div>
+                          )}
+                        </div>
+
+                        {returnSlice.stops && returnSlice.stops.length > 0 && returnSlice.stops.map((stop: any, stopIdx: number) => {
+                          const nextFlightIdx = stopIdx + 1;
+                          const nextCarrier = returnSlice.segments && returnSlice.segments[nextFlightIdx] ? returnSlice.segments[nextFlightIdx].carrier : null;
+                          const hasNextSegment = segmentTimes[nextFlightIdx];
+
+                          return (
+                            <React.Fragment key={stopIdx}>
+                              <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                                {nextCarrier && nextCarrier.code && (
+                                  <img
+                                    src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
+                                    alt={nextCarrier.code || 'airline'}
+                                    className="h-3 w-3 object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
+                                <span className="text-[9px] text-gray-300 font-medium">
+                                  {stop?.code || 'N/A'}
+                                </span>
+                                {returnSlice.flights && returnSlice.flights[nextFlightIdx] && (
+                                  <span className="text-[8px] text-gray-500 font-mono">
+                                    {returnSlice.flights[nextFlightIdx]}
+                                  </span>
+                                )}
+                                {layoverTimes[stopIdx] && (
+                                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
+                                    {formatDuration(layoverTimes[stopIdx].duration)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {hasNextSegment && (
+                                <div className="flex-1 relative">
+                                  <div className={`border-t-2 ${
+                                    returnSlice.stops && stopIdx < returnSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                  }`}></div>
+                                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
+                                    {formatDuration(segmentTimes[nextFlightIdx].duration)}
+                                  </div>
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+
+                      <div className="relative mt-8">
+                        <div className="border-t border-gray-700"></div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900 px-2">
+                          <div className="text-center text-[10px] font-medium text-gray-300 flex items-center gap-1">
+                            <Clock className="h-2.5 w-2.5 inline" />
+                            {formatDuration(returnSlice.duration)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {returnSlice.stops && returnSlice.stops.length > 0 && (
+                        <div className="text-center text-[10px] text-gray-400 mt-2">
+                          {returnSlice.stops.length === 1 ? '1 stop' : `${returnSlice.stops.length} stops`}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Arrival Airport */}
+                <div className="text-center min-w-[80px]">
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
+                      {formatTime(returnSlice.arrival)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {formatDate(returnSlice.arrival)}
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium text-gray-200">{returnSlice.destination?.code || 'N/A'}</div>
+                  {returnSlice.destination?.name && (
+                    <div className="text-xs text-gray-400 hidden lg:block">{returnSlice.destination.name}</div>
+                  )}
+                  {returnSlice.cabins && returnSlice.cabins.length > 0 && returnSlice.cabins[returnSlice.cabins.length - 1] && (
+                    <div className="text-[10px] text-teal-200 mt-1">
+                      {returnSlice.cabins[returnSlice.cabins.length - 1]}
+                    </div>
+                  )}
+                  {(!returnSlice.stops || returnSlice.stops.length > 0) && returnSlice.flights && returnSlice.flights.length > 0 && returnSlice.flights[returnSlice.flights.length - 1] && (
+                    <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
+                      {returnSlice.flights[returnSlice.flights.length - 1]}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* FRT Pricing Footer */}
+            <div className="pt-3 border-t border-blue-500/20 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-gray-400">Return to:</span>
                 <span className="text-gray-300 font-mono font-medium">{selectedFrt.returnAirport}</span>
