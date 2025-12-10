@@ -919,10 +919,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 const result = await BiirdeeService.searchFlights(searchParams);
 
                 if (result.solutionList.solutions.length > 0) {
-                  // Sort by price and take top 10 options per return airport
+                  // Sort by fewest stops, then by price, and take top 30 options per return airport
                   const sortedResults = result.solutionList.solutions
-                    .sort((a, b) => a.totalAmount - b.totalAmount)
-                    .slice(0, 10); // Take top 10 cheapest options per airport
+                    .sort((a, b) => {
+                      const aStops = a.slices[0]?.segments?.length - 1 || 0;
+                      const bStops = b.slices[0]?.segments?.length - 1 || 0;
+                      // First sort by stops (fewest first)
+                      if (aStops !== bStops) return aStops - bStops;
+                      // Then by price (lowest first)
+                      return a.totalAmount - b.totalAmount;
+                    })
+                    .slice(0, 30); // Take top 30 options per airport
 
                   // Add each option to FRT context
                   for (const returnFlight of sortedResults) {
@@ -2869,6 +2876,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       const awardCashValue = (award.miles * perCentValue) + award.tax;
                       const isSelected = selectedAwardId === award.id || (!selectedAwardId && idx === 0);
 
+                      // Calculate savings compared to current flight price
+                      const awardSavings = displayTotal - awardCashValue;
+
                       return (
                         <button
                           key={award.id}
@@ -2883,7 +2893,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
                           }`}
                         >
-                          {award.miles.toLocaleString()} mi + ${award.tax.toFixed(2)} @ ${awardCashValue.toFixed(2)}
+                          {award.miles.toLocaleString()} mi + ${award.tax.toFixed(2)}
+                          {' @ '}
+                          <span className={awardSavings > 0 ? 'text-green-400 font-semibold' : awardSavings < 0 ? 'text-red-400 font-semibold' : 'font-semibold'}>
+                            ${awardCashValue.toFixed(2)}
+                          </span>
+                          {awardSavings !== 0 && (
+                            awardSavings > 0 ? (
+                              <span className="text-green-400 font-medium">
+                                {' '}(-${Math.abs(awardSavings).toFixed(2)})
+                              </span>
+                            ) : (
+                              <span className="text-red-400 font-medium">
+                                {' '}(+${Math.abs(awardSavings).toFixed(2)})
+                              </span>
+                            )
+                          )}
                         </button>
                       );
                     })}
@@ -3015,126 +3040,120 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             );
           })()}
 
-          {/* FRT Options - Slider Navigation */}
-          {frtOptions.length > 0 && (
-            <div className="px-4 py-3 border-b border-gray-800/30">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
-                  FRT Options:
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : frtOptions.length - 1;
-                    frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), prevIndex);
-                  }}
-                  disabled={frtOptions.length <= 1}
-                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                >
-                  <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
-                </button>
-                <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
-                  {frtOptions.map((frt, index) => {
-                    const returnSlice = frt.returnFlight?.slices?.[0];
-                    if (!returnSlice) return null;
+          {/* FRT Options - Simplified Button Style */}
+          {frtOptions.length > 0 && (() => {
+            // Sort by fewest stops, then by price
+            const sortedFrt = [...frtOptions].sort((a, b) => {
+              const aStops = a.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+              const bStops = b.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+              // First sort by stops (fewest first)
+              if (aStops !== bStops) return aStops - bStops;
+              // Then by total price (lowest first)
+              const aPrice = displayTotal + (a.returnFlight?.totalAmount || 0);
+              const bPrice = displayTotal + (b.returnFlight?.totalAmount || 0);
+              return aPrice - bPrice;
+            });
 
-                    const isSelected = selectedFrtIndex === index;
-                    const stops = returnSlice.segments?.length - 1 || 0;
-                    const hours = Math.floor(returnSlice.duration / 60);
-                    const mins = returnSlice.duration % 60;
+            const currentIndex = sortedFrt.findIndex((_, idx) => idx === selectedFrtIndex);
+            const totalFrtOptions = sortedFrt.length;
 
-                    // Recalculate FRT total and savings based on current displayed flight price
-                    const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
-                    const currentFrtTotalPrice = displayTotal + returnFlightPrice;
-                    const currentSavings = displayTotal - currentFrtTotalPrice;
+            return (
+              <div className="px-4 py-3 border-b border-gray-800/30">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+                    FRT Options:
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : frtOptions.length - 1;
+                      frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), prevIndex);
+                    }}
+                    disabled={frtOptions.length <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                  </button>
+                  <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                    {sortedFrt.map((frt, idx) => {
+                      const returnSlice = frt.returnFlight?.slices?.[0];
+                      if (!returnSlice) return null;
 
-                    return (
-                      <button
-                        key={`frt-${index}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), index);
-                        }}
-                        className={`flex flex-col items-start px-2.5 py-1.5 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 min-w-fit ${
-                          isSelected
-                            ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                            : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          {(() => {
-                            const airlineCode = returnSlice.flights?.[0]?.slice(0, 2);
-                            if (airlineCode) {
-                              return (
-                                <img
-                                  src={`https://images.kiwi.com/airlines/32x32/${airlineCode}.png`}
-                                  alt={airlineCode}
-                                  className="w-4 h-4 rounded"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              );
-                            }
-                            return null;
-                          })()}
-                          <span className="font-mono text-[11px]">
+                      const isSelected = selectedFrtIndex === idx;
+                      const stops = returnSlice.segments?.length - 1 || 0;
+
+                      // Recalculate FRT total and savings based on current displayed flight price
+                      const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
+                      const currentFrtTotalPrice = displayTotal + returnFlightPrice;
+                      const currentSavings = displayTotal - currentFrtTotalPrice;
+
+                      return (
+                        <button
+                          key={`frt-${idx}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), idx);
+                          }}
+                          className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
+                            isSelected
+                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                              : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                          }`}
+                        >
+                          <span className="font-mono">
                             {returnSlice.origin?.code}→{returnSlice.destination?.code}
                           </span>
-                          <span className="text-[9px] opacity-70">
+                          {' '}
+                          <span className="opacity-70">
                             {stops === 0 ? 'nonstop' : `${stops}stop`}
                           </span>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="font-mono text-[10px] opacity-70">
-                            {hours}h{mins}m
+                          {' @ '}
+                          <span className={currentSavings > 0 ? 'text-green-400 font-semibold' : currentSavings < 0 ? 'text-red-400 font-semibold' : ''}>
+                            {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
                           </span>
-                          <span className="text-xs font-semibold">
-                            @ {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
-                          </span>
-                        </div>
-                        {currentSavings !== 0 && (
-                          currentSavings > 0 ? (
-                            <div className="text-[9px] text-green-400 font-medium">
-                              save {formatPrice(currentSavings, currency, false)}
-                            </div>
-                          ) : (
-                            <div className="text-[9px] text-red-400 font-medium">
-                              extra +{formatPrice(Math.abs(currentSavings), currency, false)}
-                            </div>
-                          )
-                        )}
-                      </button>
-                    );
-                  })}
+                          {currentSavings !== 0 && (
+                            currentSavings > 0 ? (
+                              <span className="text-green-400 font-medium">
+                                {' '}(-{formatPrice(Math.abs(currentSavings), currency, false)})
+                              </span>
+                            ) : (
+                              <span className="text-red-400 font-medium">
+                                {' '}(+{formatPrice(Math.abs(currentSavings), currency, false)})
+                              </span>
+                            )
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextIndex = selectedFrtIndex < frtOptions.length - 1 ? selectedFrtIndex + 1 : 0;
+                      frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), nextIndex);
+                    }}
+                    disabled={frtOptions.length <= 1}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFrtConfig(true);
+                    }}
+                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
+                    title="Reconfigure FRT"
+                  >
+                    <RefreshCw className="h-3 w-3 text-gray-300" />
+                  </button>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextIndex = selectedFrtIndex < frtOptions.length - 1 ? selectedFrtIndex + 1 : 0;
-                    frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), nextIndex);
-                  }}
-                  disabled={frtOptions.length <= 1}
-                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                >
-                  <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowFrtConfig(true);
-                  }}
-                  className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
-                  title="Reconfigure FRT"
-                >
-                  <RefreshCw className="h-3 w-3 text-gray-300" />
-                </button>
+                <div className="text-center text-[10px] text-gray-400 mt-2">
+                  Option {selectedFrtIndex + 1} of {totalFrtOptions}
+                </div>
               </div>
-              <div className="text-center text-[10px] text-gray-400 mt-2">
-                Option {selectedFrtIndex + 1} of {frtOptions.length}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Action Buttons - First 80px on right side */}
           <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
@@ -5407,6 +5426,40 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     </span>
                   )
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const frtId = `frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`;
+                    if (addedItems.has(frtId)) {
+                      setAddedItems(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(frtId);
+                        return newSet;
+                      });
+                      setPendingItems(prev => prev.filter(item => item.id !== frtId));
+                    } else {
+                      setAddedItems(prev => new Set(prev).add(frtId));
+                      setPendingItems(prev => [...prev, {
+                        id: frtId,
+                        type: 'frt',
+                        flight: flight,
+                        returnFlight: returnFlight,
+                        returnAirport: selectedFrt.returnAirport,
+                        totalPrice: currentFrtTotalPrice,
+                        currency: selectedFrt.currency || 'USD',
+                        savings: currentSavings
+                      }]);
+                      setShowAddToProposal(true);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded border text-xs font-medium transition-all ${
+                    addedItems.has(`frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`)
+                      ? 'bg-success-500/20 border-success-500/40 text-success-300 hover:bg-success-500/30'
+                      : 'bg-gray-700/50 border-gray-600/50 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500/60'
+                  }`}
+                >
+                  {addedItems.has(`frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`) ? 'Added' : '+ Add'}
+                </button>
               </div>
             </div>
           </div>
@@ -5627,10 +5680,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 const result = await BiirdeeService.searchFlights(searchParams);
 
                 if (result.solutionList.solutions.length > 0) {
-                  // Sort by price (cheapest first) and take top 10 options per return airport
+                  // Sort by fewest stops, then by price, and take top 30 options per return airport
                   const sortedResults = result.solutionList.solutions
-                    .sort((a, b) => a.totalAmount - b.totalAmount)
-                    .slice(0, 10); // Take top 10 cheapest options per airport
+                    .sort((a, b) => {
+                      const aStops = a.slices[0]?.segments?.length - 1 || 0;
+                      const bStops = b.slices[0]?.segments?.length - 1 || 0;
+                      // First sort by stops (fewest first)
+                      if (aStops !== bStops) return aStops - bStops;
+                      // Then by price (lowest first)
+                      return a.totalAmount - b.totalAmount;
+                    })
+                    .slice(0, 30); // Take top 30 options per airport
 
                   // Prepare cache entries for this airport
                   const airportCacheEntries: any[] = [];
