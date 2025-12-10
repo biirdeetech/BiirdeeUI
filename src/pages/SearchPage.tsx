@@ -12,6 +12,7 @@ import FlightFilters, { FlightFilterState } from '../components/FlightFilters';
 import StreamingProgress from '../components/StreamingProgress';
 import { useAuth } from '../hooks/useAuth';
 import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
+import { FrtProvider } from '../contexts/FrtContext';
 
 const SearchPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -1103,11 +1104,12 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Navigation - Sticky to top */}
-      <Navigation />
+    <FrtProvider>
+      <div className="min-h-screen bg-gray-950">
+        {/* Navigation - Sticky to top */}
+        <Navigation />
 
-      <div className="lg:flex lg:overflow-hidden lg:relative">
+        <div className="lg:flex lg:overflow-hidden lg:relative">
         {/* Mobile/Tablet: Full width top section, Desktop: Overlay Sidebar */}
         <div
           className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto transition-all duration-300 ${
@@ -1200,6 +1202,7 @@ const SearchPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </FrtProvider>
   );
 };
 
