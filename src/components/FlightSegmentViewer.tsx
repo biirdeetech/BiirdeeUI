@@ -124,6 +124,38 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
     );
   }
 
+  // Calculate total duration including layovers
+  const calculateTotalDuration = () => {
+    let totalMinutes = 0;
+
+    // Sum up all segment durations
+    segments.forEach(segment => {
+      if (segment.duration) {
+        const match = segment.duration.match(/PT(\d+)H(\d+)M/);
+        if (match) {
+          const hours = parseInt(match[1] || '0');
+          const minutes = parseInt(match[2] || '0');
+          totalMinutes += hours * 60 + minutes;
+        }
+      }
+    });
+
+    // Add layover times
+    layovers.forEach(layover => {
+      if (layover.durationMinutes) {
+        totalMinutes += layover.durationMinutes;
+      }
+    });
+
+    if (totalMinutes === 0) return null;
+
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const totalDuration = calculateTotalDuration();
+
   // Full detailed view
   return (
     <div className="space-y-3">
@@ -150,8 +182,8 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
           } else {
             const match = segment.duration.match(/PT(\d+)H(\d+)M/);
             if (match) {
-              const hours = parseInt(match[1]);
-              const minutes = parseInt(match[2]);
+              const hours = parseInt(match[1] || '0');
+              const minutes = parseInt(match[2] || '0');
               segmentDuration = `${hours}h ${minutes}m`;
             }
           }
@@ -194,7 +226,7 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-16">
+                      <div className="flex-shrink-0 w-20">
                         <div className="text-sm font-semibold text-white">{depTime}</div>
                         <div className="text-[10px] text-gray-400">{depDate}</div>
                       </div>
@@ -203,17 +235,22 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
                           <MapPin className="h-3.5 w-3.5 text-blue-400" />
                           <span className="text-sm font-medium text-gray-200">{depAirport}</span>
                         </div>
-                        <div className="flex-1 flex items-center">
-                          <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
-                          <Plane className={`h-4 w-4 mx-2 ${isNonstop ? 'text-emerald-400' : 'text-gray-500'}`} />
-                          <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                          <div className="w-full flex items-center">
+                            <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                            <Plane className={`h-4 w-4 mx-2 ${isNonstop ? 'text-emerald-400' : 'text-gray-500'}`} />
+                            <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                          </div>
+                          {segmentDuration && (
+                            <div className="text-[10px] text-gray-500 mt-1">{segmentDuration}</div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <MapPin className="h-3.5 w-3.5 text-green-400" />
                           <span className="text-sm font-medium text-gray-200">{arrAirport}</span>
                         </div>
                       </div>
-                      <div className="flex-shrink-0 w-16 text-right">
+                      <div className="flex-shrink-0 w-20 text-right">
                         <div className="text-sm font-semibold text-white">{arrTime}</div>
                         <div className="text-[10px] text-gray-400">{arrDate}</div>
                       </div>
@@ -224,12 +261,12 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
             </div>
             {!isLast && layover && (
               <div className="flex items-center justify-center py-2">
-                <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-1.5 text-xs text-orange-300 font-medium">
-                  <Clock className="h-3 w-3 inline mr-1.5" />
-                  Layover at {layover.airport?.code || layover.airport?.iataCode || 'N/A'}
+                <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg px-3 py-1.5 text-xs text-orange-300 font-medium flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  <span>Layover at {layover.airport?.code || layover.airport?.iataCode || 'N/A'}</span>
                   {layover.durationMinutes && (
-                    <span className="ml-1.5">
-                      {Math.floor(layover.durationMinutes / 60)}h {layover.durationMinutes % 60}m
+                    <span className="font-bold">
+                      • {Math.floor(layover.durationMinutes / 60)}h {layover.durationMinutes % 60}m
                     </span>
                   )}
                 </div>
@@ -238,6 +275,14 @@ const FlightSegmentViewer: React.FC<FlightSegmentViewerProps> = ({
           </div>
         );
       })}
+
+      {/* Total Duration Summary */}
+      {totalDuration && segments.length > 1 && (
+        <div className="pt-3 border-t border-gray-700/50 flex items-center justify-between text-sm">
+          <span className="text-gray-400 font-medium">Total Travel Time:</span>
+          <span className="font-semibold text-white">{totalDuration}</span>
+        </div>
+      )}
     </div>
   );
 };

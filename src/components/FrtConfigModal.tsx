@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Search, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, Search, MapPin, Target } from 'lucide-react';
 import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
+import NearbyAirportModal from './NearbyAirportModal';
 
 interface FrtConfig {
   returnAirports: string[];
@@ -9,6 +10,7 @@ interface FrtConfig {
   searchRadius: number;
   includeDirect: boolean;
   includeNearby: boolean;
+  useManualAirports: boolean;
 }
 
 interface FrtConfigModalProps {
@@ -29,12 +31,16 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
   defaultConfig
 }) => {
   const [returnAirports, setReturnAirports] = useState<string[]>(defaultConfig?.returnAirports || [originCode]);
+  const [manualReturnAirports, setManualReturnAirports] = useState<string[]>([]);
   const [viaAirports, setViaAirports] = useState<string[]>(defaultConfig?.viaAirports || []);
   const [cabinClass, setCabinClass] = useState<string>(defaultConfig?.cabinClass || 'COACH');
   const [searchRadius, setSearchRadius] = useState<number>(defaultConfig?.searchRadius || 300);
   const [includeDirect, setIncludeDirect] = useState<boolean>(defaultConfig?.includeDirect !== undefined ? defaultConfig.includeDirect : true);
   const [includeNearby, setIncludeNearby] = useState<boolean>(defaultConfig?.includeNearby !== undefined ? defaultConfig.includeNearby : true);
+  const [useManualAirports, setUseManualAirports] = useState<boolean>(false);
   const [newViaAirport, setNewViaAirport] = useState<{ code: string; name: string } | null>(null);
+  const [newReturnAirport, setNewReturnAirport] = useState<{ code: string; name: string } | null>(null);
+  const [showNearbyModal, setShowNearbyModal] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -49,14 +55,41 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
     setViaAirports(viaAirports.filter(a => a !== airport));
   };
 
+  const handleAddReturnAirport = () => {
+    if (newReturnAirport?.code && !manualReturnAirports.includes(newReturnAirport.code)) {
+      setManualReturnAirports([...manualReturnAirports, newReturnAirport.code]);
+      setNewReturnAirport(null);
+      setUseManualAirports(true);
+    }
+  };
+
+  const handleRemoveReturnAirport = (airport: string) => {
+    const updated = manualReturnAirports.filter(a => a !== airport);
+    setManualReturnAirports(updated);
+    if (updated.length === 0) {
+      setUseManualAirports(false);
+    }
+  };
+
+  const handleAddNearbyAirports = (airports: string[]) => {
+    const uniqueAirports = [...new Set([...manualReturnAirports, ...airports])];
+    setManualReturnAirports(uniqueAirports);
+    setUseManualAirports(true);
+  };
+
   const handleSearch = () => {
+    const finalReturnAirports = useManualAirports && manualReturnAirports.length > 0
+      ? manualReturnAirports
+      : returnAirports;
+
     onSearch({
-      returnAirports,
+      returnAirports: finalReturnAirports,
       viaAirports,
       cabinClass,
       searchRadius,
       includeDirect,
-      includeNearby
+      includeNearby: useManualAirports ? false : includeNearby,
+      useManualAirports
     });
   };
 
@@ -81,57 +114,138 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Return Airports */}
+          {/* Return Airports - Two Modes */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-3">
               Return Destination Options
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeDirect}
-                  onChange={(e) => setIncludeDirect(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-300">
-                  Direct return to <span className="font-mono text-blue-400">{originCode}</span>
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeNearby}
-                  onChange={(e) => setIncludeNearby(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-300">
-                  Nearby airports within {searchRadius}mi of <span className="font-mono text-blue-400">{originCode}</span>
-                </span>
-              </label>
-            </div>
-          </div>
 
-          {/* Search Radius */}
-          {includeNearby && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Search Radius (miles)
-              </label>
-              <input
-                type="number"
-                value={searchRadius}
-                onChange={(e) => setSearchRadius(parseInt(e.target.value) || 300)}
-                min="50"
-                max="500"
-                step="50"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Larger radius finds more options but may increase search time
-              </p>
+            {/* Toggle between Auto and Manual */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setUseManualAirports(false)}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  !useManualAirports
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Auto (Radius)
+              </button>
+              <button
+                onClick={() => setUseManualAirports(true)}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  useManualAirports
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Manual Selection
+              </button>
             </div>
-          )}
+
+            {!useManualAirports ? (
+              /* Auto Mode - Use radius */
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeDirect}
+                      onChange={(e) => setIncludeDirect(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-300">
+                      Direct return to <span className="font-mono text-blue-400">{originCode}</span>
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeNearby}
+                      onChange={(e) => setIncludeNearby(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-300">
+                      Nearby airports within {searchRadius}mi of <span className="font-mono text-blue-400">{originCode}</span>
+                    </span>
+                  </label>
+                </div>
+
+                {/* Search Radius */}
+                {includeNearby && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Search Radius (miles)
+                    </label>
+                    <input
+                      type="number"
+                      value={searchRadius}
+                      onChange={(e) => setSearchRadius(parseInt(e.target.value) || 300)}
+                      min="50"
+                      max="500"
+                      step="50"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Larger radius finds more options but may increase search time
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Manual Mode - Select specific airports */
+              <div className="space-y-3">
+                {manualReturnAirports.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {manualReturnAirports.map((airport, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm"
+                      >
+                        <span className="font-mono text-white">{airport}</span>
+                        <button
+                          onClick={() => handleRemoveReturnAirport(airport)}
+                          className="text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <LocationSearchInputWithCallback
+                      value={newReturnAirport}
+                      onChange={(location) => setNewReturnAirport(location)}
+                      placeholder="Add return airport..."
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddReturnAirport}
+                    disabled={!newReturnAirport?.code}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </button>
+                  <button
+                    onClick={() => setShowNearbyModal(true)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                    title="Find nearby airports"
+                  >
+                    <Target className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Manually select specific airports or use the target button to find nearby airports
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* VIA Airports */}
           <div>
@@ -231,7 +345,7 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
           </button>
           <button
             onClick={handleSearch}
-            disabled={!includeDirect && !includeNearby}
+            disabled={(!useManualAirports && !includeDirect && !includeNearby) || (useManualAirports && manualReturnAirports.length === 0)}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
           >
             <Search className="h-4 w-4" />
@@ -239,6 +353,16 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Nearby Airport Modal */}
+      {showNearbyModal && (
+        <NearbyAirportModal
+          isOpen={showNearbyModal}
+          onClose={() => setShowNearbyModal(false)}
+          onAddAirports={handleAddNearbyAirports}
+          centerAirportCode={originCode}
+        />
+      )}
     </div>
   );
 };
