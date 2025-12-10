@@ -2178,6 +2178,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 });
               }) || false;
 
+              // Check if FRT is available for this cabin
+              const cabinFrtState = frtContext.getFrtState(getFrtKey(cabinKey));
+              const cabinHasFrt = cabinFrtState.options.length > 0;
+
               // Get the actual price for the currently displayed flight for this cabin
               const getDisplayPrice = () => {
                 if (!pricing) return null;
@@ -2376,8 +2380,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   }`}
                   disabled={!hasFlightOrAward}
                 >
-                  {/* Badges for Awards and Aero */}
-                  {(cabinHasAwards || cabinHasAero || isEnriching) && (
+                  {/* Badges for Awards, Aero, and FRT */}
+                  {(cabinHasAwards || cabinHasAero || cabinHasFrt || isEnriching) && (
                     <div className="absolute -top-1 -right-1 flex items-center gap-0.5">
                       {cabinHasAwards && (
                         <Award className="h-3 w-3 text-yellow-500 fill-yellow-500/20" />
@@ -2385,6 +2389,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       {cabinHasAero && !isEnriching && (
                         <div className="h-3 w-3 bg-blue-500/20 border border-blue-500/40 rounded-sm flex items-center justify-center">
                           <Plane className="h-2 w-2 text-blue-400" />
+                        </div>
+                      )}
+                      {cabinHasFrt && (
+                        <div className="h-3 w-3 bg-cyan-500/20 border border-cyan-500/40 rounded-sm flex items-center justify-center">
+                          <RefreshCw className="h-2 w-2 text-cyan-400" />
                         </div>
                       )}
                       {isEnriching && !cabinHasAero && (
@@ -5315,11 +5324,59 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             // Get passenger count from the original flight (assume adults only)
             const passengers = 1; // Default to 1, can be enhanced to extract from flight data
 
+            // Check cache first for entire FRT request
+            const cacheParams = {
+              origin: slices[0].origin.code,
+              destination: destinationCode,
+              returnDate: returnDateStr,
+              returnAirports: returnAirports,
+              cabin: config.cabinClass,
+              maxStops: config.maxStops,
+              viaAirports: config.viaAirports,
+              bookingClasses: config.bookingClasses
+            };
+
+            const cachedResults = frtContext.getCachedFrtResults(cacheParams);
+
+            if (cachedResults) {
+              console.log('🎯 Using cached FRT results for entire search');
+
+              // Load all cached results into FRT context
+              for (const [airport, results] of cachedResults.entries()) {
+                for (const returnFlight of results) {
+                  frtContext.addFrtOption(manualFrtKey, returnFlight.frtOption);
+                }
+              }
+
+              frtContext.setIsFetching(manualFrtKey, false);
+              frtContext.setFrtProgress(manualFrtKey, null);
+              console.log(`Loaded ${Array.from(cachedResults.values()).flat().length} cached FRT options`);
+              return;
+            }
+
+            // Track results for caching
+            const allResultsForCache = new Map<string, any[]>();
+
             for (let i = 0; i < returnAirports.length; i++) {
               const returnAirport = returnAirports[i];
 
               // Update progress
               frtContext.setFrtProgress(manualFrtKey, { current: i + 1, total: returnAirports.length });
+
+              // Check cache for this specific airport
+              const cachedAirportResults = frtContext.getCachedAirportResults(cacheParams, returnAirport);
+
+              if (cachedAirportResults) {
+                console.log(`🎯 Using cached results for ${returnAirport}`);
+                allResultsForCache.set(returnAirport, cachedAirportResults);
+
+                // Add cached results to FRT context
+                for (const result of cachedAirportResults) {
+                  frtContext.addFrtOption(manualFrtKey, result.frtOption);
+                }
+                continue;
+              }
+
               try {
                 console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
 
@@ -5363,6 +5420,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     .sort((a, b) => a.totalAmount - b.totalAmount)
                     .slice(0, 10); // Take top 10 cheapest options per airport
 
+                  // Prepare cache entries for this airport
+                  const airportCacheEntries: any[] = [];
+
                   // Add each option to FRT context
                   for (const returnFlight of sortedResults) {
                     // Calculate total FRT price (original one-way + return)
@@ -5377,13 +5437,27 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       savings: displayTotal - frtTotalPrice
                     };
                     frtContext.addFrtOption(manualFrtKey, newOption);
+
+                    // Store for caching
+                    airportCacheEntries.push({
+                      returnFlight: returnFlight,
+                      frtOption: newOption
+                    });
                   }
+
+                  // Cache results for this airport
+                  allResultsForCache.set(returnAirport, airportCacheEntries);
 
                   console.log(`Found ${sortedResults.length} FRT options via ${returnAirport} for cabin ${config.cabinClass}`);
                 }
               } catch (error) {
                 console.error(`Failed to search return to ${returnAirport}:`, error);
               }
+            }
+
+            // Store all results in cache
+            if (allResultsForCache.size > 0) {
+              frtContext.setCachedFrtResults(cacheParams, allResultsForCache);
             }
 
             console.log(`FRT search complete for cabin ${config.cabinClass}`);
