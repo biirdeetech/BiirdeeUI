@@ -3700,34 +3700,50 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const segments = itinerary?.segments || [];
               if (segments.length === 0) return null;
 
-              // Build award slice-like structure for rendering
-              // Calculate actual layovers from segment times if available
+              // Helper to parse PT duration format (e.g., "PT8H30M" or "PT45M")
+              const parsePTDuration = (duration: string): number => {
+                if (!duration) return 0;
+                const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+                if (!match) return 0;
+                const hours = parseInt(match[1] || '0');
+                const minutes = parseInt(match[2] || '0');
+                return hours * 60 + minutes;
+              };
+
+              // Parse segment durations
+              const segmentDurations = segments.map((seg: any) => parsePTDuration(seg.duration));
+
+              // Calculate actual layovers from segment times
               const actualLayovers = segments.slice(0, -1).map((seg: any, idx: number) => {
                 const nextSeg = segments[idx + 1];
-                if (!seg.arrival?.dateTime || !nextSeg.departure?.dateTime) return null;
-                const arrivalTime = new Date(seg.arrival.dateTime).getTime();
-                const departureTime = new Date(nextSeg.departure.dateTime).getTime();
+                if (!seg.arrival?.at || !nextSeg.departure?.at) return null;
+                const arrivalTime = new Date(seg.arrival.at).getTime();
+                const departureTime = new Date(nextSeg.departure.at).getTime();
                 const layoverMinutes = Math.round((departureTime - arrivalTime) / (1000 * 60));
                 return {
                   duration: layoverMinutes,
-                  airportCode: nextSeg.departure?.airport || 'N/A'
+                  airportCode: nextSeg.departure?.iataCode || 'N/A'
                 };
               }).filter(Boolean);
+
+              // Calculate total duration (sum of segments + layovers)
+              const totalDurationMinutes = segmentDurations.reduce((acc, dur) => acc + dur, 0) +
+                actualLayovers.reduce((acc: number, layover: any) => acc + (layover?.duration || 0), 0);
 
               const awardSlice = {
                 departure: segments[0]?.departure,
                 arrival: segments[segments.length - 1]?.arrival,
                 origin: {
-                  code: segments[0]?.departure?.airport || 'N/A',
-                  name: segments[0]?.departure?.airportName || ''
+                  code: segments[0]?.departure?.iataCode || 'N/A',
+                  name: segments[0]?.departure?.name || ''
                 },
                 destination: {
-                  code: segments[segments.length - 1]?.arrival?.airport || 'N/A',
-                  name: segments[segments.length - 1]?.arrival?.airportName || ''
+                  code: segments[segments.length - 1]?.arrival?.iataCode || 'N/A',
+                  name: segments[segments.length - 1]?.arrival?.name || ''
                 },
-                duration: segments.reduce((acc: number, seg: any) => acc + (seg.duration || 0), 0),
+                duration: totalDurationMinutes,
                 stops: segments.slice(1).map((seg: any) => ({
-                  code: seg.departure?.airport || 'N/A'
+                  code: seg.departure?.iataCode || 'N/A'
                 })),
                 segments: segments,
                 cabins: segments.map((seg: any) => selectedAward.cabin),
@@ -3735,7 +3751,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               };
 
               // Use actual segment durations and layover times
-              const segmentTimes = segments.map((seg: any) => ({ duration: seg.duration || 0 }));
+              const segmentTimes = segmentDurations.map(dur => ({ duration: dur }));
               const layoverTimes = actualLayovers;
               const isNonstop = segments.length === 1;
 
@@ -3752,10 +3768,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       {/* Departure Airport */}
                       <div className="text-center min-w-[80px]">
                         <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                          {formatTimeInOriginTZ(awardSlice.departure)}
+                          {formatTimeInOriginTZ(awardSlice.departure?.at || '')}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {formatDateInOriginTZ(awardSlice.departure)}
+                          {formatDateInOriginTZ(awardSlice.departure?.at || '')}
                         </div>
                         <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.origin.code}</div>
                         {awardSlice.origin.name && (
@@ -3869,10 +3885,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       <div className="text-center min-w-[80px]">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                            {formatTimeInOriginTZ(awardSlice.arrival)}
+                            {formatTimeInOriginTZ(awardSlice.arrival?.at || '')}
                           </span>
                           {(() => {
-                            const dayDiff = getDayDifference(awardSlice.departure, awardSlice.arrival);
+                            const dayDiff = getDayDifference(awardSlice.departure?.at || '', awardSlice.arrival?.at || '');
                             if (dayDiff > 0) {
                               return (
                                 <div className="relative">
@@ -3886,7 +3902,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           })()}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {formatDateInOriginTZ(awardSlice.arrival)}
+                          {formatDateInOriginTZ(awardSlice.arrival?.at || '')}
                         </div>
                         <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.destination.code}</div>
                         {awardSlice.destination.name && (
