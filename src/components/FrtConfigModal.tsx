@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2, Search, MapPin, Target } from 'lucide-react';
 import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
 import NearbyAirportModal from './NearbyAirportModal';
+import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 
 interface FrtConfig {
   returnAirports: string[];
@@ -11,6 +12,8 @@ interface FrtConfig {
   includeDirect: boolean;
   includeNearby: boolean;
   useManualAirports: boolean;
+  maxStops: number;
+  bookingClasses: string[];
 }
 
 interface FrtConfigModalProps {
@@ -38,9 +41,14 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
   const [includeDirect, setIncludeDirect] = useState<boolean>(defaultConfig?.includeDirect !== undefined ? defaultConfig.includeDirect : true);
   const [includeNearby, setIncludeNearby] = useState<boolean>(defaultConfig?.includeNearby !== undefined ? defaultConfig.includeNearby : true);
   const [useManualAirports, setUseManualAirports] = useState<boolean>(false);
+  const [maxStops, setMaxStops] = useState<number>(defaultConfig?.maxStops ?? -1);
+  const [bookingClasses, setBookingClasses] = useState<string[]>(
+    defaultConfig?.bookingClasses || getDefaultBookingClasses(defaultConfig?.cabinClass || 'COACH')
+  );
   const [newViaAirport, setNewViaAirport] = useState<{ code: string; name: string } | null>(null);
   const [newReturnAirport, setNewReturnAirport] = useState<{ code: string; name: string } | null>(null);
   const [showNearbyModal, setShowNearbyModal] = useState<boolean>(false);
+  const [newBookingClass, setNewBookingClass] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -77,6 +85,23 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
     setUseManualAirports(true);
   };
 
+  const handleCabinClassChange = (newCabin: string) => {
+    setCabinClass(newCabin);
+    setBookingClasses(getDefaultBookingClasses(newCabin));
+  };
+
+  const handleAddBookingClass = () => {
+    const upperClass = newBookingClass.toUpperCase().trim();
+    if (upperClass && !bookingClasses.includes(upperClass) && /^[A-Z]$/.test(upperClass)) {
+      setBookingClasses([...bookingClasses, upperClass]);
+      setNewBookingClass('');
+    }
+  };
+
+  const handleRemoveBookingClass = (bookingClass: string) => {
+    setBookingClasses(bookingClasses.filter(bc => bc !== bookingClass));
+  };
+
   const handleSearch = () => {
     const finalReturnAirports = useManualAirports && manualReturnAirports.length > 0
       ? manualReturnAirports
@@ -89,7 +114,9 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
       searchRadius,
       includeDirect,
       includeNearby: useManualAirports ? false : includeNearby,
-      useManualAirports
+      useManualAirports,
+      maxStops,
+      bookingClasses
     });
   };
 
@@ -306,7 +333,7 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
             </label>
             <select
               value={cabinClass}
-              onChange={(e) => setCabinClass(e.target.value)}
+              onChange={(e) => handleCabinClassChange(e.target.value)}
               className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="COACH">Economy (Cheapest)</option>
@@ -317,6 +344,81 @@ const FrtConfigModal: React.FC<FrtConfigModalProps> = ({
             <p className="text-xs text-gray-500 mt-1">
               Select cheapest cabin for best FRT deals
             </p>
+          </div>
+
+          {/* Max Stops */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Maximum Stops
+            </label>
+            <select
+              value={maxStops}
+              onChange={(e) => setMaxStops(parseInt(e.target.value))}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="-1">Any number of stops</option>
+              <option value="0">Nonstop only</option>
+              <option value="1">1 stop or fewer</option>
+              <option value="2">2 stops or fewer</option>
+              <option value="3">3 stops or fewer</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Limit stops to find faster routes (may reduce options)
+            </p>
+          </div>
+
+          {/* Booking Classes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Booking Classes
+            </label>
+            <div className="space-y-3">
+              {bookingClasses.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {bookingClasses.map((bookingClass, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm"
+                    >
+                      <span className="font-mono text-white">{bookingClass}</span>
+                      <button
+                        onClick={() => handleRemoveBookingClass(bookingClass)}
+                        className="text-gray-400 hover:text-red-400 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newBookingClass}
+                  onChange={(e) => setNewBookingClass(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddBookingClass();
+                    }
+                  }}
+                  placeholder="Add booking class (e.g., Y, J, F)"
+                  maxLength={1}
+                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <button
+                  onClick={handleAddBookingClass}
+                  disabled={!newBookingClass.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Specify which booking classes to search. Defaults updated when cabin class changes.
+              </p>
+            </div>
           </div>
 
           {/* Info Box */}

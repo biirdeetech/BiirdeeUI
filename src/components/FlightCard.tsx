@@ -5231,10 +5231,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               try {
                 console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
 
-                // Generate booking class codes (ext) for the selected cabin
-                const { getDefaultBookingClasses, bookingClassesToExt } = await import('../utils/bookingClasses');
-                const bookingClasses = getDefaultBookingClasses(config.cabinClass);
-                const ext = bookingClassesToExt(bookingClasses);
+                // Generate booking class codes (ext) from config
+                const { bookingClassesToExt } = await import('../utils/bookingClasses');
+                const ext = bookingClassesToExt(config.bookingClasses);
 
                 // Build search params for one-way return flight
                 const searchParams = {
@@ -5243,7 +5242,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   departDate: returnDateStr,
                   tripType: 'oneWay' as const,
                   cabin: config.cabinClass,
-                  maxStops: -1, // Allow any number of stops
+                  maxStops: config.maxStops,
                   passengers: passengers,
                   pageSize: 50,
                   aero: false,
@@ -5253,13 +5252,13 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     destinations: [returnAirport],
                     departDate: returnDateStr,
                     via: config.viaAirports.length > 0 ? config.viaAirports.join(' ') : undefined,
-                    nonstop: false,
-                    maxStops: -1,
+                    nonstop: config.maxStops === 0,
+                    maxStops: config.maxStops,
                     extraStops: -1,
                     allowAirportChanges: true,
                     showOnlyAvailable: true,
                     aero: false,
-                    ext: ext // Add booking class codes for cabin filtering
+                    ext: ext
                   }]
                 };
 
