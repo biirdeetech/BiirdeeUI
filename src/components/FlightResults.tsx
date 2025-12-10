@@ -155,6 +155,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   // State to track which stop group is expanded - will be initialized after we know available groups
   const [expandedStopGroup, setExpandedStopGroup] = useState<number | null>(null);
   const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
+  // State to track which individual flight card is expanded (for exclusive expansion)
+  const [expandedFlightCardId, setExpandedFlightCardId] = useState<string | null>(null);
 
   // Calculate sortedStopCounts at the top level using useMemo (safe for all states)
   const sortedStopCounts = useMemo(() => {
@@ -920,6 +922,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               shouldAutoTriggerFrt={shouldAutoTriggerFrt}
               isSearchComplete={isSearchComplete}
               searchKey={searchKey}
+              expandedFlightCardId={expandedFlightCardId}
+              onFlightCardToggle={setExpandedFlightCardId}
             />
             );
           });

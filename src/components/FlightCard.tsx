@@ -39,6 +39,8 @@ interface FlightCardProps {
   shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
   isSearchComplete?: boolean;
   searchKey?: string;
+  expandedFlightCardId?: string | null; // Track which flight card is expanded (for exclusive expansion)
+  onFlightCardToggle?: (flightId: string | null) => void; // Callback to toggle flight card expansion
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -222,13 +224,17 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '' }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
   // Get flight ID for FRT context
   const flightId = 'id' in flight ? flight.id : `grouped-${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
 
+  // Helper function to get FRT key (flight ID + cabin for cabin-specific FRT)
+  const getFrtKey = (cabin?: string): string => {
+    return cabin ? `${flightId}-${cabin}` : flightId;
+  };
+
   // Get FRT context
   const frtContext = useFrt();
-  const frtState = frtContext.getFrtState(flightId);
 
   // Get URL search params to check for FRT auto-trigger
   const [searchParams] = useSearchParams();
@@ -292,7 +298,25 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
   const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
 
-  // FRT (Fake Round Trip) state - from context
+  // Get current cabin for FRT (use selectedCabin or first available cabin)
+  const currentFrtCabin = useMemo(() => {
+    if (selectedCabin) return selectedCabin;
+    // Fallback to first cabin from slices
+    if ('id' in flight && flight.slices[0]?.cabins?.[0]) {
+      return flight.slices[0].cabins[0];
+    }
+    // For grouped flights
+    if ('outboundSlice' in flight && flight.outboundSlice?.cabins?.[0]) {
+      return flight.outboundSlice.cabins[0];
+    }
+    return 'COACH'; // Default fallback
+  }, [selectedCabin, flight]);
+
+  // FRT (Fake Round Trip) state - from context (cabin-specific)
+  const frtState = useMemo(() => {
+    return frtContext.getFrtState(getFrtKey(currentFrtCabin));
+  }, [frtContext, currentFrtCabin, flightId]);
+
   const frtOptions = frtState.options;
   const selectedFrtIndex = frtState.selectedIndex;
   const isFetchingFrt = frtState.isFetching;
@@ -788,7 +812,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     if (searchKey && frtSearchKey.current !== searchKey) {
       frtContext.setAutoTriggered(flightId, false);
       frtSearchKey.current = searchKey;
-      frtContext.setFrtOptions(flightId, []);
+      // Clear FRT options for current cabin
+      frtContext.setFrtOptions(getFrtKey(currentFrtCabin), []);
     }
 
     // Only trigger once per flight card and only if:
@@ -802,18 +827,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       frtContext.setAutoTriggered(flightId, true);
 
       // Auto-trigger with 50mi radius and current cabin
-      const currentCabin = slices[0]?.cabins?.[0] || 'COACH';
+      const autoTriggerCabin = currentFrtCabin;
       const originCode = slices[0]?.origin?.code;
 
       if (originCode) {
-        // Trigger FRT search automatically
-        frtContext.setIsFetching(flightId, true);
+        // Trigger FRT search automatically (cabin-specific)
+        const frtKey = getFrtKey(autoTriggerCabin);
+        frtContext.setIsFetching(frtKey, true);
 
         // Build auto-config for fastest, least stops, cheapest
         const autoConfig = {
           returnAirports: [originCode],
           viaAirports: [],
-          cabinClass: currentCabin,
+          cabinClass: autoTriggerCabin,
           searchRadius: 50,
           includeDirect: true,
           includeNearby: true
@@ -823,7 +849,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         (async () => {
           try {
             // Clear existing FRT options before starting new search
-            frtContext.setFrtOptions(flightId, []);
+            frtContext.setFrtOptions(frtKey, []);
 
             const returnAirports = [originCode];
 
@@ -845,7 +871,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               }
             }
 
-            frtContext.setFrtProgress(flightId, { current: 0, total: returnAirports.length });
+            frtContext.setFrtProgress(frtKey, { current: 0, total: returnAirports.length });
 
             const destinationCode = slices[slices.length - 1].destination.code;
             const departureDate = new Date(slices[0].departure);
@@ -856,12 +882,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
             for (let i = 0; i < returnAirports.length; i++) {
               const returnAirport = returnAirports[i];
-              frtContext.setFrtProgress(flightId, { current: i + 1, total: returnAirports.length });
+              frtContext.setFrtProgress(frtKey, { current: i + 1, total: returnAirports.length });
 
               try {
                 // Generate booking class codes (ext) for the selected cabin
                 const { getDefaultBookingClasses, bookingClassesToExt } = await import('../utils/bookingClasses');
-                const bookingClasses = getDefaultBookingClasses(currentCabin);
+                const bookingClasses = getDefaultBookingClasses(autoTriggerCabin);
                 const ext = bookingClassesToExt(bookingClasses);
 
                 const searchParams = {
@@ -869,7 +895,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   destination: returnAirport,
                   departDate: returnDateStr,
                   tripType: 'oneWay' as const,
-                  cabin: currentCabin,
+                  cabin: autoTriggerCabin,
                   maxStops: -1,
                   passengers: 1,
                   pageSize: 50,
@@ -910,10 +936,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       currency: returnFlight.currency,
                       savings: displayTotal - frtTotalPrice
                     };
-                    frtContext.addFrtOption(flightId, newOption);
+                    frtContext.addFrtOption(frtKey, newOption);
                   }
 
-                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport}`);
+                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport} for cabin ${autoTriggerCabin}`);
                 }
               } catch (error) {
                 console.error(`Failed to search return to ${returnAirport}:`, error);
@@ -922,8 +948,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
           } catch (error) {
             console.error('Auto FRT search failed:', error);
           } finally {
-            frtContext.setIsFetching(flightId, false);
-            frtContext.setFrtProgress(flightId, null);
+            frtContext.setIsFetching(frtKey, false);
+            frtContext.setFrtProgress(frtKey, null);
           }
         })();
       }
@@ -1640,7 +1666,19 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
     return null;
   };
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Use shared expanded state if available, otherwise local state for backwards compatibility
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const isExpanded = onFlightCardToggle ? expandedFlightCardId === flightId : localExpanded;
+  const setIsExpanded = (value: boolean | ((prev: boolean) => boolean)) => {
+    if (onFlightCardToggle) {
+      // Use shared state - toggle by setting to flightId or null
+      const newValue = typeof value === 'function' ? value(isExpanded) : value;
+      onFlightCardToggle(newValue ? flightId : null);
+    } else {
+      // Fallback to local state
+      setLocalExpanded(value);
+    }
+  };
 
   // Auto-sync price option when dropdown opens or displayed flight/time option changes
   useEffect(() => {
@@ -1995,9 +2033,21 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   </div>
                   <div className="text-xs text-blue-400 font-bold">{formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}</div>
                   <div className="text-[9px] text-gray-400">round-trip</div>
-                  <div className="text-[9px] text-green-400 font-semibold">
-                    Save {formatPrice(displayTotal - selectedFrt.totalPrice, currency, false)}
-                  </div>
+                  {(() => {
+                    const savings = selectedFrt.savings || (displayTotal - selectedFrt.totalPrice);
+                    if (savings < 0) {
+                      return (
+                        <div className="text-[9px] text-red-400 font-semibold">
+                          Extra +{formatPrice(Math.abs(savings), currency, false)}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-[9px] text-green-400 font-semibold">
+                        Save {formatPrice(savings, currency, false)}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -2963,7 +3013,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   onClick={(e) => {
                     e.stopPropagation();
                     const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : frtOptions.length - 1;
-                    frtContext.setSelectedFrtIndex(flightId, prevIndex);
+                    frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), prevIndex);
                   }}
                   disabled={frtOptions.length <= 1}
                   className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
@@ -2985,7 +3035,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         key={`frt-${index}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          frtContext.setSelectedFrtIndex(flightId, index);
+                          frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), index);
                         }}
                         className={`flex flex-col items-start px-2.5 py-1.5 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 min-w-fit ${
                           isSelected
@@ -2993,7 +3043,23 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
                         }`}
                       >
-                        <div className="flex items-baseline gap-1.5">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {(() => {
+                            const airlineCode = returnSlice.flights?.[0]?.slice(0, 2);
+                            if (airlineCode) {
+                              return (
+                                <img
+                                  src={`https://images.kiwi.com/airlines/32x32/${airlineCode}.png`}
+                                  alt={airlineCode}
+                                  className="w-4 h-4 rounded"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              );
+                            }
+                            return null;
+                          })()}
                           <span className="font-mono text-[11px]">
                             {returnSlice.origin?.code}→{returnSlice.destination?.code}
                           </span>
@@ -3009,10 +3075,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             @ {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
                           </span>
                         </div>
-                        {frt.savings > 0 && (
-                          <div className="text-[9px] text-green-400 font-medium">
-                            save {formatPrice(frt.savings, currency, false)}
-                          </div>
+                        {frt.savings !== 0 && (
+                          frt.savings > 0 ? (
+                            <div className="text-[9px] text-green-400 font-medium">
+                              save {formatPrice(frt.savings, currency, false)}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] text-red-400 font-medium">
+                              extra +{formatPrice(Math.abs(frt.savings), currency, false)}
+                            </div>
+                          )
                         )}
                       </button>
                     );
@@ -3022,7 +3094,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   onClick={(e) => {
                     e.stopPropagation();
                     const nextIndex = selectedFrtIndex < frtOptions.length - 1 ? selectedFrtIndex + 1 : 0;
-                    frtContext.setSelectedFrtIndex(flightId, nextIndex);
+                    frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), nextIndex);
                   }}
                   disabled={frtOptions.length <= 1}
                   className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
@@ -5103,10 +5175,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   </span>
                   <span className="text-[10px] text-blue-400/70"> total</span>
                 </div>
-                {selectedFrt.savings && selectedFrt.savings > 0 && (
-                  <span className="text-xs text-green-400">
-                    Save {formatPrice(selectedFrt.savings, selectedFrt.currency || 'USD', false)}
-                  </span>
+                {selectedFrt.savings && selectedFrt.savings !== 0 && (
+                  selectedFrt.savings > 0 ? (
+                    <span className="text-xs text-green-400">
+                      Save {formatPrice(selectedFrt.savings, selectedFrt.currency || 'USD', false)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-red-400">
+                      Extra +{formatPrice(Math.abs(selectedFrt.savings), selectedFrt.currency || 'USD', false)}
+                    </span>
+                  )
                 )}
               </div>
             </div>
@@ -5172,7 +5250,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         onSearch={async (config) => {
           console.log('FRT Search Config:', config);
           setShowFrtConfig(false);
-          frtContext.setIsFetching(flightId, true);
+
+          // Use cabin-specific key for manual FRT search
+          const manualFrtKey = getFrtKey(config.cabinClass);
+          frtContext.setIsFetching(manualFrtKey, true);
 
           try {
             // Build list of return airports to search
@@ -5202,14 +5283,14 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               }
             }
 
-            console.log('Searching FRT for return airports:', returnAirports);
+            console.log('Searching FRT for return airports:', returnAirports, 'cabin:', config.cabinClass);
 
             // Initialize progress tracking
-            frtContext.setFrtProgress(flightId, { current: 0, total: returnAirports.length });
+            frtContext.setFrtProgress(manualFrtKey, { current: 0, total: returnAirports.length });
 
             // Search for return flights from destination to each return airport
             // Clear existing FRT options before starting new search
-            frtContext.setFrtOptions(flightId, []);
+            frtContext.setFrtOptions(manualFrtKey, []);
 
             const destinationCode = slices[slices.length - 1].destination.code;
 
@@ -5227,7 +5308,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const returnAirport = returnAirports[i];
 
               // Update progress
-              frtContext.setFrtProgress(flightId, { current: i + 1, total: returnAirports.length });
+              frtContext.setFrtProgress(manualFrtKey, { current: i + 1, total: returnAirports.length });
               try {
                 console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
 
@@ -5284,22 +5365,22 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                       currency: returnFlight.currency,
                       savings: displayTotal - frtTotalPrice
                     };
-                    frtContext.addFrtOption(flightId, newOption);
+                    frtContext.addFrtOption(manualFrtKey, newOption);
                   }
 
-                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport}`);
+                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport} for cabin ${config.cabinClass}`);
                 }
               } catch (error) {
                 console.error(`Failed to search return to ${returnAirport}:`, error);
               }
             }
 
-            console.log(`FRT search complete`);
+            console.log(`FRT search complete for cabin ${config.cabinClass}`);
           } catch (error) {
             console.error('FRT search failed:', error);
           } finally {
-            frtContext.setIsFetching(flightId, false);
-            frtContext.setFrtProgress(flightId, null); // Clear progress when done
+            frtContext.setIsFetching(manualFrtKey, false);
+            frtContext.setFrtProgress(manualFrtKey, null); // Clear progress when done
           }
         }}
         originCode={slices[0].origin.code}

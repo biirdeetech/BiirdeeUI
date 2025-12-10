@@ -18,6 +18,8 @@ interface FlightCardGroupProps {
   shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
   isSearchComplete?: boolean;
   searchKey?: string;
+  expandedFlightCardId?: string | null; // Track which flight card is expanded
+  onFlightCardToggle?: (flightId: string | null) => void; // Callback to toggle flight card expansion
 }
 
 const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
@@ -33,7 +35,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   enrichingAirlines = new Set(),
   shouldAutoTriggerFrt = false,
   isSearchComplete = false,
-  searchKey = ''
+  searchKey = '',
+  expandedFlightCardId = null,
+  onFlightCardToggle
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCodeShareExpanded, setIsCodeShareExpanded] = useState(false);
@@ -136,6 +140,8 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             shouldAutoTriggerFrt={shouldAutoTriggerFrt}
             isSearchComplete={isSearchComplete}
             searchKey={searchKey}
+            expandedFlightCardId={expandedFlightCardId}
+            onFlightCardToggle={onFlightCardToggle}
           />
         )}
       </>
@@ -170,6 +176,8 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             shouldAutoTriggerFrt={shouldAutoTriggerFrt}
             isSearchComplete={isSearchComplete}
             searchKey={searchKey}
+            expandedFlightCardId={expandedFlightCardId}
+            onFlightCardToggle={onFlightCardToggle}
           />
         )}
 
@@ -181,7 +189,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
               {'id' in flight && flight.slices.length >= 3 ? (
                 <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} />
+                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
               )}
             </div>
           ))}
@@ -200,7 +208,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
               {'id' in flight && flight.slices.length >= 3 ? (
                 <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} />
+                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
               )}
             </div>
           ))}
