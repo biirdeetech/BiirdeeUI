@@ -4922,8 +4922,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         </div>
       )}
 
-      {/* FRT Segment Details - Show when FRT option is selected */}
-      {frtOptions.length > 0 && frtOptions[selectedFrtIndex] && (() => {
+      {/* FRT Segment Details - Show when flight card is expanded and FRT option is selected */}
+      {isExpanded && frtOptions.length > 0 && frtOptions[selectedFrtIndex] && (() => {
         const selectedFrt = frtOptions[selectedFrtIndex];
         const returnFlight = selectedFrt.returnFlight;
 
