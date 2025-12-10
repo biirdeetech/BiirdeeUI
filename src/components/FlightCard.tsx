@@ -2025,11 +2025,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
-            {/* FRT Box - Show selected FRT option */}
-            {(() => {
-              if (frtOptions.length === 0) return null;
-
-              const selectedFrt = frtOptions[selectedFrtIndex];
+            {/* FRT Boxes - Show all FRT options grouped by airport */}
+            {frtState.optionsByAirport.size > 0 && Array.from(frtState.optionsByAirport.entries()).map(([airport, airportOptions], airportIdx) => {
+              const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(airport) || 0;
+              const selectedFrt = airportOptions[selectedOptionIdx];
               if (!selectedFrt) return null;
 
               // Recalculate FRT total and savings based on current displayed flight price
@@ -2037,11 +2036,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const currentFrtTotalPrice = displayTotal + returnFlightPrice;
               const currentSavings = displayTotal - currentFrtTotalPrice;
 
+              // Build route tooltip
+              const returnSlice = selectedFrt.returnFlight?.slices?.[0];
+              const viaAirports = returnSlice?.stops || [];
+              const routeText = viaAirports.length > 0
+                ? `${returnSlice?.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice?.destination?.code}`
+                : `${returnSlice?.origin?.code} → ${returnSlice?.destination?.code}`;
+
               return (
-                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-blue-500/5 border-blue-500/30">
+                <div key={`frt-box-${airport}`} className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-blue-500/5 border-blue-500/30" title={routeText}>
                   <div className="flex items-center gap-1 mb-0.5">
                     <RefreshCw className="h-3 w-3 text-blue-500" />
-                    <span className="text-[9px] text-blue-400 font-semibold uppercase">FRT</span>
+                    <span className="text-[9px] text-blue-400 font-semibold uppercase">FRT {airportIdx + 1}</span>
                   </div>
                   <div className="text-xs text-blue-400 font-bold">{formatPrice(currentFrtTotalPrice, selectedFrt.currency || 'USD', false)}</div>
                   <div className="text-[9px] text-gray-400">round-trip</div>
@@ -2061,7 +2067,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   })()}
                 </div>
               );
-            })()}
+            })}
 
             </div>
 
@@ -3040,119 +3046,134 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
             );
           })()}
 
-          {/* FRT Options - Simplified Button Style */}
-          {frtOptions.length > 0 && (() => {
-            // Sort by fewest stops, then by price
-            const sortedFrt = [...frtOptions].sort((a, b) => {
-              const aStops = a.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
-              const bStops = b.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
-              // First sort by stops (fewest first)
-              if (aStops !== bStops) return aStops - bStops;
-              // Then by total price (lowest first)
-              const aPrice = displayTotal + (a.returnFlight?.totalAmount || 0);
-              const bPrice = displayTotal + (b.returnFlight?.totalAmount || 0);
-              return aPrice - bPrice;
-            });
+          {/* FRT Options - Grouped by Return Airport */}
+          {frtState.optionsByAirport.size > 0 && (() => {
+            const airports = Array.from(frtState.optionsByAirport.keys());
+            const originCode = slices[0].origin.code;
 
-            const currentIndex = sortedFrt.findIndex((_, idx) => idx === selectedFrtIndex);
-            const totalFrtOptions = sortedFrt.length;
+            return airports.map((airport, airportIdx) => {
+              const airportOptions = frtState.optionsByAirport.get(airport) || [];
+              if (airportOptions.length === 0) return null;
 
-            return (
-              <div className="px-4 py-3 border-b border-gray-800/30">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
-                    FRT Options:
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const prevIndex = selectedFrtIndex > 0 ? selectedFrtIndex - 1 : frtOptions.length - 1;
-                      frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), prevIndex);
-                    }}
-                    disabled={frtOptions.length <= 1}
-                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                  >
-                    <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
-                  </button>
-                  <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
-                    {sortedFrt.map((frt, idx) => {
-                      const returnSlice = frt.returnFlight?.slices?.[0];
-                      if (!returnSlice) return null;
+              const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(airport) || 0;
+              const selectedOption = airportOptions[selectedOptionIdx];
+              if (!selectedOption) return null;
 
-                      const isSelected = selectedFrtIndex === idx;
-                      const stops = returnSlice.segments?.length - 1 || 0;
+              // Build route tooltip text
+              const returnSlice = selectedOption.returnFlight?.slices?.[0];
+              if (!returnSlice) return null;
 
-                      // Recalculate FRT total and savings based on current displayed flight price
-                      const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
-                      const currentFrtTotalPrice = displayTotal + returnFlightPrice;
-                      const currentSavings = displayTotal - currentFrtTotalPrice;
+              const viaAirports = returnSlice.stops || [];
+              const routeText = viaAirports.length > 0
+                ? `${returnSlice.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice.destination?.code}`
+                : `${returnSlice.origin?.code} → ${returnSlice.destination?.code}`;
 
-                      return (
-                        <button
-                          key={`frt-${idx}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), idx);
-                          }}
-                          className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
-                            isSelected
-                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                              : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
-                          }`}
-                        >
-                          <span className="font-mono">
-                            {returnSlice.origin?.code}→{returnSlice.destination?.code}
-                          </span>
-                          {' '}
-                          <span className="opacity-70">
-                            {stops === 0 ? 'nonstop' : `${stops}stop`}
-                          </span>
-                          {' @ '}
-                          <span className={currentSavings > 0 ? 'text-green-400 font-semibold' : currentSavings < 0 ? 'text-red-400 font-semibold' : ''}>
-                            {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
-                          </span>
-                          {currentSavings !== 0 && (
-                            currentSavings > 0 ? (
-                              <span className="text-green-400 font-medium">
-                                {' '}(-{formatPrice(Math.abs(currentSavings), currency, false)})
-                              </span>
-                            ) : (
-                              <span className="text-red-400 font-medium">
-                                {' '}(+{formatPrice(Math.abs(currentSavings), currency, false)})
-                              </span>
-                            )
-                          )}
-                        </button>
-                      );
-                    })}
+              return (
+                <div key={`frt-airport-${airport}`} className="px-4 py-3 border-b border-gray-800/30">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap" title={routeText}>
+                      FRT {airportIdx + 1}:
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const prevIdx = selectedOptionIdx > 0 ? selectedOptionIdx - 1 : airportOptions.length - 1;
+                        frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, prevIdx);
+                      }}
+                      disabled={airportOptions.length <= 1}
+                      className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                    >
+                      <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
+                    </button>
+                    <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
+                      {airportOptions.map((frt, idx) => {
+                        const returnSlice = frt.returnFlight?.slices?.[0];
+                        if (!returnSlice) return null;
+
+                        const isSelected = selectedOptionIdx === idx;
+                        const stops = returnSlice.segments?.length - 1 || 0;
+
+                        // Recalculate FRT total and savings
+                        const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
+                        const currentFrtTotalPrice = displayTotal + returnFlightPrice;
+                        const currentSavings = displayTotal - currentFrtTotalPrice;
+
+                        // Build route for this option
+                        const viaAirports = returnSlice.stops || [];
+                        const optionRouteText = viaAirports.length > 0
+                          ? `${returnSlice.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice.destination?.code}`
+                          : `${returnSlice.origin?.code} → ${returnSlice.destination?.code}`;
+
+                        return (
+                          <button
+                            key={`frt-${airport}-${idx}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, idx);
+                            }}
+                            title={optionRouteText}
+                            className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
+                              isSelected
+                                ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                                : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
+                            }`}
+                          >
+                            <span className="font-mono">
+                              {returnSlice.origin?.code}→{returnSlice.destination?.code}
+                            </span>
+                            {' '}
+                            <span className="opacity-70">
+                              {stops === 0 ? 'nonstop' : `${stops}stop`}
+                            </span>
+                            {' @ '}
+                            <span className={currentSavings > 0 ? 'text-green-400 font-semibold' : currentSavings < 0 ? 'text-red-400 font-semibold' : ''}>
+                              {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
+                            </span>
+                            {currentSavings !== 0 && (
+                              currentSavings > 0 ? (
+                                <span className="text-green-400 font-medium">
+                                  {' '}(-{formatPrice(Math.abs(currentSavings), currency, false)})
+                                </span>
+                              ) : (
+                                <span className="text-red-400 font-medium">
+                                  {' '}(+{formatPrice(Math.abs(currentSavings), currency, false)})
+                                </span>
+                              )
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const nextIdx = selectedOptionIdx < airportOptions.length - 1 ? selectedOptionIdx + 1 : 0;
+                        frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, nextIdx);
+                      }}
+                      disabled={airportOptions.length <= 1}
+                      className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
+                    >
+                      <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
+                    </button>
+                    {airportIdx === 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowFrtConfig(true);
+                        }}
+                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
+                        title="Reconfigure FRT"
+                      >
+                        <RefreshCw className="h-3 w-3 text-gray-300" />
+                      </button>
+                    )}
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const nextIndex = selectedFrtIndex < frtOptions.length - 1 ? selectedFrtIndex + 1 : 0;
-                      frtContext.setSelectedFrtIndex(getFrtKey(currentFrtCabin), nextIndex);
-                    }}
-                    disabled={frtOptions.length <= 1}
-                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                  >
-                    <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowFrtConfig(true);
-                    }}
-                    className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
-                    title="Reconfigure FRT"
-                  >
-                    <RefreshCw className="h-3 w-3 text-gray-300" />
-                  </button>
+                  <div className="text-center text-[10px] text-gray-400 mt-2">
+                    Option {selectedOptionIdx + 1} of {airportOptions.length}
+                  </div>
                 </div>
-                <div className="text-center text-[10px] text-gray-400 mt-2">
-                  Option {selectedFrtIndex + 1} of {totalFrtOptions}
-                </div>
-              </div>
-            );
+              );
+            });
           })()}
 
           {/* Action Buttons - First 80px on right side */}
@@ -5228,9 +5249,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         </div>
       )}
 
-      {/* FRT Segment Details - Show when flight card is expanded and FRT option is selected */}
-      {isExpanded && frtOptions.length > 0 && frtOptions[selectedFrtIndex] && (() => {
-        const selectedFrt = frtOptions[selectedFrtIndex];
+      {/* FRT Segment Details - Show when flight card is expanded and FRT options exist */}
+      {isExpanded && frtState.optionsByAirport.size > 0 && Array.from(frtState.optionsByAirport.entries()).map(([airport, airportOptions], airportIdx) => {
+        const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(airport) || 0;
+        const selectedFrt = airportOptions[selectedOptionIdx];
+        if (!selectedFrt) return null;
+
         const returnFlight = selectedFrt.returnFlight;
 
         if (!returnFlight) return null;
@@ -5247,10 +5271,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         const isNonstop = !returnSlice.stops || returnSlice.stops.length === 0;
 
         return (
-          <div className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg px-4 py-3">
+          <div key={`frt-details-${airport}`} className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg px-4 py-3">
             <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
               <RefreshCw className="h-3 w-3" />
-              FRT Return Flight
+              FRT {airportIdx + 1} Return Flight
             </div>
 
             {/* Compact Segment Viewer - Same as Main Search Results */}
@@ -5429,7 +5453,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const frtId = `frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`;
+                    const frtId = `frt-${airport}-${selectedOptionIdx}`;
                     if (addedItems.has(frtId)) {
                       setAddedItems(prev => {
                         const newSet = new Set(prev);
@@ -5444,7 +5468,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         type: 'frt',
                         flight: flight,
                         returnFlight: returnFlight,
-                        returnAirport: selectedFrt.returnAirport,
+                        returnAirport: airport,
                         totalPrice: currentFrtTotalPrice,
                         currency: selectedFrt.currency || 'USD',
                         savings: currentSavings
@@ -5453,18 +5477,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     }
                   }}
                   className={`px-3 py-1 rounded border text-xs font-medium transition-all ${
-                    addedItems.has(`frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`)
+                    addedItems.has(`frt-${airport}-${selectedOptionIdx}`)
                       ? 'bg-success-500/20 border-success-500/40 text-success-300 hover:bg-success-500/30'
                       : 'bg-gray-700/50 border-gray-600/50 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500/60'
                   }`}
                 >
-                  {addedItems.has(`frt-${selectedFrt.returnAirport}-${selectedFrtIndex}`) ? 'Added' : '+ Add'}
+                  {addedItems.has(`frt-${airport}-${selectedOptionIdx}`) ? 'Added' : '+ Add'}
                 </button>
               </div>
             </div>
           </div>
         );
-      })()}
+      })}
     </div>
 
     {/* Add to Proposal Modal */}

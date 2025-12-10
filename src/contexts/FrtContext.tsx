@@ -2,7 +2,10 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 
 interface FrtState {
   options: any[];
+  optionsByAirport: Map<string, any[]>;
   selectedIndex: number;
+  selectedAirportIndex: number;
+  selectedOptionIndexPerAirport: Map<string, number>;
   isFetching: boolean;
   progress: { current: number; total: number } | null;
   autoTriggered: boolean;
@@ -29,6 +32,8 @@ interface FrtContextType {
   setFrtOptions: (flightId: string, options: any[]) => void;
   addFrtOption: (flightId: string, option: any) => void;
   setSelectedFrtIndex: (flightId: string, index: number) => void;
+  setSelectedAirportIndex: (flightId: string, airportIndex: number) => void;
+  setSelectedOptionForAirport: (flightId: string, airport: string, optionIndex: number) => void;
   setIsFetching: (flightId: string, isFetching: boolean) => void;
   setFrtProgress: (flightId: string, progress: { current: number; total: number } | null) => void;
   setAutoTriggered: (flightId: string, triggered: boolean) => void;
@@ -42,7 +47,10 @@ const FrtContext = createContext<FrtContextType | undefined>(undefined);
 
 const DEFAULT_FRT_STATE: FrtState = {
   options: [],
+  optionsByAirport: new Map(),
   selectedIndex: 0,
+  selectedAirportIndex: 0,
+  selectedOptionIndexPerAirport: new Map(),
   isFetching: false,
   progress: null,
   autoTriggered: false,
@@ -139,7 +147,33 @@ export const FrtProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const setFrtOptions = useCallback((flightId: string, options: any[]) => {
-    updateFrtState(flightId, { options, selectedIndex: 0 });
+    // Group options by airport
+    const optionsByAirport = new Map<string, any[]>();
+    options.forEach(option => {
+      const airport = option.returnAirport;
+      if (!optionsByAirport.has(airport)) {
+        optionsByAirport.set(airport, []);
+      }
+      optionsByAirport.get(airport)!.push(option);
+    });
+
+    // Sort each airport's options
+    for (const [airport, airportOptions] of optionsByAirport.entries()) {
+      airportOptions.sort((a, b) => {
+        const aStops = a.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+        const bStops = b.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+        if (aStops !== bStops) return aStops - bStops;
+        return a.totalPrice - b.totalPrice;
+      });
+    }
+
+    updateFrtState(flightId, {
+      options,
+      optionsByAirport,
+      selectedIndex: 0,
+      selectedAirportIndex: 0,
+      selectedOptionIndexPerAirport: new Map()
+    });
   }, [updateFrtState]);
 
   const addFrtOption = useCallback((flightId: string, option: any) => {
@@ -147,9 +181,23 @@ export const FrtProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const newMap = new Map(prev);
       const currentState = newMap.get(flightId) || { ...DEFAULT_FRT_STATE };
       const newOptions = [...currentState.options, option].sort((a, b) => a.totalPrice - b.totalPrice);
+
+      // Group by airport
+      const newOptionsByAirport = new Map(currentState.optionsByAirport);
+      const returnAirport = option.returnAirport;
+      const airportOptions = newOptionsByAirport.get(returnAirport) || [];
+      const updatedAirportOptions = [...airportOptions, option].sort((a, b) => {
+        const aStops = a.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+        const bStops = b.returnFlight?.slices?.[0]?.segments?.length - 1 || 0;
+        if (aStops !== bStops) return aStops - bStops;
+        return a.totalPrice - b.totalPrice;
+      });
+      newOptionsByAirport.set(returnAirport, updatedAirportOptions);
+
       newMap.set(flightId, {
         ...currentState,
         options: newOptions,
+        optionsByAirport: newOptionsByAirport,
       });
       return newMap;
     });
@@ -158,6 +206,24 @@ export const FrtProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setSelectedFrtIndex = useCallback((flightId: string, index: number) => {
     updateFrtState(flightId, { selectedIndex: index });
   }, [updateFrtState]);
+
+  const setSelectedAirportIndex = useCallback((flightId: string, airportIndex: number) => {
+    updateFrtState(flightId, { selectedAirportIndex: airportIndex });
+  }, [updateFrtState]);
+
+  const setSelectedOptionForAirport = useCallback((flightId: string, airport: string, optionIndex: number) => {
+    setFrtStates(prev => {
+      const newMap = new Map(prev);
+      const currentState = newMap.get(flightId) || { ...DEFAULT_FRT_STATE };
+      const newSelectedMap = new Map(currentState.selectedOptionIndexPerAirport);
+      newSelectedMap.set(airport, optionIndex);
+      newMap.set(flightId, {
+        ...currentState,
+        selectedOptionIndexPerAirport: newSelectedMap,
+      });
+      return newMap;
+    });
+  }, []);
 
   const setIsFetching = useCallback((flightId: string, isFetching: boolean) => {
     updateFrtState(flightId, { isFetching });
@@ -184,6 +250,8 @@ export const FrtProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setFrtOptions,
     addFrtOption,
     setSelectedFrtIndex,
+    setSelectedAirportIndex,
+    setSelectedOptionForAirport,
     setIsFetching,
     setFrtProgress,
     setAutoTriggered,
