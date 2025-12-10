@@ -3560,7 +3560,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           {slice.stops && slice.stops.length > 0 && slice.stops.map((stop: any, stopIdx: number) => {
                             const nextFlightIdx = stopIdx + 1;
                             const nextCarrier = slice.segments && slice.segments[nextFlightIdx] ? slice.segments[nextFlightIdx].carrier : null;
-                            const hasNextSegment = segmentTimes[nextFlightIdx];
 
                             return (
                               <React.Fragment key={stopIdx}>
@@ -3593,16 +3592,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                 </div>
 
                                 {/* Segment between layovers or to arrival */}
-                                {hasNextSegment && (
-                                  <div className="flex-1 relative">
-                                    <div className={`border-t-2 ${
-                                      slice.stops && stopIdx < slice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
-                                    }`}></div>
+                                <div className="flex-1 relative">
+                                  <div className={`border-t-2 ${
+                                    slice.stops && stopIdx < slice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                  }`}></div>
+                                  {segmentTimes[nextFlightIdx] && (
                                     <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
                                       {formatDuration(segmentTimes[nextFlightIdx].duration)}
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </React.Fragment>
                             );
                           })}
@@ -3860,7 +3859,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                               {awardSlice.stops.map((stop: any, stopIdx: number) => {
                                 const nextFlightIdx = stopIdx + 1;
                                 const nextSegment = segments[nextFlightIdx];
-                                const hasNextSegment = segmentTimes[nextFlightIdx];
 
                                 return (
                                   <React.Fragment key={stopIdx}>
@@ -3890,16 +3888,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                       )}
                                     </div>
 
-                                    {hasNextSegment && (
-                                      <div className="flex-1 relative">
-                                        <div className={`border-t-2 ${
-                                          stopIdx < awardSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
-                                        }`}></div>
+                                    <div className="flex-1 relative">
+                                      <div className={`border-t-2 ${
+                                        stopIdx < awardSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                      }`}></div>
+                                      {segmentTimes[nextFlightIdx] && (
                                         <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
                                           {formatDuration(segmentTimes[nextFlightIdx].duration)}
                                         </div>
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
                                   </React.Fragment>
                                 );
                               })}
@@ -5340,7 +5338,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                         {returnSlice.stops && returnSlice.stops.length > 0 && returnSlice.stops.map((stop: any, stopIdx: number) => {
                           const nextFlightIdx = stopIdx + 1;
                           const nextCarrier = returnSlice.segments && returnSlice.segments[nextFlightIdx] ? returnSlice.segments[nextFlightIdx].carrier : null;
-                          const hasNextSegment = segmentTimes[nextFlightIdx];
 
                           return (
                             <React.Fragment key={stopIdx}>
@@ -5370,16 +5367,16 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                 )}
                               </div>
 
-                              {hasNextSegment && (
-                                <div className="flex-1 relative">
-                                  <div className={`border-t-2 ${
-                                    returnSlice.stops && stopIdx < returnSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
-                                  }`}></div>
+                              <div className="flex-1 relative">
+                                <div className={`border-t-2 ${
+                                  returnSlice.stops && stopIdx < returnSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
+                                }`}></div>
+                                {segmentTimes[nextFlightIdx] && (
                                   <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
                                     {formatDuration(segmentTimes[nextFlightIdx].duration)}
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </React.Fragment>
                           );
                         })}
