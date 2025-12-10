@@ -1750,23 +1750,63 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       };
     }
 
-    // We need to estimate segment times based on proportional distances
-    // Since we don't have actual segment times, we'll use the mileageBreakdown if available
     const segments: { duration: number }[] = [];
     const layovers: { duration: number, airportCode: string }[] = [];
 
+    // Try to use actual segment data if available
+    if (slice.segments && slice.segments.length > 0) {
+      // Calculate segment durations and layovers from actual segment data
+      slice.segments.forEach((segment: any, idx: number) => {
+        // Add segment duration
+        if (segment.duration) {
+          segments.push({ duration: segment.duration });
+        }
+
+        // Calculate layover if there's a next segment
+        if (idx < slice.segments.length - 1) {
+          const nextSegment = slice.segments[idx + 1];
+          if (segment.arrival && nextSegment.departure) {
+            const arrivalTime = new Date(segment.arrival).getTime();
+            const departureTime = new Date(nextSegment.departure).getTime();
+            const layoverMinutes = Math.round((departureTime - arrivalTime) / (1000 * 60));
+            layovers.push({
+              duration: layoverMinutes,
+              airportCode: slice.stops?.[idx]?.code || nextSegment.origin?.code || 'N/A'
+            });
+          }
+        }
+      });
+
+      // If we got valid segments, return them
+      if (segments.length > 0) {
+        return { segments, layovers };
+      }
+    }
+
+    // Fallback: use mileageBreakdown if available
     if (slice.mileageBreakdown && slice.mileageBreakdown.length > 0) {
-      // Calculate total mileage
       const totalMileage = slice.mileageBreakdown.reduce((sum: number, mb: any) => sum + (mb.mileage || 0), 0);
-      const totalFlightTime = slice.duration - layovers.reduce((sum, l) => sum + l.duration, 0);
+
+      // Calculate total flight time (estimate 70% of total time is flight time, 30% is layovers)
+      const estimatedLayoverTime = Math.round(slice.duration * 0.3);
+      const estimatedFlightTime = slice.duration - estimatedLayoverTime;
+      const avgLayoverTime = slice.stops?.length > 0 ? Math.round(estimatedLayoverTime / slice.stops.length) : 0;
 
       // Calculate segment durations based on mileage proportion
       slice.mileageBreakdown.forEach((mb: any, idx: number) => {
         const proportion = totalMileage > 0 ? (mb.mileage || 0) / totalMileage : 1 / slice.mileageBreakdown.length;
-        segments.push({ duration: Math.round(totalFlightTime * proportion) });
+        segments.push({ duration: Math.round(estimatedFlightTime * proportion) });
+
+        // Add layover after this segment (except for the last segment)
+        if (idx < slice.mileageBreakdown.length - 1) {
+          layovers.push({
+            duration: avgLayoverTime,
+            airportCode: slice.stops?.[idx]?.code || 'N/A'
+          });
+        }
       });
     } else {
-      // Fallback: divide time evenly among segments
+      // Final fallback: divide time evenly among segments
       const numSegments = (slice.stops?.length || 0) + 1;
       const avgSegmentTime = Math.round(slice.duration / numSegments * 0.7); // Assume 70% is flight time
       const avgLayoverTime = Math.round((slice.duration - (avgSegmentTime * numSegments)) / (slice.stops?.length || 1));
