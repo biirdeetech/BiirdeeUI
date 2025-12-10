@@ -2025,26 +2025,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               const selectedFrt = frtOptions[selectedFrtIndex];
               if (!selectedFrt) return null;
 
+              // Recalculate FRT total and savings based on current displayed flight price
+              const returnFlightPrice = selectedFrt.returnFlight?.totalAmount || 0;
+              const currentFrtTotalPrice = displayTotal + returnFlightPrice;
+              const currentSavings = displayTotal - currentFrtTotalPrice;
+
               return (
                 <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-blue-500/5 border-blue-500/30">
                   <div className="flex items-center gap-1 mb-0.5">
                     <RefreshCw className="h-3 w-3 text-blue-500" />
                     <span className="text-[9px] text-blue-400 font-semibold uppercase">FRT</span>
                   </div>
-                  <div className="text-xs text-blue-400 font-bold">{formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}</div>
+                  <div className="text-xs text-blue-400 font-bold">{formatPrice(currentFrtTotalPrice, selectedFrt.currency || 'USD', false)}</div>
                   <div className="text-[9px] text-gray-400">round-trip</div>
                   {(() => {
-                    const savings = selectedFrt.savings || (displayTotal - selectedFrt.totalPrice);
-                    if (savings < 0) {
+                    if (currentSavings < 0) {
                       return (
                         <div className="text-[9px] text-red-400 font-semibold">
-                          Extra +{formatPrice(Math.abs(savings), currency, false)}
+                          Extra +{formatPrice(Math.abs(currentSavings), currency, false)}
                         </div>
                       );
                     }
                     return (
                       <div className="text-[9px] text-green-400 font-semibold">
-                        Save {formatPrice(savings, currency, false)}
+                        Save {formatPrice(currentSavings, currency, false)}
                       </div>
                     );
                   })()}
@@ -3039,6 +3043,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     const hours = Math.floor(returnSlice.duration / 60);
                     const mins = returnSlice.duration % 60;
 
+                    // Recalculate FRT total and savings based on current displayed flight price
+                    const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
+                    const currentFrtTotalPrice = displayTotal + returnFlightPrice;
+                    const currentSavings = displayTotal - currentFrtTotalPrice;
+
                     return (
                       <button
                         key={`frt-${index}`}
@@ -3081,17 +3090,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             {hours}h{mins}m
                           </span>
                           <span className="text-xs font-semibold">
-                            @ {formatPrice(frt.totalPrice, frt.currency || 'USD', false)}
+                            @ {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
                           </span>
                         </div>
-                        {frt.savings !== 0 && (
-                          frt.savings > 0 ? (
+                        {currentSavings !== 0 && (
+                          currentSavings > 0 ? (
                             <div className="text-[9px] text-green-400 font-medium">
-                              save {formatPrice(frt.savings, currency, false)}
+                              save {formatPrice(currentSavings, currency, false)}
                             </div>
                           ) : (
                             <div className="text-[9px] text-red-400 font-medium">
-                              extra +{formatPrice(Math.abs(frt.savings), currency, false)}
+                              extra +{formatPrice(Math.abs(currentSavings), currency, false)}
                             </div>
                           )
                         )}
@@ -5012,6 +5021,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         const returnSlice = returnFlight.slices?.[0];
         if (!returnSlice) return null;
 
+        // Recalculate FRT total and savings based on current displayed flight price
+        const returnFlightPrice = returnFlight.totalAmount || 0;
+        const currentFrtTotalPrice = displayTotal + returnFlightPrice;
+        const currentSavings = displayTotal - currentFrtTotalPrice;
+
         const { segments: segmentTimes, layovers: layoverTimes } = calculateSegmentTimes(returnSlice);
         const isNonstop = !returnSlice.stops || returnSlice.stops.length === 0;
 
@@ -5180,18 +5194,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               <div className="flex items-center gap-3">
                 <div className="bg-blue-500/12 border border-blue-500/25 rounded px-2 py-1">
                   <span className="text-sm font-bold text-blue-400">
-                    {formatPrice(selectedFrt.totalPrice, selectedFrt.currency || 'USD', false)}
+                    {formatPrice(currentFrtTotalPrice, selectedFrt.currency || 'USD', false)}
                   </span>
                   <span className="text-[10px] text-blue-400/70"> total</span>
                 </div>
-                {selectedFrt.savings && selectedFrt.savings !== 0 && (
-                  selectedFrt.savings > 0 ? (
+                {currentSavings !== 0 && (
+                  currentSavings > 0 ? (
                     <span className="text-xs text-green-400">
-                      Save {formatPrice(selectedFrt.savings, selectedFrt.currency || 'USD', false)}
+                      Save {formatPrice(currentSavings, selectedFrt.currency || 'USD', false)}
                     </span>
                   ) : (
                     <span className="text-xs text-red-400">
-                      Extra +{formatPrice(Math.abs(selectedFrt.savings), selectedFrt.currency || 'USD', false)}
+                      Extra +{formatPrice(Math.abs(currentSavings), selectedFrt.currency || 'USD', false)}
                     </span>
                   )
                 )}
