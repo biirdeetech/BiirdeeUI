@@ -1968,8 +1968,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 Fetching...
               </div>
             )}
-            {/* Award Box - After flight segment display */}
-            {hasAwardOptions && !isEnriching && (() => {
+            {/* Award Box - After flight segment display - Only show if no aero data */}
+            {hasAwardOptions && !isEnriching && !hasAeroMileage && (() => {
               // Get all award options for the selected cabin
               if (!selectedCabin) return null;
 
@@ -2021,14 +2021,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               );
             })()}
 
-            {/* Aero Box - Show selected Aero mileage option */}
-            {(() => {
-              // Only show if we have mileage breakdown and a selected program
-              const selectedCarrierCode = selectedMileagePerSlice[0];
-              if (!selectedCarrierCode || !slices[0].mileageBreakdown) return null;
+            {/* Aero Box - Show Aero mileage option */}
+            {hasAeroMileage && (() => {
+              // Show if we have mileage breakdown
+              if (!slices[0].mileageBreakdown) return null;
 
               const groupedPrograms = groupMileageByProgram(slices[0].mileageBreakdown);
-              const selectedProgram = groupedPrograms.find(p => p.carrierCode === selectedCarrierCode);
+              if (groupedPrograms.length === 0) return null;
+
+              // Use selected program if available, otherwise show cheapest
+              const selectedCarrierCode = selectedMileagePerSlice[0];
+              let selectedProgram = selectedCarrierCode
+                ? groupedPrograms.find(p => p.carrierCode === selectedCarrierCode)
+                : null;
+
+              // If no selected program, find cheapest by value
+              if (!selectedProgram) {
+                selectedProgram = groupedPrograms.reduce((best, program) => {
+                  const value = (program.totalMileage * perCentValue) + program.totalPrice;
+                  const bestValue = best ? (best.totalMileage * perCentValue) + best.totalPrice : Infinity;
+                  return value < bestValue ? program : best;
+                }, null as any);
+              }
 
               if (!selectedProgram) return null;
 
@@ -2495,6 +2509,46 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                           </div>
                         ) : null;
                       })()}
+                    </>
+                  ) : cabinHasAero ? (
+                    <>
+                      <div className={`text-xs font-bold ${
+                        isSelected ? 'text-orange-400' : 'text-orange-500'
+                      }`}>
+                        {(() => {
+                          // Find cheapest aero for this cabin
+                          const groupedPrograms = slices[0].mileageBreakdown ? groupMileageByProgram(slices[0].mileageBreakdown) : [];
+                          const cabinPrograms = groupedPrograms.filter(program => {
+                            const programCabin = (program.cabin || '').toUpperCase();
+                            if (cabinKey === 'ECONOMY') {
+                              return programCabin.includes('ECONOMY') || programCabin.includes('COACH');
+                            } else if (cabinKey === 'BUSINESS') {
+                              return programCabin.includes('BUSINESS') && !programCabin.includes('PREMIUM');
+                            } else if (cabinKey === 'BUSINESS_PREMIUM') {
+                              return programCabin.includes('BUSINESS') && programCabin.includes('PREMIUM');
+                            } else if (cabinKey === 'FIRST') {
+                              return programCabin.includes('FIRST');
+                            }
+                            return false;
+                          });
+
+                          if (cabinPrograms.length === 0) return 'N/A';
+
+                          const cheapestAero = cabinPrograms.reduce((best, program) => {
+                            const value = (program.totalMileage * perCentValue) + program.totalPrice;
+                            const bestValue = best ? (best.totalMileage * perCentValue) + best.totalPrice : Infinity;
+                            return value < bestValue ? program : best;
+                          }, null as any);
+
+                          if (!cheapestAero) return 'N/A';
+
+                          const cashValue = (cheapestAero.totalMileage * perCentValue) + cheapestAero.totalPrice;
+                          return `$${cashValue.toFixed(0)}`;
+                        })()}
+                      </div>
+                      <div className="text-[9px] text-orange-500/70 mt-0.5">
+                        aero
+                      </div>
                     </>
                   ) : cabinHasAwards ? (
                     <>
@@ -3769,10 +3823,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               </div>
             )}
 
-            {/* Award Segment Details - Show when award is selected */}
+            {/* Award Segment Details - Show when award is selected and no aero data */}
             {(() => {
               const selectedAwardId = selectedAwardPerSlice[0];
-              if (!selectedAwardId || !hasAwardOptions) return null;
+              if (!selectedAwardId || !hasAwardOptions || hasAeroMileage) return null;
 
               const selectedAward = allAwardOptions.find(a => a.id === selectedAwardId);
               if (!selectedAward) return null;
