@@ -859,6 +859,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               frtContext.setFrtProgress(flightId, { current: i + 1, total: returnAirports.length });
 
               try {
+                // Generate booking class codes (ext) for the selected cabin
+                const { getDefaultBookingClasses, bookingClassesToExt } = await import('../utils/bookingClasses');
+                const bookingClasses = getDefaultBookingClasses(currentCabin);
+                const ext = bookingClassesToExt(bookingClasses);
+
                 const searchParams = {
                   origin: destinationCode,
                   destination: returnAirport,
@@ -867,7 +872,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   cabin: currentCabin,
                   maxStops: -1,
                   passengers: 1,
-                  pageSize: 20,
+                  pageSize: 50,
                   aero: false,
                   currency: currency,
                   slices: [{
@@ -880,41 +885,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     extraStops: -1,
                     allowAirportChanges: true,
                     showOnlyAvailable: true,
-                    aero: false
+                    aero: false,
+                    ext: ext // Add booking class codes for cabin filtering
                   }]
                 };
 
                 const result = await BiirdeeService.searchFlights(searchParams);
 
                 if (result.solutionList.solutions.length > 0) {
-                  // Get cheapest, fastest, least stops option
-                  const sortedFlights = result.solutionList.solutions
-                    .slice(0, 20)
-                    .sort((a, b) => {
-                      // Prioritize: 1. Least stops, 2. Shortest duration, 3. Cheapest
-                      const aStops = a.slices[0].segments.length - 1;
-                      const bStops = b.slices[0].segments.length - 1;
-                      if (aStops !== bStops) return aStops - bStops;
+                  // Sort by price and take top 10 options per return airport
+                  const sortedResults = result.solutionList.solutions
+                    .sort((a, b) => a.totalAmount - b.totalAmount)
+                    .slice(0, 10); // Take top 10 cheapest options per airport
 
-                      if (a.slices[0].duration !== b.slices[0].duration) {
-                        return a.slices[0].duration - b.slices[0].duration;
-                      }
+                  // Add each option to FRT context
+                  for (const returnFlight of sortedResults) {
+                    const frtTotalPrice = displayTotal + returnFlight.totalAmount;
 
-                      return a.totalAmount - b.totalAmount;
-                    });
+                    // Add this result immediately (progressive rendering)
+                    const newOption = {
+                      returnAirport: returnAirport,
+                      returnFlight: returnFlight,
+                      totalPrice: frtTotalPrice,
+                      currency: returnFlight.currency,
+                      savings: displayTotal - frtTotalPrice
+                    };
+                    frtContext.addFrtOption(flightId, newOption);
+                  }
 
-                  const bestReturn = sortedFlights[0];
-                  const frtTotalPrice = displayTotal + bestReturn.totalAmount;
-
-                  // Add this result immediately (progressive rendering)
-                  const newOption = {
-                    returnAirport: returnAirport,
-                    returnFlight: bestReturn,
-                    totalPrice: frtTotalPrice,
-                    currency: bestReturn.currency,
-                    savings: displayTotal - frtTotalPrice
-                  };
-                  frtContext.addFrtOption(flightId, newOption);
+                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport}`);
                 }
               } catch (error) {
                 console.error(`Failed to search return to ${returnAirport}:`, error);
@@ -5232,6 +5231,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               try {
                 console.log(`Searching return flight: ${destinationCode} -> ${returnAirport}`);
 
+                // Generate booking class codes (ext) for the selected cabin
+                const { getDefaultBookingClasses, bookingClassesToExt } = await import('../utils/bookingClasses');
+                const bookingClasses = getDefaultBookingClasses(config.cabinClass);
+                const ext = bookingClassesToExt(bookingClasses);
+
                 // Build search params for one-way return flight
                 const searchParams = {
                   origin: destinationCode,
@@ -5254,7 +5258,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                     extraStops: -1,
                     allowAirportChanges: true,
                     showOnlyAvailable: true,
-                    aero: false
+                    aero: false,
+                    ext: ext // Add booking class codes for cabin filtering
                   }]
                 };
 
@@ -5262,25 +5267,28 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                 const result = await BiirdeeService.searchFlights(searchParams);
 
                 if (result.solutionList.solutions.length > 0) {
-                  // Get the cheapest option
-                  const cheapestReturn = result.solutionList.solutions.reduce((best, current) => {
-                    return current.totalAmount < best.totalAmount ? current : best;
-                  });
+                  // Sort by price (cheapest first) and take top 10 options per return airport
+                  const sortedResults = result.solutionList.solutions
+                    .sort((a, b) => a.totalAmount - b.totalAmount)
+                    .slice(0, 10); // Take top 10 cheapest options per airport
 
-                  // Calculate total FRT price (original one-way + return)
-                  const frtTotalPrice = displayTotal + cheapestReturn.totalAmount;
+                  // Add each option to FRT context
+                  for (const returnFlight of sortedResults) {
+                    // Calculate total FRT price (original one-way + return)
+                    const frtTotalPrice = displayTotal + returnFlight.totalAmount;
 
-                  // Add this result immediately (progressive rendering)
-                  const newOption = {
-                    returnAirport: returnAirport,
-                    returnFlight: cheapestReturn,
-                    totalPrice: frtTotalPrice,
-                    currency: cheapestReturn.currency,
-                    savings: displayTotal - frtTotalPrice
-                  };
-                  frtContext.addFrtOption(flightId, newOption);
+                    // Add this result immediately (progressive rendering)
+                    const newOption = {
+                      returnAirport: returnAirport,
+                      returnFlight: returnFlight,
+                      totalPrice: frtTotalPrice,
+                      currency: returnFlight.currency,
+                      savings: displayTotal - frtTotalPrice
+                    };
+                    frtContext.addFrtOption(flightId, newOption);
+                  }
 
-                  console.log(`Found FRT option via ${returnAirport}: $${frtTotalPrice.toFixed(2)}`);
+                  console.log(`Found ${sortedResults.length} FRT options via ${returnAirport}`);
                 }
               } catch (error) {
                 console.error(`Failed to search return to ${returnAirport}:`, error);
