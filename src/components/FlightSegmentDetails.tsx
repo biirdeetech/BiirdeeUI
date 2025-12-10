@@ -161,8 +161,8 @@ const FlightSegmentDetails: React.FC<FlightSegmentDetailsProps> = ({ slice, orig
   };
 
   return (
-    <div className="bg-gray-800/30 rounded-lg p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+    <div className="bg-gray-800/30 rounded-lg p-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-4">
         <Plane className="h-4 w-4 text-accent-400" />
         <span>Flight Segments</span>
         {!isDirect && (
@@ -172,166 +172,187 @@ const FlightSegmentDetails: React.FC<FlightSegmentDetailsProps> = ({ slice, orig
         )}
       </div>
 
-      {segments.map((segment: any, idx: number) => (
-        <div key={idx}>
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              {segment.carrier && (
-                <>
-                  <img
-                    src={`https://www.gstatic.com/flights/airline_logos/35px/${segment.carrier.code}.png`}
-                    alt={segment.carrier.shortName}
-                    className="h-5 w-5 rounded"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                  <span className="text-sm font-semibold text-white">
-                    {segment.flightNumber || 'N/A'}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {segment.carrier.shortName || segment.carrier.name}
-                  </span>
-                </>
-              )}
-              {segment.cabin && (
-                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">
-                  {segment.cabin}
-                </span>
-              )}
-              {segment.bookingClass && (
-                <span className="text-xs bg-gray-700 text-accent-400 font-mono font-semibold px-2 py-0.5 rounded">
-                  {segment.bookingClass}
-                </span>
-              )}
-              {segment.isEstimated && (
-                <span className="text-[10px] bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded border border-yellow-500/30">
-                  Times Estimated
-                </span>
-              )}
-            </div>
+      {/* Horizontal Timeline View */}
+      <div className="flex items-center gap-0 mb-4">
+        {segments.map((segment: any, idx: number) => {
+          const layoverDuration = calculateLayoverDuration(idx);
+          const isLast = idx === segments.length - 1;
 
-            <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-              <div>
-                <div className="text-gray-400 text-[10px] mb-1 uppercase tracking-wide">Departure</div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <MapPin className="h-3 w-3 text-gray-500" />
-                  <span className="font-semibold text-white">{segment.origin.code}</span>
-                </div>
-                {segment.origin.name && (
-                  <div className="text-gray-500 text-[10px] mb-1.5">
-                    {segment.origin.name}
+          return (
+            <React.Fragment key={idx}>
+              {/* Origin/Layover Column */}
+              <div className="flex flex-col items-center min-w-[120px]">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                    <span className="font-bold text-white text-sm">{segment.origin.code}</span>
                   </div>
-                )}
-                {segment.departure && (
-                  <>
-                    <div className="text-white text-sm font-semibold">
-                      {formatTime(segment.departure)}
+                  {segment.origin.name && (
+                    <div className="text-[10px] text-gray-500 mb-1 line-clamp-1">
+                      {segment.origin.name}
                     </div>
-                    <div className="text-gray-400 text-[10px]">
-                      {formatDate(segment.departure)}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-full flex items-center">
-                  <div className="flex-1 border-t border-gray-600"></div>
-                  <Plane className="h-3 w-3 text-gray-400 mx-2" />
-                  <div className="flex-1 border-t border-gray-600"></div>
-                </div>
-                {segment.duration && (
-                  <div className="flex items-center gap-1 text-xs text-gray-300 mt-2 font-medium">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatDuration(segment.duration)}</span>
-                  </div>
-                )}
-                {segment.mileage && (
-                  <div className="text-[10px] text-orange-300 mt-1">
-                    {segment.mileage.toLocaleString()} mi
-                  </div>
-                )}
-              </div>
-
-              <div className="text-right">
-                <div className="text-gray-400 text-[10px] mb-1 uppercase tracking-wide">Arrival</div>
-                <div className="flex items-center justify-end gap-1.5 mb-1">
-                  <span className="font-semibold text-white">{segment.destination.code}</span>
-                  <MapPin className="h-3 w-3 text-gray-500" />
-                </div>
-                {segment.destination.name && (
-                  <div className="text-gray-500 text-[10px] mb-1.5">
-                    {segment.destination.name}
-                  </div>
-                )}
-                {segment.arrival && (
-                  <>
-                    <div className="text-white text-sm font-semibold">
-                      {formatTime(segment.arrival)}
-                    </div>
-                    <div className="text-gray-400 text-[10px]">
-                      {formatDate(segment.arrival)}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {(segment.fareBasis || (slice.segments[idx] && slice.segments[idx].marketingCarrier)) && (
-              <div className="pt-2 border-t border-gray-700/50 space-y-1.5">
-                {segment.fareBasis && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-400">Fare Basis:</span>
-                    <span className="font-mono bg-gray-700 px-2 py-0.5 rounded text-gray-200 font-semibold">
-                      {segment.fareBasis}
-                    </span>
-                  </div>
-                )}
-
-                {slice.segments[idx] && slice.segments[idx].marketingCarrier && slice.segments[idx].carrier.code !== slice.segments[idx].marketingCarrier && (
-                  <div className="text-xs text-gray-400">
-                    <span className="font-medium">Operating:</span> {slice.segments[idx].carrier.name}
-                    <span className="ml-2 text-gray-500">(Marketed by {slice.segments[idx].marketingCarrier})</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {slice.mileageBreakdown && slice.mileageBreakdown[idx] && slice.mileageBreakdown[idx].matched && (
-              <div className="mt-2 pt-2 border-t border-gray-700/50">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="inline-flex items-center px-2 py-0.5 bg-green-500/20 text-green-400 rounded border border-green-500/30">
-                    ✓ Award Available
-                  </span>
-                  {slice.mileageBreakdown[idx].mileagePrice && (
-                    <span className="text-gray-400">
-                      {typeof slice.mileageBreakdown[idx].mileagePrice === 'number'
-                        ? `$${slice.mileageBreakdown[idx].mileagePrice.toFixed(2)}`
-                        : slice.mileageBreakdown[idx].mileagePrice}
-                    </span>
+                  )}
+                  {segment.departure && (
+                    <>
+                      <div className="text-white text-sm font-semibold">
+                        {formatTime(segment.departure)}
+                      </div>
+                      <div className="text-gray-400 text-[10px]">
+                        {formatDate(segment.departure)}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-            )}
-          </div>
 
-          {idx < segments.length - 1 && (() => {
-            const layoverDuration = calculateLayoverDuration(idx);
-            return (
-              <div className="flex items-center justify-center py-2">
-                <div className="bg-orange-500/20 border border-orange-500/30 rounded px-3 py-1.5 text-xs text-orange-300 font-medium">
-                  <Clock className="h-3 w-3 inline mr-1" />
-                  Layover at {segment.destination.code}
-                  {layoverDuration && ` • ${formatDuration(layoverDuration)}`}
+              {/* Flight Arrow with Duration */}
+              <div className="flex-1 flex flex-col items-center justify-center px-3 min-w-[140px]">
+                <div className="w-full flex items-center">
+                  <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
+                  <Plane className="h-4 w-4 text-gray-400 mx-2" />
+                  <div className="flex-1 border-t-2 border-dashed border-gray-600"></div>
                 </div>
+                {segment.duration && (
+                  <div className="flex flex-col items-center gap-0.5 mt-2">
+                    <div className="flex items-center gap-1 text-xs text-gray-300 font-medium">
+                      <Clock className="h-3 w-3" />
+                      <span>{formatDuration(segment.duration)}</span>
+                    </div>
+                    {segment.carrier && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <img
+                          src={`https://www.gstatic.com/flights/airline_logos/35px/${segment.carrier.code}.png`}
+                          alt={segment.carrier.shortName}
+                          className="h-4 w-4 rounded"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {segment.flightNumber || 'N/A'}
+                        </span>
+                        {segment.cabin && (
+                          <span className="text-[9px] bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded">
+                            {segment.cabin}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {segment.mileage && (
+                      <div className="text-[10px] text-orange-300">
+                        {segment.mileage.toLocaleString()} mi
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            );
-          })()}
-        </div>
-      ))}
 
-      <div className="pt-3 border-t border-gray-700/50 flex items-center justify-between text-sm">
+              {/* Layover or Destination */}
+              {!isLast ? (
+                <>
+                  {/* Layover Column */}
+                  <div className="flex flex-col items-center min-w-[120px]">
+                    <div className="text-center bg-orange-500/10 border border-orange-500/30 rounded-lg px-3 py-2">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Clock className="h-3.5 w-3.5 text-orange-400" />
+                        <span className="font-bold text-orange-300 text-sm">{segment.destination.code}</span>
+                      </div>
+                      {segment.destination.name && (
+                        <div className="text-[10px] text-orange-400/70 mb-1 line-clamp-1">
+                          {segment.destination.name}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-orange-300 font-medium mb-1">
+                        Layover
+                      </div>
+                      {layoverDuration && (
+                        <div className="text-orange-200 text-sm font-bold">
+                          {formatDuration(layoverDuration)}
+                        </div>
+                      )}
+                      {segment.arrival && (
+                        <div className="text-gray-400 text-[10px] mt-1">
+                          Arrive {formatTime(segment.arrival)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Final Destination Column */}
+                  <div className="flex flex-col items-center min-w-[120px]">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <span className="font-bold text-white text-sm">{segment.destination.code}</span>
+                        <MapPin className="h-3.5 w-3.5 text-green-400" />
+                      </div>
+                      {segment.destination.name && (
+                        <div className="text-[10px] text-gray-500 mb-1 line-clamp-1">
+                          {segment.destination.name}
+                        </div>
+                      )}
+                      {segment.arrival && (
+                        <>
+                          <div className="text-white text-sm font-semibold">
+                            {formatTime(segment.arrival)}
+                          </div>
+                          <div className="text-gray-400 text-[10px]">
+                            {formatDate(segment.arrival)}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Detailed Segment Information */}
+      <div className="space-y-2 mt-4">
+        {segments.map((segment: any, idx: number) => (
+          <div key={idx} className="bg-gray-800/40 rounded-lg p-2.5 border border-gray-700/40">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="text-gray-400">Segment {idx + 1}:</span>
+              {segment.carrier && (
+                <>
+                  <span className="text-white font-semibold">{segment.flightNumber || 'N/A'}</span>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-400">{segment.carrier.shortName || segment.carrier.name}</span>
+                </>
+              )}
+              {segment.bookingClass && (
+                <>
+                  <span className="text-gray-500">•</span>
+                  <span className="bg-gray-700 text-accent-400 font-mono font-semibold px-1.5 py-0.5 rounded text-[10px]">
+                    {segment.bookingClass}
+                  </span>
+                </>
+              )}
+              {segment.fareBasis && (
+                <>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-400">Fare:</span>
+                  <span className="font-mono bg-gray-700/70 px-1.5 py-0.5 rounded text-gray-300 font-semibold text-[10px]">
+                    {segment.fareBasis}
+                  </span>
+                </>
+              )}
+              {slice.mileageBreakdown && slice.mileageBreakdown[idx] && slice.mileageBreakdown[idx].matched && (
+                <>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-green-400 text-[10px]">✓ Award Available</span>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-3 mt-3 border-t border-gray-700/50 flex items-center justify-between text-sm">
         <span className="text-gray-400 font-medium">Total Travel Time:</span>
         <span className="font-semibold text-white">{formatDuration(slice.duration)}</span>
       </div>

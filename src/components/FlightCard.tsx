@@ -4932,67 +4932,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         const returnSlice = returnFlight.slices?.[0];
         if (!returnSlice) return null;
 
-        // Build segments for FlightSegmentViewer
-        const segments = returnSlice.segments?.map((seg: any) => ({
-          carrierCode: seg.carrier?.code || '',
-          number: seg.flightNumber || '',
-          departure: {
-            iataCode: seg.origin?.code || '',
-            at: seg.departure || ''
-          },
-          arrival: {
-            iataCode: seg.destination?.code || '',
-            at: seg.arrival || ''
-          },
-          cabin: seg.cabins?.[0] || seg.cabin || '',
-          duration: seg.duration ? `PT${Math.floor(seg.duration / 60)}H${seg.duration % 60}M` : ''
-        })) || [];
-
-        // Build layovers
-        const layovers: any[] = [];
-        if (returnSlice.stops && returnSlice.stops.length > 0) {
-          for (let i = 0; i < returnSlice.segments.length - 1; i++) {
-            const currentSeg = returnSlice.segments[i];
-            const nextSeg = returnSlice.segments[i + 1];
-
-            if (currentSeg.arrival && nextSeg.departure) {
-              const arrivalTime = new Date(currentSeg.arrival).getTime();
-              const departureTime = new Date(nextSeg.departure).getTime();
-              const layoverMinutes = Math.floor((departureTime - arrivalTime) / (1000 * 60));
-
-              if (layoverMinutes > 0) {
-                layovers.push({
-                  airport: {
-                    code: returnSlice.stops[i]?.code || currentSeg.destination?.code,
-                    iataCode: returnSlice.stops[i]?.code || currentSeg.destination?.code
-                  },
-                  durationMinutes: layoverMinutes
-                });
-              }
-            }
-          }
-        }
-
         return (
           <div className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg p-4">
             <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
               <RefreshCw className="h-3 w-3" />
               FRT Return Flight Details
             </div>
-            <FlightSegmentViewer
-              segments={segments}
-              layovers={layovers}
-              formatTime={formatTimeInOriginTZ}
-              formatDate={formatDateInOriginTZ}
-              showCabin={true}
-              compact={false}
-            />
+            <FlightSegmentDetails slice={returnSlice} originTimezone={originTimezone} />
             <div className="mt-3 pt-3 border-t border-blue-500/20 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-gray-400">Return to:</span>
                 <span className="text-gray-300 font-mono font-medium">{selectedFrt.returnAirport}</span>
-                <span className="text-gray-400 ml-3">Segments:</span>
-                <span className="text-gray-300">{segments.length}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="bg-blue-500/12 border border-blue-500/25 rounded px-2 py-1">
