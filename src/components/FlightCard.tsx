@@ -277,7 +277,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
   const [expandedSlices, setExpandedSlices] = useState<Record<number, boolean>>({});
   const [expandedSliceAirlines, setExpandedSliceAirlines] = useState<Record<string, boolean>>({});
   const [expandedSegments, setExpandedSegments] = useState<Record<number, boolean>>({});
-  const [expandedFrtDetails, setExpandedFrtDetails] = useState(false);
   const [expandedAwardGroups, setExpandedAwardGroups] = useState<Record<string, boolean>>({});
   const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
   const [sliceAlternativeTabs, setSliceAlternativeTabs] = useState<Record<string, 'best-match' | 'time-insensitive'>>({});
@@ -3045,19 +3044,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
               <div className="text-center text-[10px] text-gray-400 mt-2">
                 Option {selectedFrtIndex + 1} of {frtOptions.length}
               </div>
-              {/* View FRT Segments Button */}
-              {frtOptions[selectedFrtIndex]?.returnFlight?.slices?.[0]?.segments && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpandedFrtDetails(!expandedFrtDetails);
-                  }}
-                  className="w-full mt-2 px-3 py-1.5 bg-gray-800/50 hover:bg-gray-700/50 rounded border border-gray-600/50 transition-colors flex items-center justify-center gap-2 text-xs font-medium text-gray-300"
-                >
-                  <span>{expandedFrtDetails ? 'Hide' : 'View'} FRT Segments ({frtOptions[selectedFrtIndex].returnFlight.slices[0].segments.length})</span>
-                  <ChevronDown className={`h-3 w-3 transition-transform ${expandedFrtDetails ? 'rotate-180' : ''}`} />
-                </button>
-              )}
             </div>
           )}
 
@@ -4936,8 +4922,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
         </div>
       )}
 
-      {/* FRT Segment Details - Show when FRT option is selected AND expanded */}
-      {expandedFrtDetails && frtOptions.length > 0 && frtOptions[selectedFrtIndex] && (() => {
+      {/* FRT Segment Details - Show when FRT option is selected */}
+      {frtOptions.length > 0 && frtOptions[selectedFrtIndex] && (() => {
         const selectedFrt = frtOptions[selectedFrtIndex];
         const returnFlight = selectedFrt.returnFlight;
 
