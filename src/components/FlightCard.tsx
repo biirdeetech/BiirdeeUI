@@ -5542,29 +5542,36 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
           try {
             // Build list of return airports to search
-            const returnAirports: string[] = [];
+            let returnAirports: string[] = [];
 
-            if (config.includeDirect) {
-              returnAirports.push(slices[0].origin.code);
-            }
+            // If manual airports are specified, use them directly
+            if (config.useManualAirports && config.returnAirports.length > 0) {
+              returnAirports = [...config.returnAirports];
+              console.log('Using manual return airports:', returnAirports);
+            } else {
+              // Auto mode: build list based on includeDirect and includeNearby
+              if (config.includeDirect) {
+                returnAirports.push(slices[0].origin.code);
+              }
 
-            if (config.includeNearby) {
-              // Fetch nearby airports
-              try {
-                const nearbyResult = await ITAMatrixService.geoSearch({
-                  center: slices[0].origin.code,
-                  radiusMiles: config.searchRadius,
-                  pageSize: 10
-                });
+              if (config.includeNearby) {
+                // Fetch nearby airports
+                try {
+                  const nearbyResult = await ITAMatrixService.geoSearch({
+                    center: slices[0].origin.code,
+                    radiusMiles: config.searchRadius,
+                    pageSize: 10
+                  });
 
-                // Add nearby airports (excluding the origin itself)
-                nearbyResult.locations?.forEach(loc => {
-                  if (loc.code && loc.code !== slices[0].origin.code && !returnAirports.includes(loc.code)) {
-                    returnAirports.push(loc.code);
-                  }
-                });
-              } catch (error) {
-                console.error('Failed to fetch nearby airports:', error);
+                  // Add nearby airports (excluding the origin itself)
+                  nearbyResult.locations?.forEach(loc => {
+                    if (loc.code && loc.code !== slices[0].origin.code && !returnAirports.includes(loc.code)) {
+                      returnAirports.push(loc.code);
+                    }
+                  });
+                } catch (error) {
+                  console.error('Failed to fetch nearby airports:', error);
+                }
               }
             }
 
