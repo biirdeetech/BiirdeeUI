@@ -3564,7 +3564,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                             return (
                               <React.Fragment key={stopIdx}>
                                 {/* Layover indicator */}
-                                <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                                <div className="flex flex-col items-center gap-0.5 bg-orange-500/10 border border-orange-500/30 px-2 py-1.5 rounded relative">
                                   {nextCarrier && nextCarrier.code && (
                                     <img
                                       src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
@@ -3575,19 +3575,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                       }}
                                     />
                                   )}
-                                  <span className="text-[9px] text-gray-300 font-medium">
+                                  <span className="text-[10px] text-gray-200 font-semibold">
                                     {stop?.code || 'N/A'}
                                   </span>
+                                  {layoverTimes[stopIdx] && (
+                                    <span className="text-[9px] text-orange-400 font-bold whitespace-nowrap">
+                                      {formatDuration(layoverTimes[stopIdx].duration)}
+                                    </span>
+                                  )}
                                   {slice.flights && slice.flights[nextFlightIdx] && (
                                     <span className="text-[8px] text-gray-500 font-mono">
                                       {slice.flights[nextFlightIdx]}
                                     </span>
-                                  )}
-                                  {/* Layover duration below */}
-                                  {layoverTimes[stopIdx] && (
-                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
-                                      {formatDuration(layoverTimes[stopIdx].duration)}
-                                    </div>
                                   )}
                                 </div>
 
@@ -3862,7 +3861,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                                 return (
                                   <React.Fragment key={stopIdx}>
-                                    <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                                    <div className="flex flex-col items-center gap-0.5 bg-orange-500/10 border border-orange-500/30 px-2 py-1.5 rounded relative">
                                       {nextSegment?.carrierCode && (
                                         <img
                                           src={`https://www.gstatic.com/flights/airline_logos/35px/${nextSegment.carrierCode}.png`}
@@ -3873,18 +3872,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                           }}
                                         />
                                       )}
-                                      <span className="text-[9px] text-gray-300 font-medium">
+                                      <span className="text-[10px] text-gray-200 font-semibold">
                                         {stop.code}
                                       </span>
+                                      {layoverTimes[stopIdx] && (
+                                        <span className="text-[9px] text-orange-400 font-bold whitespace-nowrap">
+                                          {formatDuration(layoverTimes[stopIdx].duration)}
+                                        </span>
+                                      )}
                                       {awardSlice.flights[nextFlightIdx] && (
                                         <span className="text-[8px] text-gray-500 font-mono">
                                           {awardSlice.flights[nextFlightIdx]}
                                         </span>
-                                      )}
-                                      {layoverTimes[stopIdx] && (
-                                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
-                                          {formatDuration(layoverTimes[stopIdx].duration)}
-                                        </div>
                                       )}
                                     </div>
 
@@ -5341,7 +5340,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                           return (
                             <React.Fragment key={stopIdx}>
-                              <div className="flex flex-col items-center gap-0.5 bg-gray-800/50 px-1.5 py-1 rounded relative">
+                              <div className="flex flex-col items-center gap-0.5 bg-orange-500/10 border border-orange-500/30 px-2 py-1.5 rounded relative">
                                 {nextCarrier && nextCarrier.code && (
                                   <img
                                     src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
@@ -5352,18 +5351,18 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                     }}
                                   />
                                 )}
-                                <span className="text-[9px] text-gray-300 font-medium">
+                                <span className="text-[10px] text-gray-200 font-semibold">
                                   {stop?.code || 'N/A'}
                                 </span>
+                                {layoverTimes[stopIdx] && (
+                                  <span className="text-[9px] text-orange-400 font-bold whitespace-nowrap">
+                                    {formatDuration(layoverTimes[stopIdx].duration)}
+                                  </span>
+                                )}
                                 {returnSlice.flights && returnSlice.flights[nextFlightIdx] && (
                                   <span className="text-[8px] text-gray-500 font-mono">
                                     {returnSlice.flights[nextFlightIdx]}
                                   </span>
-                                )}
-                                {layoverTimes[stopIdx] && (
-                                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-orange-400 whitespace-nowrap">
-                                    {formatDuration(layoverTimes[stopIdx].duration)}
-                                  </div>
                                 )}
                               </div>
 

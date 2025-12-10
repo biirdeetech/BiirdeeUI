@@ -206,7 +206,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setPageSize(parseInt(searchParams.get('pageSize') || '25'));
       setPerCentValue(parseFloat(searchParams.get('perCentValue') || '0.015'));
       setPageNum(parseInt(searchParams.get('pageNum') || '1'));
-      setAeroEnabled(searchParams.get('aero') === 'true');
+      const urlAero = searchParams.get('aero');
+      setAeroEnabled(urlAero === null ? true : urlAero === 'true');
       // Award enabled - read from URL or use default from env
       const urlAwardEnabled = searchParams.get('awardEnabled');
       if (urlAwardEnabled !== null) {
