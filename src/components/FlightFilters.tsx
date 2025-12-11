@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Filter, Clock, Plane, Import as SortAsc, Dessert as SortDesc } from 'lucide-react';
+import TimezoneSelector from './TimezoneSelector';
 
 export interface FlightFilterState {
   nonstopOnly: boolean;
@@ -18,6 +19,8 @@ interface FlightFiltersProps {
   disableBusinessFilter?: boolean;
   availableStops?: number[]; // Stops available in current results
   isAeroEnabled?: boolean; // Whether aero is enabled for miles sorting
+  displayTimezone?: string;
+  onTimezoneChange?: (timezone: string) => void;
 }
 
 const FlightFilters: React.FC<FlightFiltersProps> = ({
@@ -26,7 +29,9 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
   resultCount,
   disableBusinessFilter = false,
   availableStops = [],
-  isAeroEnabled = false
+  isAeroEnabled = false,
+  displayTimezone,
+  onTimezoneChange
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -247,6 +252,16 @@ const FlightFilters: React.FC<FlightFiltersProps> = ({
         {/* Advanced Filters */}
         {showAdvanced && (
           <div className="space-y-4 mb-4 p-3 lg:p-4 bg-gray-850 rounded-lg border border-gray-700">
+            {/* Timezone Selector */}
+            {displayTimezone !== undefined && onTimezoneChange && (
+              <div>
+                <TimezoneSelector
+                  value={displayTimezone}
+                  onChange={onTimezoneChange}
+                />
+              </div>
+            )}
+
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">

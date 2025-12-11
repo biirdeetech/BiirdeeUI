@@ -495,12 +495,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
     if ('id' in f) {
       const firstSlice = f.slices[0];
       const lastSlice = f.slices[f.slices.length - 1];
-      const depTime = formatTimeInOriginTZ(firstSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
-      const arrTime = formatTimeInOriginTZ(lastSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
+      const depTime = formatTimeInDisplayTZ(firstSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
+      const arrTime = formatTimeInDisplayTZ(lastSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
       return `${depTime}-${arrTime}`;
     } else {
-      const depTime = formatTimeInOriginTZ(f.outboundSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
-      const arrTime = formatTimeInOriginTZ(f.outboundSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
+      const depTime = formatTimeInDisplayTZ(f.outboundSlice.departure || '', { hour: '2-digit', minute: '2-digit' });
+      const arrTime = formatTimeInDisplayTZ(f.outboundSlice.arrival || '', { hour: '2-digit', minute: '2-digit' });
       return `${depTime}-${arrTime}`;
     }
   };
@@ -1608,12 +1608,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
   // Use timezone-aware formatting for main flight display
   const formatTime = (dateTime: string) => {
     if (!dateTime) return 'N/A';
-    return formatTimeInOriginTZ(dateTime);
+    return formatTimeInDisplayTZ(dateTime);
   };
 
   const formatDate = (dateTime: string) => {
     if (!dateTime) return 'N/A';
-    return formatDateInOriginTZ(dateTime);
+    return formatDateInDisplayTZ(dateTime);
   };
 
   const getDayDifference = (departureDateTime: string, arrivalDateTime: string) => {
@@ -3934,10 +3934,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                       {/* Departure Airport */}
                       <div className="text-center min-w-[80px]">
                         <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                          {formatTimeInOriginTZ(awardSlice.departure?.at || '')}
+                          {formatTimeInDisplayTZ(awardSlice.departure?.at || '')}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {formatDateInOriginTZ(awardSlice.departure?.at || '')}
+                          {formatDateInDisplayTZ(awardSlice.departure?.at || '')}
                         </div>
                         <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.origin.code}</div>
                         {awardSlice.origin.name && (
@@ -4050,7 +4050,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                       <div className="text-center min-w-[80px]">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                            {formatTimeInOriginTZ(awardSlice.arrival?.at || '')}
+                            {formatTimeInDisplayTZ(awardSlice.arrival?.at || '')}
                           </span>
                           {(() => {
                             const dayDiff = getDayDifference(awardSlice.departure?.at || '', awardSlice.arrival?.at || '');
@@ -4067,7 +4067,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                           })()}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {formatDateInOriginTZ(awardSlice.arrival?.at || '')}
+                          {formatDateInDisplayTZ(awardSlice.arrival?.at || '')}
                         </div>
                         <div className="text-xs sm:text-sm font-medium text-gray-200">{awardSlice.destination.code}</div>
                         {awardSlice.destination.name && (
@@ -5027,10 +5027,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                                           {showAlternativeTimes[`${alternativeKey}-arrivals`] && (
                                             <div className="mt-2 space-y-2">
                                               {group.alternativeArrivals.map((altArrival: any, altArrivalIdx: number) => {
-                                                const altDepTime = formatTimeInOriginTZ(altArrival.departure?.at || altArrival.departure);
-                                                const altDepDate = formatDateInOriginTZ(altArrival.departure?.at || altArrival.departure);
-                                                const altArrTime = formatTimeInOriginTZ(altArrival.arrival?.at || altArrival.arrival);
-                                                const altArrDate = formatDateInOriginTZ(altArrival.arrival?.at || altArrival.arrival);
+                                                const altDepTime = formatTimeInDisplayTZ(altArrival.departure?.at || altArrival.departure);
+                                                const altDepDate = formatDateInDisplayTZ(altArrival.departure?.at || altArrival.departure);
+                                                const altArrTime = formatTimeInDisplayTZ(altArrival.arrival?.at || altArrival.arrival);
+                                                const altArrDate = formatDateInDisplayTZ(altArrival.arrival?.at || altArrival.arrival);
                                                 
                                                 // Calculate duration difference
                                                 const primaryArr = new Date(altFlight.arrival?.at || altFlight.arrival).getTime();
@@ -5101,10 +5101,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                                           {showAlternativeTimes[`${alternativeKey}-layovers`] && (
                                             <div className="mt-2 space-y-2">
                                               {group.alternativeLayovers.map((altLayover: any, altLayoverIdx: number) => {
-                                                const altDepTime = formatTimeInOriginTZ(altLayover.departure?.at || altLayover.departure);
-                                                const altDepDate = formatDateInOriginTZ(altLayover.departure?.at || altLayover.departure);
-                                                const altArrTime = formatTimeInOriginTZ(altLayover.arrival?.at || altLayover.arrival);
-                                                const altArrDate = formatDateInOriginTZ(altLayover.arrival?.at || altLayover.arrival);
+                                                const altDepTime = formatTimeInDisplayTZ(altLayover.departure?.at || altLayover.departure);
+                                                const altDepDate = formatDateInDisplayTZ(altLayover.departure?.at || altLayover.departure);
+                                                const altArrTime = formatTimeInDisplayTZ(altLayover.arrival?.at || altLayover.arrival);
+                                                const altArrDate = formatDateInDisplayTZ(altLayover.arrival?.at || altLayover.arrival);
                                                 
                                                 // Get layover info
                                                 const layovers = altLayover.stops?.map((s: any) => typeof s === 'string' ? s : (s.code || s.iataCode)) || [];

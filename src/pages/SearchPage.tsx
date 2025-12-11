@@ -10,7 +10,6 @@ import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
 import FlightFilters, { FlightFilterState } from '../components/FlightFilters';
 import StreamingProgress from '../components/StreamingProgress';
-import TimezoneSelector from '../components/TimezoneSelector';
 import { useAuth } from '../hooks/useAuth';
 import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 import { FrtProvider } from '../contexts/FrtContext';
@@ -1173,6 +1172,8 @@ const SearchPage: React.FC = () => {
               disableBusinessFilter={isBusinessSearch}
               availableStops={results ? calculateAvailableStops(results) : []}
               isAeroEnabled={extractedParams.aero}
+              displayTimezone={displayTimezone}
+              onTimezoneChange={setDisplayTimezone}
             />
           )}
 
@@ -1186,21 +1187,10 @@ const SearchPage: React.FC = () => {
             />
           )}
 
-          {/* Timezone Selector */}
-          {hasSearched && (
-            <div className="px-4 py-4 border-b border-gray-800">
-              <div className="max-w-xs">
-                <TimezoneSelector
-                  value={displayTimezone}
-                  onChange={setDisplayTimezone}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Flight Results */}
           <div className="px-4 py-6 lg:py-8">
             <FlightResults
+              key={`results-${displayTimezone}`}
               results={filteredResults}
               loading={loading}
               error={error}
