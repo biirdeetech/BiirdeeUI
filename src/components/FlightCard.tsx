@@ -3069,7 +3069,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
           {/* Aero Options - Inline with Award Options */}
           {(() => {
             const hasAeroMileage = slices.some(slice => slice.mileageBreakdown && slice.mileageBreakdown.length > 0);
-            if (!hasAeroMileage || !selectedCabin) return null;
+            if (!hasAeroMileage) return null;
 
             // Get all aero programs for the first slice
             const slice = slices[0];
@@ -3077,7 +3077,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
 
             const groupedPrograms = groupMileageByProgram(slice.mileageBreakdown);
 
-            // Filter programs by selected cabin
+            // Filter programs by selected cabin if one is selected
             const filteredPrograms = selectedCabin ? groupedPrograms.filter(program => {
               const programCabin = program.cabin?.toUpperCase() || '';
               if (selectedCabin === 'ECONOMY') {
