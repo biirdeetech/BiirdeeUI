@@ -20,6 +20,7 @@ import { useFrt } from '../contexts/FrtContext';
 interface FlightCardProps {
   flight: FlightSolution | GroupedFlight;
   originTimezone?: string;
+  displayTimezone?: string;
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
@@ -224,7 +225,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
   // Get flight ID for FRT context
   const flightId = 'id' in flight ? flight.id : `grouped-${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
 
@@ -263,6 +264,32 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
       month: 'short',
       day: 'numeric',
       ...(originTimezone && { timeZone: originTimezone })
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatTimeInDisplayTZ = (dateStr: string, options?: Intl.DateTimeFormatOptions) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      ...(displayTimezone && { timeZone: displayTimezone }),
+      ...options
+    };
+    return date.toLocaleTimeString('en-US', defaultOptions);
+  };
+
+  const formatDateInDisplayTZ = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      ...(displayTimezone && { timeZone: displayTimezone })
     };
     return date.toLocaleDateString('en-US', options);
   };
@@ -4207,8 +4234,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                   <FlightSegmentViewer
                     segments={segments}
                     layovers={layovers}
-                    formatTime={formatTimeInOriginTZ}
-                    formatDate={formatDateInOriginTZ}
+                    formatTime={formatTimeInDisplayTZ}
+                    formatDate={formatDateInDisplayTZ}
                     showCabin={true}
                     compact={false}
                   />
@@ -4976,8 +5003,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
                                               durationMinutes
                                             };
                                           }) : []}
-                                          formatTime={formatTimeInOriginTZ}
-                                          formatDate={formatDateInOriginTZ}
+                                          formatTime={formatTimeInDisplayTZ}
+                                          formatDate={formatDateInDisplayTZ}
                                           showCabin={true}
                                           compact={false}
                                         />

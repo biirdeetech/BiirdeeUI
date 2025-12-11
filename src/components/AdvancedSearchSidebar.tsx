@@ -3,6 +3,7 @@ import { Settings, MapPin, Plane } from 'lucide-react';
 import LocationSearchInput from './LocationSearchInput';
 import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
 import CurrencySearchInput from './CurrencySearchInput';
+import TimezoneSelector from './TimezoneSelector';
 import { Currency } from '../utils/currencies';
 import { Location } from '../services/itaMatrixApi';
 
@@ -38,7 +39,14 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       all_aero_cabin: true,
       salesCity: null as { code: string; name: string } | null,
       currency: null as Currency | null
-    }
+    },
+    timezone: (() => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch {
+        return 'UTC';
+      }
+    })()
   });
 
   const [newDestination, setNewDestination] = useState('');
@@ -111,6 +119,18 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       <div className="flex items-center gap-2 mb-6">
         <Settings className="h-5 w-5 text-accent-400" />
         <h2 className="text-xl font-semibold text-white">Advanced Search</h2>
+      </div>
+
+      {/* General Settings */}
+      <div className="mb-6 pb-6 border-b border-gray-800">
+        <TimezoneSelector
+          value={advancedSettings.timezone}
+          onChange={(tz) => {
+            const newSettings = { ...advancedSettings, timezone: tz };
+            setAdvancedSettings(newSettings);
+            onSettingsChange(newSettings);
+          }}
+        />
       </div>
 
       {/* Section Tabs */}

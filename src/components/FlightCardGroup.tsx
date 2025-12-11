@@ -9,6 +9,7 @@ interface FlightCardGroupProps {
   similarFlights: (FlightSolution | GroupedFlight)[];
   allFlightsInStopGroup?: (FlightSolution | GroupedFlight)[]; // All flights in the same stop group for time option calculation
   originTimezone?: string;
+  displayTimezone?: string;
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
@@ -27,6 +28,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
   similarFlights,
   allFlightsInStopGroup = [],
   originTimezone,
+  displayTimezone,
   perCentValue = 0.015,
   session,
   solutionSet,
@@ -119,11 +121,12 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     return (
       <>
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         ) : (
           <FlightCard
             flight={primaryFlight}
             originTimezone={originTimezone}
+            displayTimezone={displayTimezone}
             perCentValue={perCentValue}
             session={session}
             solutionSet={solutionSet}
@@ -152,11 +155,12 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
     <div className="space-y-2">
       {/* Primary Flight Card */}
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
-          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
+          <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         ) : (
           <FlightCard
             flight={primaryFlight}
             originTimezone={originTimezone}
+            displayTimezone={displayTimezone}
             perCentValue={perCentValue}
             session={session}
             solutionSet={solutionSet}
@@ -187,9 +191,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           {similarFlights.map((flight, index) => (
             <div key={'id' in flight ? flight.id : `similar-${index}`}>
               {'id' in flight && flight.slices.length >= 3 ? (
-                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
+                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
+                <FlightCard flight={flight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
               )}
             </div>
           ))}
@@ -206,9 +210,9 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
           {codeShareFlights.map((flight, index) => (
             <div key={'id' in flight ? flight.id : `codeshare-${index}`}>
               {'id' in flight && flight.slices.length >= 3 ? (
-                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
+                <MultiLegFlightCard flight={flight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
               ) : (
-                <FlightCard flight={flight} originTimezone={originTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
+                <FlightCard flight={flight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} similarFlights={[...allFlightsForOptions, primaryFlight].filter(f => ('id' in f && 'id' in flight ? f.id !== flight.id : true))} expandedFlightCardId={expandedFlightCardId} onFlightCardToggle={onFlightCardToggle} />
               )}
             </div>
           ))}

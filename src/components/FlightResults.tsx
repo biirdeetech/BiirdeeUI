@@ -19,6 +19,7 @@ interface FlightResultsProps {
   currentPage?: number;
   pageSize?: number;
   originTimezone?: string;
+  displayTimezone?: string;
   perCentValue?: number;
   v2EnrichmentData?: Map<string, any[]>;
   onEnrichFlight?: (flight: any, carrierCode: string) => Promise<any>;
@@ -144,6 +145,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   currentPage = 1,
   pageSize = 25,
   originTimezone,
+  displayTimezone,
   perCentValue = 0.015,
   v2EnrichmentData = new Map(),
   onEnrichFlight,
@@ -913,6 +915,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               similarFlights={group.similar}
               allFlightsInStopGroup={groupFlights} // Pass all flights in stop group for time option calculation
               originTimezone={originTimezone}
+              displayTimezone={displayTimezone}
               perCentValue={perCentValue}
               session={results.session}
               solutionSet={results.solutionSet}

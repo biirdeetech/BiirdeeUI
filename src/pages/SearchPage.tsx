@@ -10,6 +10,7 @@ import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
 import FlightFilters, { FlightFilterState } from '../components/FlightFilters';
 import StreamingProgress from '../components/StreamingProgress';
+import TimezoneSelector from '../components/TimezoneSelector';
 import { useAuth } from '../hooks/useAuth';
 import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 import { FrtProvider } from '../contexts/FrtContext';
@@ -50,6 +51,13 @@ const SearchPage: React.FC = () => {
   const enrichmentTriggeredRef = useRef(false);
   const enrichmentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [perCentValue, setPerCentValue] = useState(0.015);
+  const [displayTimezone, setDisplayTimezone] = useState<string>(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return 'UTC';
+    }
+  });
   const isSearching = useRef(false);
   const lastSearchKey = useRef<string | null>(null);
   const lastLoadedPage = useRef<number | null>(null);
@@ -1177,7 +1185,19 @@ const SearchPage: React.FC = () => {
               isComplete={streamComplete}
             />
           )}
-          
+
+          {/* Timezone Selector */}
+          {hasSearched && (
+            <div className="px-4 py-4 border-b border-gray-800">
+              <div className="max-w-xs">
+                <TimezoneSelector
+                  value={displayTimezone}
+                  onChange={setDisplayTimezone}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Flight Results */}
           <div className="px-4 py-6 lg:py-8">
             <FlightResults
@@ -1191,6 +1211,7 @@ const SearchPage: React.FC = () => {
               currentPage={extractedParams.pageNum || 1}
               pageSize={extractedParams.pageSize || 25}
               originTimezone={originTimezone}
+              displayTimezone={displayTimezone}
               perCentValue={perCentValue}
               v2EnrichmentData={v2EnrichmentData}
               onEnrichFlight={handleEnrichFlight}

@@ -6,6 +6,7 @@ import { PREMIUM_CARRIERS } from '../utils/fareClasses';
 interface MultiLegFlightCardProps {
   flight: FlightSolution;
   originTimezone?: string;
+  displayTimezone?: string;
   perCentValue?: number;
   session?: string;
   solutionSet?: string;
@@ -14,7 +15,7 @@ interface MultiLegFlightCardProps {
   enrichingAirlines?: Set<string>;
 }
 
-const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set() }) => {
+const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set() }) => {
   const { slices, totalAmount, displayTotal, currency, ext } = flight;
   const firstSlice = slices[0];
   const carrier = firstSlice.segments[0]?.carrier || { code: '', name: '', shortName: '' };
@@ -152,7 +153,7 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-        ...(originTimezone && { timeZone: originTimezone })
+        ...(displayTimezone && { timeZone: displayTimezone })
       };
       return date.toLocaleTimeString('en-US', options);
     } catch {
@@ -165,7 +166,7 @@ const MultiLegFlightCard: React.FC<MultiLegFlightCardProps> = ({ flight, originT
     const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
-      ...(originTimezone && { timeZone: originTimezone })
+      ...(displayTimezone && { timeZone: displayTimezone })
     };
     return date.toLocaleDateString('en-US', options);
   };
