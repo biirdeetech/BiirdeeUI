@@ -4189,8 +4189,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, perCent
 
                   if (layoverMinutes > 0) {
                     layovers.push({
-                      airport: currentSeg.arrival.iataCode,
-                      duration: `PT${Math.floor(layoverMinutes / 60)}H${layoverMinutes % 60}M`
+                      airport: {
+                        iataCode: currentSeg.arrival.iataCode
+                      },
+                      durationMinutes: layoverMinutes
                     });
                   }
                 }
