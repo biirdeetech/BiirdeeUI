@@ -793,8 +793,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </div>
       </div>
 
-      {/* Cabin Tabs - Only show if multiple cabins exist */}
-      {availableCabins.length > 1 && (
+      {/* Cabin Tabs - Always show if cabins exist */}
+      {availableCabins.length > 0 && (
         <div className="border-b border-gray-700/50">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {availableCabins.map((cabin) => {
