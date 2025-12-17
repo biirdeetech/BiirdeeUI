@@ -154,19 +154,92 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   searchKey = ''
 }) => {
   // ALL HOOKS MUST BE CALLED AT THE TOP, BEFORE ANY EARLY RETURNS
+  // State to track which cabin is selected
+  const [selectedCabin, setSelectedCabin] = useState<string>('COACH');
   // State to track which stop group is expanded - will be initialized after we know available groups
   const [expandedStopGroup, setExpandedStopGroup] = useState<number | null>(null);
   const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
   // State to track which individual flight card is expanded (for exclusive expansion)
   const [expandedFlightCardId, setExpandedFlightCardId] = useState<string | null>(null);
 
-  // Calculate sortedStopCounts at the top level using useMemo (safe for all states)
-  const sortedStopCounts = useMemo(() => {
-    if (!results || !results.solutionList || !results.solutionList.solutions || results.solutionList.solutions.length === 0) {
+  // Helper to check if a flight has a specific cabin
+  const flightHasCabin = (flight: FlightSolution | GroupedFlight, cabin: string): boolean => {
+    if ('id' in flight) {
+      return flight.slices.some(slice => slice.cabins?.includes(cabin));
+    } else {
+      return flight.outboundSlice.cabins?.includes(cabin) || false;
+    }
+  };
+
+  // Get available cabins from all flights
+  const availableCabins = useMemo(() => {
+    if (!results || !results.solutionList || !results.solutionList.solutions) {
       return [];
     }
 
-    const flights = results.solutionList.solutions;
+    const cabinSet = new Set<string>();
+    const cabinCounts = new Map<string, number>();
+    const cabinMinPrices = new Map<string, number>();
+
+    results.solutionList.solutions.forEach(flight => {
+      const cabins = 'id' in flight
+        ? flight.slices.flatMap(slice => slice.cabins || [])
+        : flight.outboundSlice.cabins || [];
+
+      const price = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
+
+      cabins.forEach(cabin => {
+        cabinSet.add(cabin);
+        cabinCounts.set(cabin, (cabinCounts.get(cabin) || 0) + 1);
+        const currentMin = cabinMinPrices.get(cabin);
+        if (currentMin === undefined || price < currentMin) {
+          cabinMinPrices.set(cabin, price);
+        }
+      });
+    });
+
+    // Map cabin codes to display names
+    const cabinOrder = ['COACH', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST'];
+    const cabinNames: { [key: string]: string } = {
+      'COACH': 'Economy',
+      'PREMIUM_ECONOMY': 'Premium Economy',
+      'BUSINESS': 'Business',
+      'FIRST': 'First'
+    };
+
+    return cabinOrder
+      .filter(cabin => cabinSet.has(cabin))
+      .map(cabin => ({
+        code: cabin,
+        name: cabinNames[cabin] || cabin,
+        count: cabinCounts.get(cabin) || 0,
+        minPrice: cabinMinPrices.get(cabin) || 0
+      }));
+  }, [results]);
+
+  // Auto-select first available cabin
+  useEffect(() => {
+    if (availableCabins.length > 0 && !availableCabins.find(c => c.code === selectedCabin)) {
+      setSelectedCabin(availableCabins[0].code);
+    }
+  }, [availableCabins, selectedCabin]);
+
+  // Filter flights by selected cabin
+  const cabinFilteredFlights = useMemo(() => {
+    if (!results || !results.solutionList || !results.solutionList.solutions) {
+      return [];
+    }
+
+    return results.solutionList.solutions.filter(flight => flightHasCabin(flight, selectedCabin));
+  }, [results, selectedCabin]);
+
+  // Calculate sortedStopCounts at the top level using useMemo (safe for all states)
+  const sortedStopCounts = useMemo(() => {
+    if (cabinFilteredFlights.length === 0) {
+      return [];
+    }
+
+    const flights = cabinFilteredFlights;
     const processedFlights = flights;
 
     // Group flights by stop count
@@ -198,7 +271,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     });
 
     return Array.from(groups.keys()).sort((a, b) => a - b);
-  }, [results]);
+  }, [cabinFilteredFlights]);
 
   // Ensure at least one group is always open - initialize with first available (nonstop > 1 stop > 2 stops > 3 stops)
   useEffect(() => {
@@ -260,8 +333,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     );
   }
 
-  // Show results
-  const flights = results.solutionList.solutions;
+  // Show results - use cabin filtered flights
+  const flights = cabinFilteredFlights;
   // Disable grouping - show each solution as a separate card (as API returns them)
   let processedFlights = flights; // groupFlightsByOutbound(flights);
 
@@ -719,6 +792,58 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           )}
         </div>
       </div>
+
+      {/* Cabin Tabs - Only show if multiple cabins exist */}
+      {availableCabins.length > 1 && (
+        <div className="border-b border-gray-700/50">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {availableCabins.map((cabin) => {
+              const isActive = selectedCabin === cabin.code;
+              const firstFlight = results.solutionList.solutions[0];
+              const currency = firstFlight && 'id' in firstFlight
+                ? firstFlight.currency
+                : 'USD';
+
+              return (
+                <button
+                  key={`cabin-${cabin.code}`}
+                  onClick={() => {
+                    setSelectedCabin(cabin.code);
+                    setExpandedStopGroup(null); // Reset stop group when changing cabin
+                  }}
+                  className={`
+                    relative px-5 py-3 text-sm font-semibold transition-all duration-200 whitespace-nowrap
+                    border-b-2 -mb-px
+                    ${isActive
+                      ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+                      : 'text-gray-400 border-transparent hover:text-gray-300 hover:border-gray-600/50'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span>{cabin.name}</span>
+                    <span className={`
+                      text-xs px-2 py-0.5 rounded-full font-semibold
+                      ${isActive
+                        ? 'bg-blue-500/20 text-blue-300'
+                        : 'bg-gray-800/70 text-gray-500'
+                      }
+                    `}>
+                      {cabin.count}
+                    </span>
+                    <span className={`
+                      text-xs font-semibold
+                      ${isActive ? 'text-blue-300' : 'text-gray-500'}
+                    `}>
+                      {currency}{cabin.minPrice.toLocaleString()}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stop Count Tabs - Only show if multiple stop groups exist */}
       {sortedStopCounts.length > 1 && (
