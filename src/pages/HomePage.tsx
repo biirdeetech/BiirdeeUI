@@ -97,7 +97,7 @@ const HomePage: React.FC = () => {
           <div className="space-y-8 mb-16">
             <h2 className="text-4xl md:text-5xl font-bold leading-tight">
               <span className="bg-gradient-to-r from-white via-gray-100 to-gray-200 bg-clip-text text-transparent drop-shadow-lg">
-                Find Premium Flight Deals
+                Find Luxury Flight Deals
               </span>
               <br />
               <span className="bg-gradient-to-r from-accent-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
