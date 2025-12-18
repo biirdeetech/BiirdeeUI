@@ -72,9 +72,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: true,
       departDate: getDefaultDepartDate(),
-      cabin: 'BUSINESS',
+      cabin: 'COACH',
       bookingClasses: (() => {
-        // Default to business class booking classes
+        // Default to business + first class booking classes
         const allClasses = [
           ...getDefaultBookingClasses('BUSINESS'),
           ...getDefaultBookingClasses('FIRST')
@@ -95,7 +95,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   ]);
   const [showExtTooltip, setShowExtTooltip] = useState<string | null>(null);
   const [showViaInput, setShowViaInput] = useState<string | null>(null);
-  const [bookingClassSelection, setBookingClassSelection] = useState<Record<string, string>>({ '1': 'all' });
+  const [bookingClassSelection, setBookingClassSelection] = useState<Record<string, string>>({ '1': 'business' });
 
   // Nearby airport modal state
   const [nearbyModalOpen, setNearbyModalOpen] = useState(false);
@@ -127,7 +127,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [allAeroCabin, setAllAeroCabin] = useState(true);
-  const [globalCabinClass, setGlobalCabinClass] = useState<string>('BUSINESS');
+  const [globalCabinClass, setGlobalCabinClass] = useState<string>('COACH');
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
   const [currency, setCurrency] = useState<Currency | null>({ code: 'USD', displayName: 'United States Dollar (USD)' });
 

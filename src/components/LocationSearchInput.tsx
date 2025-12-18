@@ -130,7 +130,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   return (
     <div className="relative" ref={wrapperRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
           {label}
         </label>
       )}
@@ -146,7 +146,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
             }
           }}
           placeholder={placeholder}
-          className="w-full px-3 py-2 pl-10 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+          className="w-full px-3 py-2 pl-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
         />
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         {isLoading && (
@@ -157,30 +157,30 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
       </div>
 
       {isOpen && locations.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {locations.map((location, index) => (
             <button
               type="button"
               key={`${location.code}-${index}`}
               onClick={() => handleSelectLocation(location)}
               onMouseEnter={() => setSelectedIndex(index)}
-              className={`w-full px-4 py-3 text-left transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0 ${
-                index === selectedIndex ? 'bg-gray-700' : 'hover:bg-gray-700'
+              className={`w-full px-4 py-3 text-left transition-colors flex items-start gap-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0 ${
+                index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               <div className="mt-0.5">
                 {getLocationIcon(location.type)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white truncate">
+                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {location.displayName}
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   {location.type === 'city' ? 'Sales City' : location.type}
                   {location.cityName && ` • ${location.cityName}`}
                 </div>
               </div>
-              <div className="text-xs font-mono bg-accent-500/20 text-accent-300 px-2 py-1 rounded">
+              <div className="text-xs font-mono bg-accent-500/20 text-accent-600 dark:text-accent-300 px-2 py-1 rounded">
                 {locationType === 'SALES_CITIES' ? location.salesCityCode || location.code : location.code}
               </div>
             </button>
