@@ -668,13 +668,13 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   };
 
   return (
-    <div className={`bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl ${compact ? 'p-4' : 'p-8'} hover:border-gray-600 transition-all duration-300`}>
+    <div className={`bg-white dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl ${compact ? 'p-4' : 'p-8'} hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300`}>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3">
           {/* Title Row */}
           <div className="flex items-center justify-between">
-            <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-white`}>
+            <h3 className={`${compact ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-white`}>
               {compact ? 'Modify Search' : 'Flight Search'}
             </h3>
           </div>
@@ -683,11 +683,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           <div className="flex flex-wrap items-center gap-3">
             {/* Passengers */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-300">Passengers</label>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Passengers</label>
               <select
                 value={passengers}
                 onChange={(e) => setPassengers(Number(e.target.value))}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                   <option key={num} value={num}>{num}</option>
@@ -697,11 +697,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
             {/* Page Size */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-300">Results</label>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Results</label>
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all"
               >
                 {[5, 10, 25, 50, 100, 200, 300, 400, 500].map(size => (
                   <option key={size} value={size}>{size}</option>
@@ -711,7 +711,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
             {/* Per Cent Value */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-300">Per Cent Value</label>
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Per Cent Value</label>
               <input
                 type="number"
                 value={perCentValue}
@@ -719,12 +719,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 step="0.001"
                 min="0"
                 max="1"
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all w-24"
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all w-24"
               />
             </div>
 
             {/* Divider - hide on small screens */}
-            <div className="hidden sm:block h-6 w-px bg-gray-700"></div>
+            <div className="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
 
             {/* Nonstop Toggle */}
             <label className="relative inline-flex items-center cursor-pointer group">
@@ -742,8 +742,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 }}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Nonstop only</span>
+              <div className="w-9 h-5 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
+              <span className="ms-2 text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors whitespace-nowrap">Nonstop only</span>
             </label>
 
             {/* Aero Toggle */}
@@ -754,8 +754,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 onChange={(e) => setAeroEnabled(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Aero Enabled</span>
+              <div className="w-9 h-5 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-500"></div>
+              <span className="ms-2 text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors whitespace-nowrap">Aero Enabled</span>
             </label>
 
             {/* Award Toggle */}
@@ -766,8 +766,8 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 onChange={(e) => setAwardEnabled(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">Award Enabled</span>
+              <div className="w-9 h-5 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+              <span className="ms-2 text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors whitespace-nowrap">Award Enabled</span>
             </label>
 
             {/* FRT Toggle */}
@@ -778,12 +778,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 onChange={(e) => setFrtEnabled(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
-              <span className="ms-2 text-sm text-gray-300 group-hover:text-gray-100 transition-colors whitespace-nowrap">FRT Enabled</span>
+              <div className="w-9 h-5 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+              <span className="ms-2 text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors whitespace-nowrap">FRT Enabled</span>
             </label>
 
             {/* Divider - hide on small screens */}
-            <div className="hidden sm:block h-6 w-px bg-gray-700"></div>
+            <div className="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
 
             {/* Advanced Button */}
             <button
@@ -792,7 +792,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all whitespace-nowrap ${
                 showAdvancedOptions
                   ? 'bg-accent-600 hover:bg-accent-700 border-accent-500 text-white shadow-lg shadow-accent-500/20'
-                  : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300 hover:text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
               title="Advanced Options"
             >
@@ -805,7 +805,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         {/* Flight Legs */}
         <div className="space-y-4">
           {legs.map((leg, index) => (
-            <div key={leg.id} className={`bg-gray-850/50 backdrop-blur-sm rounded-xl ${compact ? 'p-3' : 'p-5'} border border-gray-700 hover:border-gray-600 transition-all duration-200 overflow-visible`}>
+            <div key={leg.id} className={`bg-gray-50 dark:bg-gray-850/50 backdrop-blur-sm rounded-xl ${compact ? 'p-3' : 'p-5'} border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 overflow-visible`}>
               <div className="flex items-center gap-3 mb-4">
                 <span className={`bg-gradient-to-r from-accent-600 to-accent-700 text-white ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded-lg font-medium shadow-lg`}>
                   Leg {index + 1}
@@ -819,7 +819,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <StrategyBadge type="fake-roundtrip" />
                 )}
 
-                <div className="flex-1 border-t border-gray-700"></div>
+                <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
 
                 {legs.length > 1 && (
                   <button
@@ -858,10 +858,10 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     <button
                       type="button"
                       onClick={() => swapOriginsDestinations(leg.id)}
-                      className="bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center shrink-0"
+                      className="bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 rounded-full p-2.5 transition-all duration-200 flex items-center justify-center shrink-0"
                       title="Switch origins and destinations"
                     >
-                      <ArrowLeftRight className="h-4 w-4 text-gray-400 transition-colors" />
+                      <ArrowLeftRight className="h-4 w-4 text-gray-500 dark:text-gray-400 transition-colors" />
                     </button>
 
                     {/* Plus icon button - floats above on hover - ALWAYS visible when not in input mode */}
@@ -906,7 +906,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                           <button
                             type="button"
                             onClick={() => setShowViaInput(null)}
-                            className="absolute -top-2 -right-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-full p-1 text-gray-400 hover:text-white z-10"
+                            className="absolute -top-2 -right-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white z-10"
                             title="Close"
                           >
                             <X className="h-3 w-3" />
@@ -976,12 +976,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
               {/* Date Row */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Departure Date</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Departure Date</label>
                 <input
                   type="date"
                   value={leg.departDate}
                   onChange={(e) => updateLeg(leg.id, 'departDate', e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
                   required
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -995,7 +995,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
                 {/* Cabin Class */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Cabin Class</label>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Cabin Class</label>
                   <select
                     value={globalCabinClass}
                     onChange={(e) => {
@@ -1004,7 +1004,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       // Update all legs with the new cabin class
                       setLegs(prevLegs => prevLegs.map(leg => ({ ...leg, cabin: newCabin })));
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
                   >
                     <option value="COACH">Cheapest Available</option>
                     <option value="PREMIUM-COACH">Premium Economy</option>
@@ -1016,38 +1016,38 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 {/* Booking Class Codes */}
                 <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-gray-300">Booking Class Selection</label>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Booking Class Selection</label>
                   <div className="relative">
                     <button
                       type="button"
                       onMouseEnter={() => setShowExtTooltip(leg.id)}
                       onMouseLeave={() => setShowExtTooltip(null)}
-                      className="text-gray-400 hover:text-gray-300"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       <Info className="h-4 w-4" />
                     </button>
                     {showExtTooltip === leg.id && (
-                      <div className="absolute left-0 top-6 z-50 w-96 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-4 text-xs">
+                      <div className="absolute left-0 top-6 z-50 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 text-xs">
                         <div className="space-y-3">
                           <div>
-                            <p className="font-semibold text-white mb-1">First Class</p>
-                            <p className="text-gray-300">Common letters: F, A, P</p>
-                            <p className="text-gray-400 text-xs">F = Full-fare First, A = Discounted, P = Award/Promo</p>
+                            <p className="font-semibold text-gray-900 dark:text-white mb-1">First Class</p>
+                            <p className="text-gray-600 dark:text-gray-300">Common letters: F, A, P</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">F = Full-fare First, A = Discounted, P = Award/Promo</p>
                           </div>
                           <div>
-                            <p className="font-semibold text-white mb-1">Business Class</p>
-                            <p className="text-gray-300">Common letters: J, C, D, I, Z</p>
-                            <p className="text-gray-400 text-xs">J/C = Full-fare, D/I/Z = Discounted/Award</p>
+                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Business Class</p>
+                            <p className="text-gray-600 dark:text-gray-300">Common letters: J, C, D, I, Z</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">J/C = Full-fare, D/I/Z = Discounted/Award</p>
                           </div>
                           <div>
-                            <p className="font-semibold text-white mb-1">Premium Economy</p>
-                            <p className="text-gray-300">Common letters: W, R, G, P</p>
-                            <p className="text-gray-400 text-xs">W = Full-fare, R/G = Discounted</p>
+                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Premium Economy</p>
+                            <p className="text-gray-600 dark:text-gray-300">Common letters: W, R, G, P</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">W = Full-fare, R/G = Discounted</p>
                           </div>
                           <div>
-                            <p className="font-semibold text-white mb-1">Economy Class</p>
-                            <p className="text-gray-300">Common letters: Y, B, H, M, K, L, Q, V, N, S, T, E, O</p>
-                            <p className="text-gray-400 text-xs">Y = Full-fare, Others = Discounted tiers</p>
+                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Economy Class</p>
+                            <p className="text-gray-600 dark:text-gray-300">Common letters: Y, B, H, M, K, L, Q, V, N, S, T, E, O</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">Y = Full-fare, Others = Discounted tiers</p>
                           </div>
                         </div>
                       </div>
@@ -1083,7 +1083,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                         updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
                       }
                     }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500"
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
                   >
                     <option value="all">All</option>
                     <option value="economy">Economy</option>
@@ -1092,16 +1092,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                     <option value="first">First</option>
                     <option value="business_plus">Business + First</option>
                   </select>
-                  <div className="text-xs text-gray-400 mt-2 mb-2">Booking Classes</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-2">Booking Classes</div>
                   <div className="min-h-[36px] mb-2">
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                       {leg.bookingClasses.map((bookingClass) => (
-                        <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-sm font-mono whitespace-nowrap">
+                        <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded text-sm font-mono whitespace-nowrap">
                           {bookingClass}
                           <button
                             type="button"
                             onClick={() => removeBookingClass(leg.id, bookingClass)}
-                            className="text-purple-300 hover:text-purple-100"
+                            className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -1112,7 +1112,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   <input
                     type="text"
                     placeholder="Add class (e.g., J, C, D)"
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono text-sm"
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono text-sm"
                     maxLength={1}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -1132,28 +1132,28 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
               {/* Per-Leg ITA Matrix & Aero Options */}
               {showAdvancedOptions && (
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <h4 className="text-sm font-medium text-gray-200 mb-3">Advanced Search Options for this Leg</h4>
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">Advanced Search Options for this Leg</h4>
 
                 {/* Date Type and Modifier */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-xs text-gray-300 mb-1">Date Type</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Date Type</label>
                     <select
                       value={leg.departureDateType}
                       onChange={(e) => updateLeg(leg.id, 'departureDateType', e.target.value as 'depart' | 'arrive')}
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     >
                       <option value="depart">Depart</option>
                       <option value="arrive">Arrive</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-300 mb-1">Date Modifier</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Date Modifier</label>
                     <select
                       value={leg.departureDateModifier}
                       onChange={(e) => updateLeg(leg.id, 'departureDateModifier', e.target.value as '0' | '1' | '10' | '11' | '2' | '22')}
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     >
                       <option value="0">Exact date</option>
                       <option value="1">± 1 day</option>
@@ -1167,7 +1167,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 {/* Preferred Departure Times */}
                 <div className="mb-4">
-                  <label className="block text-xs text-gray-300 mb-2">Preferred Departure Times</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-300 mb-2">Preferred Departure Times</label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {[
                       { value: 0, label: '< 8 AM' },
@@ -1188,9 +1188,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                               : times.filter(t => t !== slot.value);
                             updateLeg(leg.id, 'departureDatePreferredTimes', newTimes);
                           }}
-                          className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                          className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                         />
-                        <span className="text-xs text-gray-300">{slot.label}</span>
+                        <span className="text-xs text-gray-600 dark:text-gray-300">{slot.label}</span>
                       </label>
                     ))}
                   </div>
@@ -1198,11 +1198,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-300 mb-1">Max Stops</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Max Stops</label>
                     <select
                       value={leg.maxStops}
                       onChange={(e) => updateLeg(leg.id, 'maxStops', parseInt(e.target.value))}
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     >
                       <option value="-1">No limit</option>
                       <option value="0">Nonstop only</option>
@@ -1212,11 +1212,11 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                   </div>
 
                   <div>
-                    <label className="block text-xs text-gray-300 mb-1">Extra Stops</label>
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">Extra Stops</label>
                     <select
                       value={leg.extraStops}
                       onChange={(e) => updateLeg(leg.id, 'extraStops', parseInt(e.target.value))}
-                      className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
                     >
                       <option value="-1">No limit</option>
                       <option value="0">Nonstop only</option>
@@ -1232,9 +1232,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       type="checkbox"
                       checked={leg.allowAirportChanges}
                       onChange={(e) => updateLeg(leg.id, 'allowAirportChanges', e.target.checked)}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                      className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                     />
-                    <span className="text-xs text-gray-300">Allow Airport Changes</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300">Allow Airport Changes</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1242,9 +1242,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       type="checkbox"
                       checked={leg.showOnlyAvailable}
                       onChange={(e) => updateLeg(leg.id, 'showOnlyAvailable', e.target.checked)}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                      className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                     />
-                    <span className="text-xs text-gray-300">Show Only Available</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300">Show Only Available</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1252,20 +1252,20 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                       type="checkbox"
                       checked={leg.fetchSummary}
                       onChange={(e) => updateLeg(leg.id, 'fetchSummary', e.target.checked)}
-                      className="bg-gray-800 border border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
+                      className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-accent-500 focus:ring-accent-500 focus:ring-2"
                     />
-                    <span className="text-xs text-gray-300">Fetch ITA Summary</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300">Fetch ITA Summary</span>
                   </label>
                 </div>
               </div>
               )}
             </div>
           ))}
-          
+
           <button
             type="button"
             onClick={addLeg}
-            className={`w-full bg-gray-850 border border-gray-700 border-dashed rounded-lg ${compact ? 'p-3' : 'p-4'} text-gray-400 hover:text-gray-300 hover:border-gray-600 transition-colors flex items-center justify-center gap-2`}
+            className={`w-full bg-gray-100 dark:bg-gray-850 border border-gray-300 dark:border-gray-700 border-dashed rounded-lg ${compact ? 'p-3' : 'p-4'} text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-600 transition-colors flex items-center justify-center gap-2`}
           >
             <Plus className="h-4 w-4" />
             <span className={compact ? 'text-sm' : ''}>
@@ -1274,9 +1274,9 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           </button>
         </div>
 
-        <div className={`flex items-center gap-4 ${compact ? 'text-xs' : 'text-sm'} text-gray-400`}>
+        <div className={`flex items-center gap-4 ${compact ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400`}>
           <span>Trip Type:</span>
-          <span className={`px-2 py-1 bg-gray-800 rounded text-gray-200 font-medium ${compact ? 'text-xs' : ''}`}>
+          <span className={`px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-200 font-medium ${compact ? 'text-xs' : ''}`}>
             {getTripType() === 'oneWay' && 'One Way'}
             {getTripType() === 'roundTrip' && 'Round Trip'}
             {getTripType() === 'multiCity' && `Multi-City (${legs.length} legs)`}
@@ -1287,30 +1287,30 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         {showAdvancedOptions && (
         <>
         {/* Global Configuration Section */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-4">
-          <h4 className="text-sm font-medium text-gray-300">Global Configuration</h4>
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
+          <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">Global Configuration</h4>
 
           {/* Pagination Options */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Page Size</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Page Size</label>
               <input
                 type="number"
                 min="1"
                 max="500"
                 value={pageSize}
                 onChange={(e) => setPageSize(parseInt(e.target.value) || 25)}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Page Number</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Page Number</label>
               <input
                 type="number"
                 min="1"
                 value={pageNum}
                 onChange={(e) => setPageNum(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
               />
             </div>
           </div>
@@ -1318,12 +1318,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
           {/* Sales City and Currency */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Sales City (Optional)
               </label>
               {salesCity ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm flex items-center justify-between">
+                  <div className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 text-sm flex items-center justify-between">
                     <span>{salesCity.name}</span>
                     <button
                       type="button"
@@ -1348,12 +1348,12 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
               </p>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Currency (Optional)
               </label>
               {currency ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-gray-100 text-sm flex items-center justify-between">
+                  <div className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 text-sm flex items-center justify-between">
                     <span>{currency.displayName}</span>
                     <button
                       type="button"
