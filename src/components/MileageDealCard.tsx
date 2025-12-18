@@ -1,4 +1,4 @@
-import { Plane, Clock, MapPin, DollarSign } from 'lucide-react';
+import { Plane, Clock, MapPin, DollarSign, ExternalLink } from 'lucide-react';
 
 interface MileageDealCardProps {
   deal: any;
@@ -66,6 +66,21 @@ export function MileageDealCard({ deal, formatDuration }: MileageDealCardProps) 
           )}
         </div>
       </div>
+
+      {/* Booking URL Button */}
+      {deal.bookingUrl && (
+        <div className="mb-3">
+          <a
+            href={deal.bookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-600 hover:bg-accent-700 text-white rounded-lg transition-colors font-medium text-sm"
+          >
+            <span>Book on Airline Website</span>
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
+      )}
 
       {/* Flight Timeline - Show stops/segments if available */}
       {deal.segments && deal.segments.length > 0 && (

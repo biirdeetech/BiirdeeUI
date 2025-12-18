@@ -72,18 +72,16 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       vias: [],
       nonstop: true,
       departDate: getDefaultDepartDate(),
-      cabin: 'COACH',
+      cabin: 'BUSINESS',
       bookingClasses: (() => {
-        // Default to all booking classes
+        // Default to business class booking classes
         const allClasses = [
-          ...getDefaultBookingClasses('COACH'),
-          ...getDefaultBookingClasses('PREMIUM-COACH'),
           ...getDefaultBookingClasses('BUSINESS'),
           ...getDefaultBookingClasses('FIRST')
         ];
         return [...new Set(allClasses)];
       })(),
-      businessPlus: false,
+      businessPlus: true,
       departureDateType: 'depart',
       departureDateModifier: '0',
       departureDatePreferredTimes: [],
@@ -129,7 +127,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [strictLegMatch, setStrictLegMatch] = useState(false);
   const [fetchSummary, setFetchSummary] = useState(false);
   const [allAeroCabin, setAllAeroCabin] = useState(true);
-  const [globalCabinClass, setGlobalCabinClass] = useState<string>('COACH');
+  const [globalCabinClass, setGlobalCabinClass] = useState<string>('BUSINESS');
   const [salesCity, setSalesCity] = useState<{ code: string; name: string } | null>(null);
   const [currency, setCurrency] = useState<Currency | null>({ code: 'USD', displayName: 'United States Dollar (USD)' });
 

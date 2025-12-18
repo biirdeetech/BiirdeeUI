@@ -1070,7 +1070,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   fullyEnriched: true,
                   transferOptions: cabin.transfer_options || [],
                   segments: cabin.segments || [],
-                  seats: cabin.seats || 0
+                  seats: cabin.seats || 0,
+                  bookingUrl: awardtool.bookingUrl || null
                 };
                 console.log(`✅ FlightCard: Found awardtool enrichment - ${enrichmentCarrier} ${normalizedCabinName}: ${mileage} miles + $${tax}`);
               }
@@ -1243,6 +1244,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                 price: flightData.price,
                 data: flightData,
                 enrichment: enrichment,
+                bookingUrl: awardtool.bookingUrl || null,
                 // Store enrichment segment metadata for filtering
                 enrichmentOrigin: enrichment.segment?.origin,
                 enrichmentDestination: enrichment.segment?.destination

@@ -22,6 +22,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +54,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
         pageSize: 10
       });
       setLocations(result.locations || []);
+      setSelectedIndex(0);
       setIsOpen(true);
     } catch (error) {
       console.error('Location search failed:', error);
@@ -91,6 +93,33 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
     setLocations([]);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || locations.length === 0) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % locations.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + locations.length) % locations.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (locations[selectedIndex]) {
+          handleSelectLocation(locations[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        break;
+    }
+  };
+
   const getLocationIcon = (type: string) => {
     if (type === 'airport' || type === 'helipad') {
       return <Plane className="h-4 w-4 text-accent-400" />;
@@ -110,6 +139,7 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           onFocus={() => {
             if (inputValue.length >= 2) {
               searchLocations(inputValue);
@@ -133,7 +163,10 @@ const LocationSearchInput: React.FC<LocationSearchInputProps> = ({
               type="button"
               key={`${location.code}-${index}`}
               onClick={() => handleSelectLocation(location)}
-              className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0"
+              onMouseEnter={() => setSelectedIndex(index)}
+              className={`w-full px-4 py-3 text-left transition-colors flex items-start gap-3 border-b border-gray-700 last:border-b-0 ${
+                index === selectedIndex ? 'bg-gray-700' : 'hover:bg-gray-700'
+              }`}
             >
               <div className="mt-0.5">
                 {getLocationIcon(location.type)}
