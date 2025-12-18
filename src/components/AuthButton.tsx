@@ -34,7 +34,7 @@ const AuthButton: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="w-8 h-8 bg-gray-700 animate-pulse rounded-full"></div>
+      <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full"></div>
     );
   }
 
@@ -54,7 +54,7 @@ const AuthButton: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg font-medium transition-colors"
+        className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 rounded-lg font-medium transition-colors"
       >
         {profile?.avatar_url ? (
           <img
@@ -74,9 +74,9 @@ const AuthButton: React.FC = () => {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 top-full mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 min-w-48">
-          <div className="p-3 border-b border-gray-700">
-            <div className="text-white font-medium">
+        <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 min-w-48">
+          <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="text-gray-900 dark:text-white font-medium">
               {profile?.full_name || 'User'}
               {isAdmin && (
                 <span className="ml-2 bg-accent-500 text-white px-2 py-1 rounded-full text-xs font-medium">
@@ -84,36 +84,36 @@ const AuthButton: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="text-gray-400 text-sm">
+            <div className="text-gray-500 dark:text-gray-400 text-sm">
               {user.email}
             </div>
           </div>
-          
+
           <div className="py-2">
             <button
               onClick={goToProfile}
-              className="w-full text-left px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
             >
               <User className="h-4 w-4" />
               Profile
             </button>
-            
+
             {isAdmin && (
               <button
                 onClick={() => {
                   navigate('/admin/routes');
                   setShowDropdown(false);
                 }}
-                className="w-full text-left px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
                 <Route className="h-4 w-4" />
                 Admin Routes
               </button>
             )}
-            
+
             <button
               onClick={handleSignOut}
-              className="w-full text-left px-3 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
               Sign out
