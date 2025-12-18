@@ -56,12 +56,12 @@ const SignInPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
         <Navigation />
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
             <div className="w-8 h-8 bg-accent-600 animate-pulse rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-300">Loading...</p>
+            <p className="text-gray-700 dark:text-gray-300">Loading...</p>
             
             {/* Emergency reset button for stuck users */}
             <button
@@ -88,7 +88,7 @@ const SignInPage: React.FC = () => {
 
   // Don't redirect away from sign-in page - let anyone access it
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {/* Navigation */}
       <Navigation />
 

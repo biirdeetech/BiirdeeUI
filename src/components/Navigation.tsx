@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plane, FileText, Search, Users, Map } from 'lucide-react';
+import { Plane, FileText, Search, Users, Map, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 import AuthButton from './AuthButton';
 
 const Navigation: React.FC = () => {
   const { user, profile, isDevMode } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,7 +22,7 @@ const Navigation: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-200">
       <div className="w-full px-4 sm:px-6">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -33,14 +35,14 @@ const Navigation: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white">Biirdee Pro</h1>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Biirdee Pro</h1>
                 {isDevMode && (
                   <span className="bg-yellow-500 text-black px-2 py-0.5 rounded text-xs font-bold">
                     DEV
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 hidden sm:block">Flight Search & Proposals</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Flight Search & Proposals</p>
             </div>
           </button>
 
@@ -58,7 +60,7 @@ const Navigation: React.FC = () => {
                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-accent-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -88,6 +90,19 @@ const Navigation: React.FC = () => {
                 Reset App
               </button>
             )}
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </button>
           </div>
 
           {/* Auth Button */}

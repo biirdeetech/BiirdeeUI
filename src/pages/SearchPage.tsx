@@ -21,12 +21,12 @@ const SearchPage: React.FC = () => {
   // Early return for loading state to prevent rendering issues
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
         <Navigation />
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
             <div className="w-8 h-8 bg-accent-600 animate-pulse rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-300">Loading...</p>
+            <p className="text-gray-700 dark:text-gray-300">Loading...</p>
           </div>
         </div>
       </div>
@@ -69,14 +69,14 @@ const SearchPage: React.FC = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Don't render main content if not authenticated  
+  // Don't render main content if not authenticated
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
         <Navigation />
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
-            <p className="text-gray-300">Redirecting to sign in...</p>
+            <p className="text-gray-700 dark:text-gray-300">Redirecting to sign in...</p>
           </div>
         </div>
       </div>
@@ -1112,14 +1112,14 @@ const SearchPage: React.FC = () => {
 
   return (
     <FrtProvider>
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
         {/* Navigation - Sticky to top */}
         <Navigation />
 
         <div className="lg:flex lg:overflow-hidden lg:relative">
         {/* Mobile/Tablet: Full width top section, Desktop: Overlay Sidebar */}
         <div
-          className={`w-full bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto transition-all duration-300 ${
+          className={`w-full bg-white dark:bg-gray-900 border-b lg:border-r lg:border-b-0 border-gray-200 dark:border-gray-800 lg:fixed lg:left-0 lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto transition-all duration-300 ${
             sidebarCollapsed ? 'lg:w-0 lg:border-r-0 lg:-translate-x-full' : 'lg:w-[480px] lg:translate-x-0 lg:shadow-2xl'
           } lg:z-50`}
         >
@@ -1141,15 +1141,15 @@ const SearchPage: React.FC = () => {
         {/* Sidebar Toggle Button - Desktop Only, moved 70px lower */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className={`hidden lg:block fixed top-[150px] z-[60] bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
+          className={`hidden lg:block fixed top-[150px] z-[60] bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 rounded-r-lg p-2 transition-all duration-300 ${
             sidebarCollapsed ? 'left-0 top-[20px]' : 'left-[480px]'
           }`}
           title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
         >
           {sidebarCollapsed ? (
-            <ChevronRight className="h-5 w-5 text-gray-400" />
+            <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           ) : (
-            <ChevronLeft className="h-5 w-5 text-gray-400" />
+            <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           )}
         </button>
 

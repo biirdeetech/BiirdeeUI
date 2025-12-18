@@ -20,12 +20,12 @@ const HomePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
         <Navigation />
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
             <div className="w-8 h-8 bg-accent-600 animate-pulse rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-300">Loading...</p>
+            <p className="text-gray-700 dark:text-gray-300">Loading...</p>
           </div>
         </div>
       </div>
@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-indigo-950 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950 relative overflow-hidden transition-colors duration-200">
       {/* Static Background Elements - No animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large floating orbs - static */}
@@ -96,7 +96,7 @@ const HomePage: React.FC = () => {
           
           <div className="space-y-8 mb-16">
             <h2 className="text-4xl md:text-5xl font-bold leading-tight">
-              <span className="bg-gradient-to-r from-white via-gray-100 to-gray-200 bg-clip-text text-transparent drop-shadow-lg">
+              <span className="bg-gradient-to-r from-gray-900 via-gray-700 to-gray-800 dark:from-white dark:via-gray-100 dark:to-gray-200 bg-clip-text text-transparent drop-shadow-lg">
                 Find Luxury Flight Deals
               </span>
               <br />
@@ -104,7 +104,7 @@ const HomePage: React.FC = () => {
                 with Advanced Strategies
               </span>
           </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Discover <span className="text-accent-400 font-bold bg-accent-500/20 px-2 py-1 rounded">hidden city tickets</span>, 
               <span className="text-blue-400 font-bold bg-blue-500/20 px-2 py-1 rounded"> fake round trips</span>, and 
               <span className="text-purple-400 font-bold bg-purple-500/20 px-2 py-1 rounded"> premium routing strategies</span> 
@@ -118,7 +118,7 @@ const HomePage: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-accent-500 to-orange-500 rounded-lg blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                   <div className="relative text-3xl font-bold bg-gradient-to-r from-accent-400 to-orange-400 bg-clip-text text-transparent group-hover:scale-125 transition-transform duration-500">$50K+</div>
                 </div>
-                <div className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">Client Savings</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">Client Savings</div>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-accent-400 to-orange-400 mx-auto mt-2 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
               <div className="w-px h-12 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
@@ -127,16 +127,16 @@ const HomePage: React.FC = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                   <div className="relative text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent group-hover:scale-125 transition-transform duration-500">500+</div>
                 </div>
-                <div className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">Routes Found</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">Routes Found</div>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-blue-400 to-cyan-400 mx-auto mt-2 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
-              <div className="w-px h-12 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
+              <div className="w-px h-12 bg-gradient-to-b from-transparent via-gray-400 dark:via-gray-600 to-transparent"></div>
               <div className="text-center group cursor-pointer">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                   <div className="relative text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent group-hover:scale-125 transition-transform duration-500">98%</div>
                 </div>
-                <div className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">Success Rate</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">Success Rate</div>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto mt-2 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
             </div>
@@ -183,7 +183,7 @@ const HomePage: React.FC = () => {
                 <Sparkles className="h-6 w-6 text-accent-400 group-hover/heading:animate-spin" />
                 <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 group-hover/heading:animate-pulse"></div>
               </div>
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-white via-gray-100 to-accent-300 bg-clip-text text-transparent">
+              <h3 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-700 to-accent-600 dark:from-white dark:via-gray-100 dark:to-accent-300 bg-clip-text text-transparent">
                 Powerful Strategies
               </h3>
               <div className="relative">
@@ -191,16 +191,16 @@ const HomePage: React.FC = () => {
                 <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 group-hover/heading:animate-pulse delay-500"></div>
               </div>
             </div>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              Advanced routing techniques used by <span className="text-accent-400 font-semibold">travel professionals</span> to unlock 
-              <span className="text-green-400 font-semibold"> hidden savings</span> and 
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Advanced routing techniques used by <span className="text-accent-400 font-semibold">travel professionals</span> to unlock
+              <span className="text-green-400 font-semibold"> hidden savings</span> and
               <span className="text-blue-400 font-semibold"> premium access</span>
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-10">
             {/* Fake Round Trip Card */}
-            <div className="group bg-gradient-to-br from-gray-900/90 via-gray-850/80 to-gray-900/90 backdrop-blur-sm border border-gray-800 hover:border-success-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-success-500/30 hover:shadow-2xl relative overflow-hidden">
+            <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-850/80 dark:to-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 hover:border-success-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-success-500/30 hover:shadow-2xl relative overflow-hidden">
               {/* Animated background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-success-600/5 via-transparent to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-success-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -212,10 +212,10 @@ const HomePage: React.FC = () => {
                   <Target className="h-10 w-10 text-white group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300" />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-success-300 transition-colors duration-300">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-success-600 dark:group-hover:text-success-300 transition-colors duration-300">
                 Fake Round Trip
               </h3>
-              <p className="text-gray-400 leading-relaxed group-hover:text-gray-200 transition-colors duration-300">
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors duration-300">
                 Book round trip flights with <span className="text-success-400 font-semibold">throwaway returns</span> to access lower one-way pricing on premium routes.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3 text-success-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
@@ -226,7 +226,7 @@ const HomePage: React.FC = () => {
             </div>
 
             {/* Skiplag Strategy Card */}
-            <div className="group bg-gradient-to-br from-gray-900/90 via-gray-850/80 to-gray-900/90 backdrop-blur-sm border border-gray-800 hover:border-blue-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-blue-500/30 hover:shadow-2xl relative overflow-hidden delay-100">
+            <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-850/80 dark:to-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 hover:border-blue-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-blue-500/30 hover:shadow-2xl relative overflow-hidden delay-100">
               {/* Animated background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-cyan-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="absolute bottom-0 right-0 w-full h-px bg-gradient-to-l from-transparent via-blue-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -238,10 +238,10 @@ const HomePage: React.FC = () => {
                   <Zap className="h-10 w-10 text-white group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-300" />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-blue-300 transition-colors duration-300">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors duration-300">
                 Skiplag Strategy
               </h3>
-              <p className="text-gray-400 leading-relaxed group-hover:text-gray-200 transition-colors duration-300">
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors duration-300">
                 Find <span className="text-blue-400 font-semibold">hidden city tickets</span> by booking flights to destinations beyond your actual stop.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3 text-blue-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
@@ -252,7 +252,7 @@ const HomePage: React.FC = () => {
             </div>
 
             {/* Premium Routes Card */}
-            <div className="group bg-gradient-to-br from-gray-900/90 via-gray-850/80 to-gray-900/90 backdrop-blur-sm border border-gray-800 hover:border-purple-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-purple-500/30 hover:shadow-2xl relative overflow-hidden delay-200">
+            <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-gray-900/90 dark:via-gray-850/80 dark:to-gray-900/90 backdrop-blur-sm border border-gray-200 dark:border-gray-800 hover:border-purple-500/60 rounded-2xl p-8 text-center transform hover:scale-110 hover:-translate-y-4 transition-all duration-500 shadow-xl hover:shadow-purple-500/30 hover:shadow-2xl relative overflow-hidden delay-200">
               {/* Animated background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 via-transparent to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-purple-400/50 via-pink-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -264,10 +264,10 @@ const HomePage: React.FC = () => {
                   <Globe className="h-10 w-10 text-white group-hover:scale-110 group-hover:rotate-45 transition-transform duration-300" />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-purple-300 transition-colors duration-300">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors duration-300">
                 Premium Routes
               </h3>
-              <p className="text-gray-400 leading-relaxed group-hover:text-gray-200 transition-colors duration-300">
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors duration-300">
                 Access <span className="text-purple-400 font-semibold">business and first class</span> deals on premium carriers with advanced fare class searches.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3 text-purple-400 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
@@ -279,7 +279,7 @@ const HomePage: React.FC = () => {
           </div>
 
           {/* Call to Action */}
-          <div className="relative bg-gradient-to-r from-accent-600/20 via-blue-600/20 to-purple-600/20 border border-gray-700/50 rounded-3xl p-12 text-center backdrop-blur-sm overflow-hidden group hover:from-accent-600/30 hover:via-blue-600/30 hover:to-purple-600/30 transition-all duration-500">
+          <div className="relative bg-gradient-to-r from-accent-600/10 via-blue-600/10 to-purple-600/10 dark:from-accent-600/20 dark:via-blue-600/20 dark:to-purple-600/20 border border-gray-300/50 dark:border-gray-700/50 rounded-3xl p-12 text-center backdrop-blur-sm overflow-hidden group hover:from-accent-600/20 hover:via-blue-600/20 hover:to-purple-600/20 dark:hover:from-accent-600/30 dark:hover:via-blue-600/30 dark:hover:to-purple-600/30 transition-all duration-500">
             {/* Animated background elements */}
             <div className="absolute inset-0 bg-gradient-to-r from-accent-600/10 via-blue-600/10 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-400 via-blue-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -291,7 +291,7 @@ const HomePage: React.FC = () => {
                   <Sparkles className="h-8 w-8 text-accent-400 group-hover/cta:animate-spin" />
                   <div className="absolute inset-0 bg-accent-400 rounded-full blur-lg opacity-50 group-hover/cta:animate-pulse"></div>
                 </div>
-                <h3 className="text-4xl font-bold bg-gradient-to-r from-white via-accent-300 to-purple-400 bg-clip-text text-transparent">
+                <h3 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-accent-600 to-purple-600 dark:from-white dark:via-accent-300 dark:to-purple-400 bg-clip-text text-transparent">
                   Ready to Save Thousands?
                 </h3>
                 <div className="relative">
@@ -299,8 +299,8 @@ const HomePage: React.FC = () => {
                   <div className="absolute inset-0 bg-purple-400 rounded-full blur-lg opacity-50 group-hover/cta:animate-pulse delay-500"></div>
                 </div>
               </div>
-              <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Start searching with our <span className="text-accent-400 font-bold">advanced flight hacking tools</span> and discover routes that 
+              <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+                Start searching with our <span className="text-accent-400 font-bold">advanced flight hacking tools</span> and discover routes that
                 <span className="text-blue-400 font-bold"> traditional search engines</span> can't find.
               </p>
               <button
