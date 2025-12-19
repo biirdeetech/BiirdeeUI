@@ -1117,10 +1117,10 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             }
           });
 
-          // Helper to create a detailed flight fingerprint for aggressive deduplication
-          // Group by airline + route + stops ONLY
-          // This groups ALL flights from the same airline on the same route together
-          // Flight number, departure time, arrival time variations will be shown as options
+          // Helper to create a detailed flight fingerprint for deduplication
+          // Group by: airline + route + stops + flight numbers + departure time
+          // This ensures different flights are NOT grouped together
+          // Only cabin variations of the SAME flight are grouped
           const getFlightFingerprint = (flight: FlightSolution | GroupedFlight): string => {
             const airlineCode = getFlightAirlineCode(flight);
             if ('id' in flight) {
@@ -1129,15 +1129,19 @@ const FlightResults: React.FC<FlightResultsProps> = ({
               const origin = firstSlice.origin?.code || '';
               const destination = lastSlice.destination?.code || '';
               const stops = flight.slices.map(s => s.stops?.length || 0).join(',');
-              // Group by: airline + origin + destination + stops
-              // NO flight number, NO times, NO cabin, NO price
-              return `${airlineCode}|${origin}|${destination}|${stops}`;
+              // Include flight numbers to distinguish different flights
+              const flightNumbers = firstSlice.flights?.join(',') || '';
+              // Include departure time (hour:minute) to distinguish different departure times
+              const departure = normalizeDepartureToMinute(firstSlice.departure || '');
+              // Group by: airline + origin + destination + stops + flight numbers + departure time
+              return `${airlineCode}|${origin}|${destination}|${stops}|${flightNumbers}|${departure}`;
             } else {
               const origin = flight.outboundSlice.origin?.code || '';
               const destination = flight.outboundSlice.destination?.code || '';
               const stops = flight.outboundSlice.stops?.length || 0;
-              // Group by: airline + origin + destination + stops
-              return `${airlineCode}|${origin}|${destination}|${stops}`;
+              const flightNumbers = flight.outboundSlice.flights?.join(',') || '';
+              const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
+              return `${airlineCode}|${origin}|${destination}|${stops}|${flightNumbers}|${departure}`;
             }
           };
 

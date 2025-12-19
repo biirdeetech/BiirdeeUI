@@ -67,6 +67,13 @@
   - sequentialCabinSearch.ts: Logs cabin counts, total flights, and merge results
   - flightSignature.ts: Logs merge process, cabin processing, and final counts
   - SearchPage.tsx: Logs progressive result counts and loading state changes
+- ✅ Fixed flight grouping fingerprint to prevent over-grouping (FlightResults.tsx:1124-1146)
+  - Issue: Fingerprint was only using airline + origin + destination + stops
+  - This grouped 100+ DIFFERENT flights into ONE group (e.g., BR17 at 12:50pm and BR190 at 2:50pm)
+  - Result: Only 1 flight card shown with 103 "similar flights" hidden
+  - Added flight numbers and departure time to fingerprint
+  - Now each unique flight shows as separate card
+  - Only cabin variations of SAME flight (same number, time) are grouped together
 
 ---
 
