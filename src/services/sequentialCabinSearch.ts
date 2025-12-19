@@ -32,7 +32,7 @@ export async function searchAllCabinsSequentially(
   baseParams: FlightSearchParams,
   onProgress?: (cabin: string, flight: any) => void,
   onCabinMetadata?: (cabin: string, metadata: any) => void,
-  onCabinComplete?: (cabin: string, mergedFlights: Map<string, FlightWithCabins>) => void,
+  onCabinComplete?: (cabin: string, mergedFlights: Map<string, FlightWithCabins>, cabinResult: SearchResponse) => void,
   onProgressUpdate?: (progress: Record<string, SequentialSearchProgress>) => void
 ): Promise<SequentialSearchResult> {
   console.log('🔄 SequentialCabinSearch: Starting sequential searches for 4 cabins');
@@ -117,7 +117,7 @@ export async function searchAllCabinsSequentially(
       // Merge flights up to this point and notify
       // mergeFlightsByCabin expects Record<cabin, flights[]>
       const mergedFlights = mergeFlightsByCabin(cabinFlights);
-      onCabinComplete?.(cabin, mergedFlights);
+      onCabinComplete?.(cabin, mergedFlights, result);
       onProgressUpdate?.(progress);
 
     } catch (error) {

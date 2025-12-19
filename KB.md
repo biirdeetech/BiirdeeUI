@@ -47,6 +47,12 @@
   - Merged flights already contain all properties including slices
   - Fixed by spreading flight directly instead of flight.baseFlight
   - Added safety check in `calculateAvailableStops` for flights without slices
+- ✅ Fixed progressive rendering in sequential cabin search (SearchPage.tsx:505, sequentialCabinSearch.ts:35)
+  - Issue: `onCabinComplete` callback was trying to access `sequentialResult` before it existed
+  - Results now render immediately after EACH cabin completes, not after all 4 finish
+  - Implemented `firstCabinMetadata` tracking in closure to store session/solutionSet data
+  - Modified `onCabinComplete` signature to pass `cabinResult` for metadata access
+  - Now supports both aero (streaming) and non-aero modes correctly
 
 ---
 

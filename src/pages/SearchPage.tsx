@@ -481,6 +481,9 @@ const SearchPage: React.FC = () => {
         // Sequential cabin search - searches cabins one after another with progress updates
         console.log('🔄 SearchPage: Using sequential cabin search mode');
 
+        // Track cabin metadata as they complete (for session/solutionSet info)
+        let firstCabinMetadata: { session?: string; solutionSet?: string; pagination?: any } = {};
+
         const sequentialResult = await searchAllCabinsSequentially(
           extractedParams,
           extractedParams.aero ? (cabin: string, flight: any) => {
@@ -489,19 +492,34 @@ const SearchPage: React.FC = () => {
           } : undefined,
           extractedParams.aero ? (cabin: string, metadata: any) => {
             console.log(`📊 SearchPage: Received ${cabin} metadata:`, metadata);
+            // Store first cabin metadata for progressive updates
+            if (!firstCabinMetadata.session) {
+              firstCabinMetadata = {
+                session: metadata.session,
+                solutionSet: metadata.solutionSet,
+                pagination: metadata.pagination
+              };
+            }
             onMetadata(metadata);
           } : undefined,
-          (cabin: string, mergedFlights: any) => {
+          (cabin: string, mergedFlights: any, cabinResult: SearchResponse) => {
             console.log(`✅ SearchPage: ${cabin} search complete, merged flights count:`, mergedFlights.size);
+            // Store first cabin metadata if not already set (for non-aero mode)
+            if (!firstCabinMetadata.session) {
+              firstCabinMetadata = {
+                session: cabinResult.session,
+                solutionSet: cabinResult.solutionSet,
+                pagination: cabinResult.pagination
+              };
+            }
             // Update results progressively as each cabin completes
-            const firstCabinResult = Object.values(sequentialResult.cabinResults)[0];
             const progressiveResults = mergedFlightsToResponseSequential(
               mergedFlights,
               {
-                session: firstCabinResult?.session,
-                solutionSet: firstCabinResult?.solutionSet,
+                session: firstCabinMetadata.session,
+                solutionSet: firstCabinMetadata.solutionSet,
                 solutionCount: mergedFlights.size,
-                pagination: firstCabinResult?.pagination
+                pagination: firstCabinMetadata.pagination
               }
             );
             setResults(progressiveResults);
