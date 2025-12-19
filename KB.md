@@ -19,16 +19,36 @@
 2. ✅ Price display updated: Shows `$1,234` instead of `USD 1,234.56`
 3. ✅ All prices rounded to whole numbers across the system
 4. ✅ Currency symbols added for 30+ currencies (€, £, ¥, etc.)
+5. ✅ **Best/Cheap global tabs** implemented in FlightResults (src/components/FlightResults.tsx:885-941)
+   - 50/50 width grid layout
+   - Best tab sorts by duration (fastest first)
+   - Cheap tab sorts by price (lowest first)
+   - Shows min price for each mode
+6. ✅ **Cabin tabs removed** from primary UI (hidden with `{false &&` condition)
+7. ✅ **Duration parsing** for ISO8601 format (PT13H25M)
+8. ✅ **Price calculation** for Best and Cheap modes (tabPrices useMemo)
 
 **In Progress:**
-1. 🔄 Flight display architecture shift: From airline-centric to flight-centric
-2. 🔄 Award fetching strategy: From top-5 to per-unique-flight with view-first priority
-3. 🔄 UI reorganization: Award-first display with opal/shiny wrapper
-4. 🔄 Code-share detection and parent-alliance hierarchy
-5. 🔄 Per-flight cabin buttons (Economy, Business, Premium, First)
-6. 🔄 Global Best/Cheap tabs with price indicators
-7. 🔄 4 parallel cabin searches on each query
-8. 🔄 Cabin/booking class moved to advanced settings
+1. 🔄 4 parallel cabin searches architecture design (requires major SearchPage refactor)
+
+**Blocked (Requires Parallel Searches First):**
+1. ⏸️ Per-flight cabin buttons - needs data from 4 parallel cabin searches
+2. ⏸️ Cabin/booking class to advanced - search flow needs refactor first
+3. ⏸️ Flight merging logic - needs parallel search implementation
+
+**Not Started (High Priority):**
+1. ❌ 4 parallel cabin searches implementation in SearchPage (lines 378-516)
+2. ❌ Flight signature matching for merging results from different cabins
+3. ❌ Per-flight cabin data structure (FlightSolution needs cabinPrices map)
+
+**Not Started (Medium Priority):**
+4. ❌ Flight display architecture shift: From airline-centric to flight-centric
+5. ❌ Code-share detection and parent-alliance hierarchy
+6. ❌ Award fetching strategy: From top-5 to per-unique-flight with view-first priority
+
+**Not Started (UI Polish):**
+7. ❌ UI reorganization: Award-first display with opal/shiny wrapper
+8. ❌ Increase FlightCard height for awards/cash display
 
 ### New Architecture Overview
 

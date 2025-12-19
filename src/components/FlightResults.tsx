@@ -7,6 +7,7 @@ import Pagination from './Pagination';
 import StopGroupSeparator from './StopGroupSeparator';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
+import { formatPrice } from '../utils/priceFormatter';
 
 interface FlightResultsProps {
   results: SearchResponse | null;
@@ -156,6 +157,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   // ALL HOOKS MUST BE CALLED AT THE TOP, BEFORE ANY EARLY RETURNS
   // State to track which cabin is selected
   const [selectedCabin, setSelectedCabin] = useState<string>('COACH');
+  // State to track Best vs Cheap filter
+  const [sortMode, setSortMode] = useState<'best' | 'cheap'>('best');
   // State to track which stop group is expanded - will be initialized after we know available groups
   const [expandedStopGroup, setExpandedStopGroup] = useState<number | null>(null);
   const [showV2EnrichmentViewer, setShowV2EnrichmentViewer] = useState(false);
@@ -233,13 +236,100 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return results.solutionList.solutions.filter(flight => flightHasCabin(flight, selectedCabin));
   }, [results, selectedCabin]);
 
+  // Helper to calculate total duration of a flight in minutes
+  const getFlightDuration = (flight: FlightSolution | GroupedFlight): number => {
+    if ('id' in flight) {
+      // Regular flight - sum all slice durations
+      return flight.slices.reduce((total, slice) => {
+        if (slice.duration) {
+          // Parse ISO8601 duration (e.g., "PT13H25M" or "PT1H30M")
+          const hours = slice.duration.match(/(\d+)H/);
+          const minutes = slice.duration.match(/(\d+)M/);
+          const h = hours ? parseInt(hours[1]) : 0;
+          const m = minutes ? parseInt(minutes[1]) : 0;
+          return total + (h * 60) + m;
+        }
+        return total;
+      }, 0);
+    } else {
+      // Grouped flight - use outbound slice duration
+      if (flight.outboundSlice.duration) {
+        const hours = flight.outboundSlice.duration.match(/(\d+)H/);
+        const minutes = flight.outboundSlice.duration.match(/(\d+)M/);
+        const h = hours ? parseInt(hours[1]) : 0;
+        const m = minutes ? parseInt(minutes[1]) : 0;
+        return (h * 60) + m;
+      }
+      return 0;
+    }
+  };
+
+  // Calculate prices for Best and Cheap tabs
+  const tabPrices = useMemo(() => {
+    if (cabinFilteredFlights.length === 0) {
+      return { bestPrice: 0, cheapPrice: 0 };
+    }
+
+    // Find fastest flight (best)
+    let fastestFlight = cabinFilteredFlights[0];
+    let minDuration = getFlightDuration(fastestFlight);
+
+    for (const flight of cabinFilteredFlights) {
+      const duration = getFlightDuration(flight);
+      if (duration < minDuration) {
+        minDuration = duration;
+        fastestFlight = flight;
+      }
+    }
+
+    // Find cheapest flight
+    let cheapestFlight = cabinFilteredFlights[0];
+    let minPrice = 'id' in cheapestFlight ? cheapestFlight.displayTotal : cheapestFlight.returnOptions[0]?.displayTotal || 0;
+
+    for (const flight of cabinFilteredFlights) {
+      const price = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
+      if (price < minPrice) {
+        minPrice = price;
+        cheapestFlight = flight;
+      }
+    }
+
+    const bestPrice = 'id' in fastestFlight ? fastestFlight.displayTotal : fastestFlight.returnOptions[0]?.displayTotal || 0;
+    const cheapPrice = 'id' in cheapestFlight ? cheapestFlight.displayTotal : cheapestFlight.returnOptions[0]?.displayTotal || 0;
+
+    return { bestPrice, cheapPrice };
+  }, [cabinFilteredFlights]);
+
+  // Sort flights by best (fastest) or cheap (lowest price)
+  const sortedFilteredFlights = useMemo(() => {
+    const flights = [...cabinFilteredFlights];
+
+    if (sortMode === 'best') {
+      // Sort by duration (fastest first)
+      flights.sort((a, b) => {
+        const aDuration = getFlightDuration(a);
+        const bDuration = getFlightDuration(b);
+        return aDuration - bDuration;
+      });
+    } else {
+      // Sort by price (cheapest first)
+      flights.sort((a, b) => {
+        const aPrice = 'id' in a ? a.displayTotal : a.returnOptions[0]?.displayTotal || 0;
+        const bPrice = 'id' in b ? b.displayTotal : b.returnOptions[0]?.displayTotal || 0;
+        return aPrice - bPrice;
+      });
+    }
+
+    return flights;
+  }, [cabinFilteredFlights, sortMode]);
+
   // Calculate sortedStopCounts at the top level using useMemo (safe for all states)
   const sortedStopCounts = useMemo(() => {
-    if (cabinFilteredFlights.length === 0) {
+    if (sortedFilteredFlights.length === 0) {
       return [];
     }
 
-    const flights = cabinFilteredFlights;
+    const flights = sortedFilteredFlights;
     const processedFlights = flights;
 
     // Group flights by stop count
@@ -271,7 +361,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     });
 
     return Array.from(groups.keys()).sort((a, b) => a - b);
-  }, [cabinFilteredFlights]);
+  }, [sortedFilteredFlights]);
 
   // Ensure at least one group is always open - initialize with first available (nonstop > 1 stop > 2 stops > 3 stops)
   useEffect(() => {
@@ -793,8 +883,66 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </div>
       </div>
 
-      {/* Cabin Tabs - Always show if cabins exist */}
-      {availableCabins.length > 0 && (
+      {/* Best / Cheap Tabs - Global 50/50 width */}
+      <div className="border-b border-gray-700/50">
+        <div className="grid grid-cols-2 gap-0">
+          <button
+            onClick={() => setSortMode('best')}
+            className={`
+              relative px-5 py-4 text-base font-bold transition-all duration-200
+              border-b-3 -mb-px
+              ${sortMode === 'best'
+                ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-lg">Best</span>
+              <span className={`
+                text-sm font-semibold
+                ${sortMode === 'best' ? 'text-blue-300' : 'text-gray-500'}
+              `}>
+                {(() => {
+                  const firstFlight = results.solutionList.solutions[0];
+                  const currency = firstFlight && 'id' in firstFlight ? firstFlight.currency : 'USD';
+                  return formatPrice(tabPrices.bestPrice, currency);
+                })()}
+              </span>
+              <span className="text-xs text-gray-500">(Fastest)</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setSortMode('cheap')}
+            className={`
+              relative px-5 py-4 text-base font-bold transition-all duration-200
+              border-b-3 -mb-px
+              ${sortMode === 'cheap'
+                ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-lg">Cheap</span>
+              <span className={`
+                text-sm font-semibold
+                ${sortMode === 'cheap' ? 'text-blue-300' : 'text-gray-500'}
+              `}>
+                {(() => {
+                  const firstFlight = results.solutionList.solutions[0];
+                  const currency = firstFlight && 'id' in firstFlight ? firstFlight.currency : 'USD';
+                  return formatPrice(tabPrices.cheapPrice, currency);
+                })()}
+              </span>
+              <span className="text-xs text-gray-500">(Cheapest)</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Cabin Tabs - Legacy (kept for backward compatibility, hidden by default) */}
+      {false && availableCabins.length > 0 && (
         <div className="border-b border-gray-700/50">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {availableCabins.map((cabin) => {
