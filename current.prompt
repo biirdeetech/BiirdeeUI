@@ -30,3 +30,8 @@ currently when we search flight we show each airline as group, all its flight in
 9. currently we render cabin class and booking class selection, now we will hide this and move this inside advanced button in search container, because on search we will launch 4 request. cabin class changes i.e cheap, business, premium, first, while booking class stays "all" 
 10. these 4 result will keep updating current flight rendered or be added if unique flights 
 11. by default we fetch 300 result size with nonstop being default false which is currently true.  
+
+# final fact-check 
+1. each time you make any change, confirm it logically on what we have, and what we want, or what we did if it make sense, 
+2. keep track and keep updating KB.md as per defined rules. 
+3. keep taking advice from KB.md for faster understanding. 
