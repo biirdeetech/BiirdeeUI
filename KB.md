@@ -38,6 +38,10 @@
   - Set to true by default for all searches
   - Integrated CabinSearchProgress component
   - Progressive result updates as each cabin completes
+- ✅ Fixed sequential search merge error (sequentialCabinSearch.ts:119, 137)
+  - Issue: `mergeFlightsByCabin` expects `Record<cabin, flights[]>` format
+  - Was incorrectly passing flat array instead of cabin-keyed object
+  - Now correctly passes `cabinFlights` object to merge function
 
 ---
 
