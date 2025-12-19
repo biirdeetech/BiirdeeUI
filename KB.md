@@ -53,6 +53,20 @@
   - Implemented `firstCabinMetadata` tracking in closure to store session/solutionSet data
   - Modified `onCabinComplete` signature to pass `cabinResult` for metadata access
   - Now supports both aero (streaming) and non-aero modes correctly
+- ✅ Fixed loading state not clearing during progressive rendering (SearchPage.tsx:528-532)
+  - Loading spinner now turns off when first cabin completes and results appear
+  - Added `setLoading(false)` and `setHasSearched(true)` in `onCabinComplete` callback
+  - Users see results immediately instead of waiting for all 4 cabins
+- ✅ Fixed flight signature generation for correct merging (flightSignature.ts:22-57)
+  - Issue: Signature was looking for `flight.segments` which doesn't exist in API response
+  - API structure uses `flight.slices[].flights[]` and slice-level data
+  - Rewrote signature to use slices, flight numbers, and departure times
+  - Now generates correct signatures like "SFO-AS211-06:20-JFK"
+  - Prevents all flights from getting "unknown-" signatures that prevented merging
+- ✅ Added extensive logging for debugging merge issues
+  - sequentialCabinSearch.ts: Logs cabin counts, total flights, and merge results
+  - flightSignature.ts: Logs merge process, cabin processing, and final counts
+  - SearchPage.tsx: Logs progressive result counts and loading state changes
 
 ---
 

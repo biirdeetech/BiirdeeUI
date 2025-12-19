@@ -113,10 +113,13 @@ export async function searchAllCabinsSequentially(
       };
 
       console.log(`✅ SequentialCabinSearch: ${cabin} search completed with ${cabinFlights[cabin].length} flights`);
+      console.log(`📊 SequentialCabinSearch: Total flights collected so far:`, Object.values(cabinFlights).flat().length);
+      console.log(`📊 SequentialCabinSearch: Cabins processed:`, Object.keys(cabinFlights));
 
       // Merge flights up to this point and notify
       // mergeFlightsByCabin expects Record<cabin, flights[]>
       const mergedFlights = mergeFlightsByCabin(cabinFlights);
+      console.log(`🔀 SequentialCabinSearch: After merge, unique flights:`, mergedFlights.size);
       onCabinComplete?.(cabin, mergedFlights, result);
       onProgressUpdate?.(progress);
 

@@ -522,7 +522,14 @@ const SearchPage: React.FC = () => {
                 pagination: firstCabinMetadata.pagination
               }
             );
+            console.log(`📊 SearchPage: Setting progressive results with ${progressiveResults.solutionList?.solutions?.length} flights`);
             setResults(progressiveResults);
+            // Turn off loading state when first cabin completes
+            if (loading) {
+              console.log('✨ SearchPage: First cabin complete, turning off loading state');
+              setLoading(false);
+              setHasSearched(true);
+            }
           },
           (progress: Record<string, SequentialSearchProgress>) => {
             // Update progress UI

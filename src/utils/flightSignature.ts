@@ -20,40 +20,40 @@ export interface FlightWithCabins {
  * This signature is used to identify the same physical flight across different cabin searches
  */
 export function generateFlightSignature(flight: any): string {
-  // Extract segments
-  const segments = flight.segments || flight.slices?.[0]?.segments || [];
+  // Extract slices (most common structure from API)
+  const slices = flight.slices || flight.itinerary?.slices || [];
 
-  if (segments.length === 0) {
+  if (slices.length === 0) {
+    console.warn('⚠️ generateFlightSignature: No slices found in flight:', flight.id);
     return `unknown-${flight.id || Math.random()}`;
   }
 
-  // Create signature from:
-  // 1. Route (origin -> destination through all segments)
-  // 2. Flight numbers
-  // 3. Departure times
+  // Create signature from ALL slices (for multi-leg trips)
   const routeParts: string[] = [];
 
-  segments.forEach((seg: any, idx: number) => {
-    // Origin airport
-    if (idx === 0) {
-      routeParts.push(seg.origin || seg.originCode || '');
-    }
+  slices.forEach((slice: any) => {
+    // Add origin
+    const origin = slice.origin?.code || slice.origin || '';
+    routeParts.push(origin);
 
-    // Flight number (carrier + number)
-    const flightNumber = seg.flightNumber || seg.flight?.number || '';
-    const carrier = seg.carrier || seg.carrierCode || seg.operatingCarrier || '';
-    routeParts.push(`${carrier}${flightNumber}`);
+    // Add flight numbers (e.g., ["AS211"] or multiple for connections)
+    const flights = slice.flights || [];
+    flights.forEach((flightNum: string) => {
+      routeParts.push(flightNum);
+    });
 
-    // Departure time (HH:MM)
-    const departureTime = seg.departureTime || seg.departure?.time || '';
-    const timeOnly = departureTime.split('T')[1]?.substring(0, 5) || departureTime;
+    // Add departure time (HH:MM)
+    const departureTime = slice.departure || '';
+    const timeOnly = departureTime.split('T')[1]?.substring(0, 5) || departureTime.substring(0, 5);
     routeParts.push(timeOnly);
 
-    // Destination airport
-    routeParts.push(seg.destination || seg.destinationCode || '');
+    // Add destination
+    const destination = slice.destination?.code || slice.destination || '';
+    routeParts.push(destination);
   });
 
-  return routeParts.join('-');
+  const signature = routeParts.join('-');
+  return signature;
 }
 
 /**
@@ -65,9 +65,18 @@ export function mergeFlightsByCabin(
 ): Map<string, FlightWithCabins> {
   const mergedFlights = new Map<string, FlightWithCabins>();
 
+  console.log(`🔀 mergeFlightsByCabin: Starting merge with cabins:`, Object.keys(flightsByCabin));
+
   Object.entries(flightsByCabin).forEach(([cabin, flights]) => {
-    flights.forEach(flight => {
+    console.log(`🔀 mergeFlightsByCabin: Processing ${cabin} with ${flights.length} flights`);
+
+    flights.forEach((flight, idx) => {
       const signature = generateFlightSignature(flight);
+
+      // Log first few signatures for debugging
+      if (idx < 3) {
+        console.log(`🔀 mergeFlightsByCabin: ${cabin} flight ${idx} signature:`, signature);
+      }
 
       const cabinPrice: CabinPrice = {
         cabin,
@@ -90,8 +99,11 @@ export function mergeFlightsByCabin(
         mergedFlights.set(signature, mergedFlight);
       }
     });
+
+    console.log(`🔀 mergeFlightsByCabin: After processing ${cabin}, total unique flights:`, mergedFlights.size);
   });
 
+  console.log(`🔀 mergeFlightsByCabin: Final merge complete, returning ${mergedFlights.size} unique flights`);
   return mergedFlights;
 }
 
