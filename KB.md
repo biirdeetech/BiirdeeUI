@@ -45,12 +45,21 @@
     - Wraps primary flight cards with opal effect when awards available
     - Extracts min miles and cash from award data
 
-**Not Started (High Priority - Architectural Changes Required):**
-1. ❌ 4 parallel cabin searches implementation in SearchPage (lines 378-516)
-2. ❌ Flight signature matching for merging results from different cabins
-3. ❌ Per-flight cabin data structure (FlightSolution needs cabinPrices map)
+**In Progress (High Priority - Architectural Changes Required):**
+1. 🚧 **Cabin/booking class moved to advanced section** (src/components/SearchForm.tsx:1155-1307)
+   - Now hidden by default
+   - Shows only when "Advanced" button clicked (showAdvancedOptions=true)
+   - Applied globally to all legs
+2. 🚧 **Flight signature utilities** created (src/utils/flightSignature.ts)
+   - generateFlightSignature() for deduplication across cabins
+   - mergeFlightsByCabin() to merge results from parallel searches
+   - CabinPrice interface for storing per-cabin pricing data
+   - FlightWithCabins interface for merged flight structure
+
+**Not Started (High Priority):**
+3. ❌ 4 parallel cabin searches in SearchPage (lines 378-516) - NEXT
 4. ❌ Per-flight cabin buttons - needs data from 4 parallel cabin searches
-5. ❌ Cabin/booking class to advanced - search flow needs refactor first
+5. ❌ SearchPage integration with parallel search and merging logic
 
 **Not Started (Medium Priority):**
 6. ❌ Award fetching strategy: From top-5 to per-unique-flight with view-first priority

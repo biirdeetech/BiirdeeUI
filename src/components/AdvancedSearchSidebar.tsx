@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, MapPin, Plane } from 'lucide-react';
+import { Settings, MapPin, Plane, X, Info } from 'lucide-react';
 import LocationSearchInput from './LocationSearchInput';
 import LocationSearchInputWithCallback from './LocationSearchInputWithCallback';
 import CurrencySearchInput from './CurrencySearchInput';
 import TimezoneSelector from './TimezoneSelector';
 import { Currency } from '../utils/currencies';
 import { Location } from '../services/itaMatrixApi';
+import { getDefaultBookingClasses } from '../utils/bookingClasses';
 
 interface AdvancedSearchSidebarProps {
   searchParams: any;
   onSettingsChange: (settings: any) => void;
+  cabinClass?: string;
+  bookingClasses?: string[];
+  onCabinChange?: (cabin: string) => void;
+  onBookingClassesChange?: (classes: string[]) => void;
 }
 
 const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
   searchParams,
-  onSettingsChange
+  onSettingsChange,
+  cabinClass = 'COACH',
+  bookingClasses = [],
+  onCabinChange,
+  onBookingClassesChange
 }) => {
   const [advancedSettings, setAdvancedSettings] = useState({
     frt: {
@@ -52,6 +61,9 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
   const [newDestination, setNewDestination] = useState('');
   const [newOrigin, setNewOrigin] = useState('');
   const [activeSection, setActiveSection] = useState<'frt' | 'skiplag' | 'aero'>('frt');
+  const [bookingClassSelection, setBookingClassSelection] = useState('all');
+  const [newBookingClass, setNewBookingClass] = useState('');
+  const [showBookingClassTooltip, setShowBookingClassTooltip] = useState(false);
 
   useEffect(() => {
     // Don't trigger on initial mount - only when user makes actual changes
@@ -119,6 +131,156 @@ const AdvancedSearchSidebar: React.FC<AdvancedSearchSidebarProps> = ({
       <div className="flex items-center gap-2 mb-6">
         <Settings className="h-5 w-5 text-accent-400" />
         <h2 className="text-xl font-semibold text-white">Advanced Search</h2>
+      </div>
+
+      {/* Cabin & Booking Class Controls */}
+      <div className="mb-6 pb-6 border-b border-gray-800 space-y-4">
+        <h3 className="text-sm font-medium text-gray-300">Search Preferences</h3>
+
+        {/* Cabin Class */}
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">Cabin Class</label>
+          <select
+            value={cabinClass}
+            onChange={(e) => onCabinChange?.(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 focus:outline-none text-sm"
+          >
+            <option value="COACH">Cheapest Available</option>
+            <option value="PREMIUM-COACH">Premium Economy</option>
+            <option value="BUSINESS">Business Class or Higher</option>
+            <option value="FIRST">First Class</option>
+          </select>
+        </div>
+
+        {/* Booking Class Selection */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <label className="block text-sm font-medium text-gray-400">Booking Class Selection</label>
+            <div className="relative">
+              <button
+                type="button"
+                onMouseEnter={() => setShowBookingClassTooltip(true)}
+                onMouseLeave={() => setShowBookingClassTooltip(false)}
+                className="text-gray-500 hover:text-gray-300"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+              {showBookingClassTooltip && (
+                <div className="absolute left-0 top-6 z-50 w-80 bg-gray-950 border border-gray-700 rounded-lg shadow-2xl p-4 text-xs">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-white mb-1">First Class</p>
+                      <p className="text-gray-300">Common letters: F, A, P</p>
+                      <p className="text-gray-400 text-xs">F = Full-fare First, A = Discounted, P = Award/Promo</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white mb-1">Business Class</p>
+                      <p className="text-gray-300">Common letters: J, C, D, I, Z</p>
+                      <p className="text-gray-400 text-xs">J/C = Full-fare, D/I/Z = Discounted/Award</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white mb-1">Premium Economy</p>
+                      <p className="text-gray-300">Common letters: W, R, G, P</p>
+                      <p className="text-gray-400 text-xs">W = Full-fare, R/G = Discounted</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white mb-1">Economy Class</p>
+                      <p className="text-gray-300">Common letters: Y, B, H, M, K, L, Q, V, N, S, T, E, O</p>
+                      <p className="text-gray-400 text-xs">Y = Full-fare, Others = Discounted tiers</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <select
+            value={bookingClassSelection}
+            onChange={(e) => {
+              const value = e.target.value;
+              setBookingClassSelection(value);
+
+              if (value === 'all') {
+                const allClasses = [
+                  ...getDefaultBookingClasses('COACH'),
+                  ...getDefaultBookingClasses('PREMIUM-COACH'),
+                  ...getDefaultBookingClasses('BUSINESS'),
+                  ...getDefaultBookingClasses('FIRST')
+                ];
+                onBookingClassesChange?.([...new Set(allClasses)]);
+              } else if (value === 'economy') {
+                onBookingClassesChange?.(getDefaultBookingClasses('COACH'));
+              } else if (value === 'premium') {
+                onBookingClassesChange?.(getDefaultBookingClasses('PREMIUM-COACH'));
+              } else if (value === 'business') {
+                onBookingClassesChange?.(getDefaultBookingClasses('BUSINESS'));
+              } else if (value === 'first') {
+                onBookingClassesChange?.(getDefaultBookingClasses('FIRST'));
+              } else if (value === 'business_plus') {
+                const businessClasses = getDefaultBookingClasses('BUSINESS');
+                const firstClasses = getDefaultBookingClasses('FIRST');
+                onBookingClassesChange?.([...new Set([...businessClasses, ...firstClasses])]);
+              }
+            }}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 focus:border-accent-500 focus:outline-none text-sm"
+          >
+            <option value="all">All</option>
+            <option value="economy">Economy</option>
+            <option value="premium">Premium Economy</option>
+            <option value="business">Business</option>
+            <option value="first">First</option>
+            <option value="business_plus">Business + First</option>
+          </select>
+
+          {/* Display Current Booking Classes */}
+          <div className="mt-3">
+            <div className="text-xs text-gray-400 mb-2">Current Booking Classes</div>
+            <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+              {bookingClasses.map((cls) => (
+                <span
+                  key={cls}
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-xs font-mono"
+                >
+                  {cls}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const filtered = bookingClasses.filter(c => c !== cls);
+                      onBookingClassesChange?.(filtered);
+                    }}
+                    className="text-blue-300 hover:text-blue-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Add Custom Booking Class */}
+          <div className="mt-3">
+            <input
+              type="text"
+              value={newBookingClass}
+              onChange={(e) => setNewBookingClass(e.target.value.toUpperCase())}
+              placeholder="Add class (e.g., J, C, D)"
+              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-100 placeholder-gray-500 focus:border-accent-500 focus:outline-none font-mono text-sm"
+              maxLength={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (newBookingClass.trim() && !bookingClasses.includes(newBookingClass)) {
+                    onBookingClassesChange?.([...bookingClasses, newBookingClass]);
+                    setNewBookingClass('');
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Press Enter to add custom booking class
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* General Settings */}

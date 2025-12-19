@@ -991,144 +991,6 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 />
               </div>
 
-              {/* Cabin Class and Booking Classes Row */}
-              <div className={`mt-4 grid ${showAdvancedOptions ? (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2') : (compact ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2')} gap-4`}>
-                {/* Cabin Class */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Cabin Class</label>
-                  <select
-                    value={globalCabinClass}
-                    onChange={(e) => {
-                      const newCabin = e.target.value;
-                      setGlobalCabinClass(newCabin);
-                      // Update all legs with the new cabin class
-                      setLegs(prevLegs => prevLegs.map(leg => ({ ...leg, cabin: newCabin })));
-                    }}
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
-                  >
-                    <option value="COACH">Cheapest Available</option>
-                    <option value="PREMIUM-COACH">Premium Economy</option>
-                    <option value="BUSINESS">Business Class or Higher</option>
-                    <option value="FIRST">First Class</option>
-                  </select>
-                </div>
-
-                {/* Booking Class Codes */}
-                <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Booking Class Selection</label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onMouseEnter={() => setShowExtTooltip(leg.id)}
-                      onMouseLeave={() => setShowExtTooltip(null)}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                    {showExtTooltip === leg.id && (
-                      <div className="absolute left-0 top-6 z-50 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 text-xs">
-                        <div className="space-y-3">
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white mb-1">First Class</p>
-                            <p className="text-gray-600 dark:text-gray-300">Common letters: F, A, P</p>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs">F = Full-fare First, A = Discounted, P = Award/Promo</p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Business Class</p>
-                            <p className="text-gray-600 dark:text-gray-300">Common letters: J, C, D, I, Z</p>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs">J/C = Full-fare, D/I/Z = Discounted/Award</p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Premium Economy</p>
-                            <p className="text-gray-600 dark:text-gray-300">Common letters: W, R, G, P</p>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs">W = Full-fare, R/G = Discounted</p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-white mb-1">Economy Class</p>
-                            <p className="text-gray-600 dark:text-gray-300">Common letters: Y, B, H, M, K, L, Q, V, N, S, T, E, O</p>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs">Y = Full-fare, Others = Discounted tiers</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <select
-                    value={bookingClassSelection[leg.id] || 'all'}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setBookingClassSelection(prev => ({ ...prev, [leg.id]: value }));
-                      if (value === 'all') {
-                        // Set all booking classes for all cabins
-                        const allClasses = [
-                          ...getDefaultBookingClasses('COACH'),
-                          ...getDefaultBookingClasses('PREMIUM-COACH'),
-                          ...getDefaultBookingClasses('BUSINESS'),
-                          ...getDefaultBookingClasses('FIRST')
-                        ];
-                        updateLeg(leg.id, 'bookingClasses', [...new Set(allClasses)]);
-                      } else if (value === 'economy') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('COACH'));
-                      } else if (value === 'premium') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('PREMIUM-COACH'));
-                      } else if (value === 'business') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('BUSINESS'));
-                      } else if (value === 'first') {
-                        updateLeg(leg.id, 'bookingClasses', getDefaultBookingClasses('FIRST'));
-                      } else if (value === 'business_plus') {
-                        const businessClasses = getDefaultBookingClasses('BUSINESS');
-                        const firstClasses = getDefaultBookingClasses('FIRST');
-                        updateLeg(leg.id, 'bookingClasses', [...new Set([...businessClasses, ...firstClasses])]);
-                      }
-                    }}
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
-                  >
-                    <option value="all">All</option>
-                    <option value="economy">Economy</option>
-                    <option value="premium">Premium Economy</option>
-                    <option value="business">Business</option>
-                    <option value="first">First</option>
-                    <option value="business_plus">Business + First</option>
-                  </select>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-2">Booking Classes</div>
-                  <div className="min-h-[36px] mb-2">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                      {leg.bookingClasses.map((bookingClass) => (
-                        <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded text-sm font-mono whitespace-nowrap">
-                          {bookingClass}
-                          <button
-                            type="button"
-                            onClick={() => removeBookingClass(leg.id, bookingClass)}
-                            className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Add class (e.g., J, C, D)"
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono text-sm"
-                    maxLength={1}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addBookingClass(leg.id, e.currentTarget.value);
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Auto-populated based on cabin class. Add/remove specific fare classes.
-                </p>
-                </div>
-              </div>
-
 
               {/* Per-Leg ITA Matrix & Aero Options */}
               {showAdvancedOptions && (
@@ -1289,6 +1151,160 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
         {/* Global Configuration Section */}
         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
           <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">Global Configuration</h4>
+
+          {/* Cabin Class and Booking Classes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            {/* Cabin Class */}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Cabin Class</label>
+              <select
+                value={globalCabinClass}
+                onChange={(e) => {
+                  const newCabin = e.target.value;
+                  setGlobalCabinClass(newCabin);
+                  setLegs(prevLegs => prevLegs.map(leg => ({ ...leg, cabin: newCabin })));
+                }}
+                className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
+              >
+                <option value="COACH">Cheapest Available</option>
+                <option value="PREMIUM-COACH">Premium Economy</option>
+                <option value="BUSINESS">Business Class or Higher</option>
+                <option value="FIRST">First Class</option>
+              </select>
+            </div>
+
+            {/* Booking Class Codes */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Booking Class Selection</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onMouseEnter={() => setShowExtTooltip('global')}
+                    onMouseLeave={() => setShowExtTooltip(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                  {showExtTooltip === 'global' && (
+                    <div className="absolute left-0 top-6 z-50 w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 text-xs">
+                      <div className="space-y-3">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white mb-1">First Class</p>
+                          <p className="text-gray-600 dark:text-gray-300">Common letters: F, A, P</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">F = Full-fare First, A = Discounted, P = Award/Promo</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white mb-1">Business Class</p>
+                          <p className="text-gray-600 dark:text-gray-300">Common letters: J, C, D, I, Z</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">J/C = Full-fare, D/I/Z = Discounted/Award</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white mb-1">Premium Economy</p>
+                          <p className="text-gray-600 dark:text-gray-300">Common letters: W, R, G, P</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">W = Full-fare, R/G = Discounted</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white mb-1">Economy Class</p>
+                          <p className="text-gray-600 dark:text-gray-300">Common letters: Y, B, H, M, K, L, Q, V, N, S, T, E, O</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">Y = Full-fare, Others = Discounted tiers</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <select
+                  value={bookingClassSelection[legs[0]?.id] || 'all'}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const firstLegId = legs[0]?.id;
+                    if (!firstLegId) return;
+
+                    setBookingClassSelection(prev => ({ ...prev, [firstLegId]: value }));
+
+                    let newClasses: string[] = [];
+                    if (value === 'all') {
+                      const allClasses = [
+                        ...getDefaultBookingClasses('COACH'),
+                        ...getDefaultBookingClasses('PREMIUM-COACH'),
+                        ...getDefaultBookingClasses('BUSINESS'),
+                        ...getDefaultBookingClasses('FIRST')
+                      ];
+                      newClasses = [...new Set(allClasses)];
+                    } else if (value === 'economy') {
+                      newClasses = getDefaultBookingClasses('COACH');
+                    } else if (value === 'premium') {
+                      newClasses = getDefaultBookingClasses('PREMIUM-COACH');
+                    } else if (value === 'business') {
+                      newClasses = getDefaultBookingClasses('BUSINESS');
+                    } else if (value === 'first') {
+                      newClasses = getDefaultBookingClasses('FIRST');
+                    } else if (value === 'business_plus') {
+                      const businessClasses = getDefaultBookingClasses('BUSINESS');
+                      const firstClasses = getDefaultBookingClasses('FIRST');
+                      newClasses = [...new Set([...businessClasses, ...firstClasses])];
+                    }
+
+                    setLegs(prevLegs => prevLegs.map(leg => ({ ...leg, bookingClasses: newClasses })));
+                  }}
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 focus:border-accent-500"
+                >
+                  <option value="all">All</option>
+                  <option value="economy">Economy</option>
+                  <option value="premium">Premium Economy</option>
+                  <option value="business">Business</option>
+                  <option value="first">First</option>
+                  <option value="business_plus">Business + First</option>
+                </select>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-2">Booking Classes (Applied to All Legs)</div>
+                <div className="min-h-[36px] mb-2">
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                    {legs[0]?.bookingClasses.map((bookingClass) => (
+                      <span key={bookingClass} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded text-sm font-mono whitespace-nowrap">
+                        {bookingClass}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLegs(prevLegs => prevLegs.map(leg => ({
+                              ...leg,
+                              bookingClasses: leg.bookingClasses.filter(c => c !== bookingClass)
+                            })));
+                          }}
+                          className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Add class (e.g., J, C, D)"
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-accent-500 font-mono text-sm"
+                  maxLength={1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const newClass = e.currentTarget.value.trim().toUpperCase();
+                      if (newClass && !legs[0]?.bookingClasses.includes(newClass)) {
+                        setLegs(prevLegs => prevLegs.map(leg => ({
+                          ...leg,
+                          bookingClasses: [...leg.bookingClasses, newClass]
+                        })));
+                        e.currentTarget.value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Auto-populated based on cabin class. Add/remove specific fare classes.
+              </p>
+            </div>
+          </div>
 
           {/* Pagination Options */}
           <div className="grid grid-cols-2 gap-3">
