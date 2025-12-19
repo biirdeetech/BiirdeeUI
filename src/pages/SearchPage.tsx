@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
 import ITAMatrixService from '../services/itaMatrixApi';
+import { searchAllCabins, mergedFlightsToResponse } from '../services/parallelCabinSearch';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
@@ -13,6 +14,9 @@ import StreamingProgress from '../components/StreamingProgress';
 import { useAuth } from '../hooks/useAuth';
 import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 import { FrtProvider } from '../contexts/FrtContext';
+
+// Feature flag for parallel cabin search
+const ENABLE_PARALLEL_CABIN_SEARCH = false; // Set to true to enable 4-cabin parallel search
 
 const SearchPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -467,12 +471,51 @@ const SearchPage: React.FC = () => {
         });
       };
 
-      const searchResults = await FlightApi.searchFlights(
-        extractedParams,
-        extractedParams.aero ? onProgress : undefined,
-        extractedParams.aero ? onMetadata : undefined
-      );
-      console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
+      let searchResults: SearchResponse;
+
+      if (ENABLE_PARALLEL_CABIN_SEARCH) {
+        // Parallel cabin search - searches all 4 cabins simultaneously
+        console.log('🔄 SearchPage: Using parallel cabin search mode');
+
+        const parallelResult = await searchAllCabins(
+          extractedParams,
+          extractedParams.aero ? (cabin: string, flight: any) => {
+            console.log(`📥 SearchPage: Received ${cabin} flight:`, flight.id);
+            onProgress(flight);
+          } : undefined,
+          extractedParams.aero ? (cabin: string, metadata: any) => {
+            console.log(`📊 SearchPage: Received ${cabin} metadata:`, metadata);
+            onMetadata(metadata);
+          } : undefined,
+          (cabin: string) => {
+            console.log(`✅ SearchPage: ${cabin} search complete`);
+          }
+        );
+
+        // Convert merged results back to SearchResponse format
+        // Use metadata from first completed cabin search
+        const firstCabinResult = Object.values(parallelResult.cabinResults)[0];
+        searchResults = mergedFlightsToResponse(
+          parallelResult.mergedFlights,
+          {
+            session: firstCabinResult?.session,
+            solutionSet: firstCabinResult?.solutionSet,
+            solutionCount: parallelResult.mergedFlights.size,
+            pagination: firstCabinResult?.pagination
+          }
+        );
+
+        console.log('✅ SearchPage: Parallel search completed with', parallelResult.mergedFlights.size, 'unique flights');
+      } else {
+        // Standard single-cabin search
+        searchResults = await FlightApi.searchFlights(
+          extractedParams,
+          extractedParams.aero ? onProgress : undefined,
+          extractedParams.aero ? onMetadata : undefined
+        );
+        console.log('✅ SearchPage: Search completed with', searchResults.solutionList?.solutions?.length, 'total results');
+      }
+
       console.log('✅ SearchPage: Metadata - solutionCount:', searchResults.solutionCount, 'pagination:', searchResults.pagination);
 
       // Mark streaming as complete
