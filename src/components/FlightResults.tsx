@@ -456,6 +456,52 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     }
   };
 
+  // NEW: Get segment-based signature (ignores airline - for code-share detection)
+  // This groups flights by the actual route/segments, not by airline
+  const getSegmentSignature = (f: FlightSolution | GroupedFlight): string => {
+    if ('id' in f) {
+      // Build signature from all segments across all slices
+      const segmentParts: string[] = [];
+      f.slices.forEach(slice => {
+        if (slice.segments && slice.segments.length > 0) {
+          // For each segment: origin-destination-departure time (minute precision)
+          slice.segments.forEach(seg => {
+            const origin = seg.origin?.code || '';
+            const dest = seg.destination?.code || '';
+            const depTime = seg.departure ? normalizeDepartureToMinute(seg.departure) : '';
+            segmentParts.push(`${origin}-${dest}-${depTime}`);
+          });
+        } else {
+          // Fallback: use slice-level data
+          const origin = slice.origin?.code || '';
+          const dest = slice.destination?.code || '';
+          const depTime = slice.departure ? normalizeDepartureToMinute(slice.departure) : '';
+          const stops = slice.stops?.map(s => typeof s === 'string' ? s : s.code).join(',') || '';
+          segmentParts.push(`${origin}-${dest}-${depTime}-${stops}`);
+        }
+      });
+      return `SEG-${segmentParts.join('|')}`;
+    } else {
+      // For grouped flights, use outbound slice
+      const segmentParts: string[] = [];
+      if (f.outboundSlice.segments && f.outboundSlice.segments.length > 0) {
+        f.outboundSlice.segments.forEach(seg => {
+          const origin = seg.origin?.code || '';
+          const dest = seg.destination?.code || '';
+          const depTime = seg.departure ? normalizeDepartureToMinute(seg.departure) : '';
+          segmentParts.push(`${origin}-${dest}-${depTime}`);
+        });
+      } else {
+        const origin = f.outboundSlice.origin?.code || '';
+        const dest = f.outboundSlice.destination?.code || '';
+        const depTime = f.outboundSlice.departure ? normalizeDepartureToMinute(f.outboundSlice.departure) : '';
+        const stops = f.outboundSlice.stops?.map(s => typeof s === 'string' ? s : s.code).join(',') || '';
+        segmentParts.push(`${origin}-${dest}-${depTime}-${stops}`);
+      }
+      return `SEG-${segmentParts.join('|')}`;
+    }
+  };
+
   // Helper to extract date from ISO string (YYYY-MM-DD) without timezone conversion
   const getDateFromISO = (isoString: string): string => {
     if (!isoString) return '';
@@ -491,57 +537,16 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return departure.substring(0, 16);
   };
 
-  // Group similar flights together
+  // Group similar flights together (FLIGHT-CENTRIC: by segments, not airline)
   const groupSimilarFlights = (flightList: (FlightSolution | GroupedFlight)[]) => {
     const grouped = new Map<string, (FlightSolution | GroupedFlight)[]>();
     const timeOptionGroups = new Map<string, (FlightSolution | GroupedFlight)[]>();
 
-    // First pass: Group by airline + flight number + departure time (to minute) + origin (NO cabin)
-    // This ensures flights with same airline, route, departure time are grouped together regardless of cabin
-    // All cabin variations will be shown in the same card
+    // First pass: Group by segment signature (ignores airline - groups code-shares together)
+    // This ensures flights with same route/segments are grouped together regardless of airline or cabin
     flightList.forEach(flight => {
-      let signature = '';
-      const airlineCode = getFlightAirlineCode(flight);
-
-      if (groupingMode === 'segment') {
-        // Group by airline + flight number + departure time + origin (ignoring cabin, arrival time and layovers)
-        if ('id' in flight) {
-          // For FlightSolution: get first slice info
-          const firstSlice = flight.slices[0];
-          const flightNumber = firstSlice.flights?.[0] || '';
-          const departure = normalizeDepartureToMinute(firstSlice.departure || '');
-          const origin = firstSlice.origin?.code || '';
-
-          // Group by: airline + flight number + departure time (minute precision) + origin (NO cabin)
-          // This groups ALL cabins for the same airline flight together
-          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}`;
-        } else {
-          // For GroupedFlight: get outbound slice info
-          const flightNumber = flight.outboundSlice.flights?.[0] || '';
-          const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
-          const origin = flight.outboundSlice.origin?.code || '';
-
-          // Group by: airline + flight number + departure time (minute precision) + origin (NO cabin)
-          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}`;
-        }
-      } else {
-        // Group by airline + flight (flight number + departure time + origin) - groups same flight with different cabins/arrival/layovers/prices
-        if ('id' in flight) {
-          const firstSlice = flight.slices[0];
-          const flightNumber = firstSlice.flights?.[0] || '';
-          const departure = normalizeDepartureToMinute(firstSlice.departure || '');
-          const origin = firstSlice.origin?.code || '';
-
-          // Group by: airline + flight number + departure time (minute precision) + origin (NO cabin)
-          // This groups ALL cabins for the same airline flight together
-          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}`;
-        } else {
-          const flightNumber = flight.outboundSlice.flights?.[0] || '';
-          const departure = normalizeDepartureToMinute(flight.outboundSlice.departure || '');
-          const origin = flight.outboundSlice.origin?.code || '';
-          signature = `FLIGHT-${airlineCode}-${flightNumber}-${departure}-${origin}`;
-        }
-      }
+      // Use segment-based signature (airline-agnostic)
+      const signature = getSegmentSignature(flight);
 
       if (!grouped.has(signature)) {
         grouped.set(signature, []);
@@ -738,31 +743,52 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       }
     });
 
+    // Helper to get flight number for sorting (shortest = parent)
+    const getFlightNumberForSort = (f: FlightSolution | GroupedFlight): string => {
+      if ('id' in f) {
+        return f.slices[0]?.flights?.[0] || '';
+      } else {
+        return f.outboundSlice?.flights?.[0] || '';
+      }
+    };
+
     // Convert to primary/similar structure and sort within groups
     return Array.from(mergedGroups.values()).map(group => {
-      // Sort group: fastest (shortest duration) first, then cheapest (lowest price)
+      // Sort group by:
+      // 1. Shortest flight number (parent code-share - e.g., UA1234 before LH7589)
+      // 2. Then by duration (fastest)
+      // 3. Then by price (cheapest)
       const sorted = group.sort((a, b) => {
+        // First: Sort by flight number length (shorter = parent)
+        const aFlightNum = getFlightNumberForSort(a);
+        const bFlightNum = getFlightNumberForSort(b);
+        const flightNumCompare = aFlightNum.length - bFlightNum.length;
+        if (flightNumCompare !== 0) return flightNumCompare;
+
+        // If same length, alphabetically (UA before ZZ)
+        if (aFlightNum !== bFlightNum) return aFlightNum.localeCompare(bFlightNum);
+
         const aFlight = 'id' in a ? a : a.returnOptions[0];
         const bFlight = 'id' in b ? b : b.returnOptions[0];
 
-        // First: Compare by duration (shorter is better - fastest)
+        // Second: Compare by duration (shorter is better - fastest)
         const aDuration = 'id' in a
           ? a.slices.reduce((sum, slice) => sum + slice.duration, 0)
           : (a.outboundSlice.duration + (a.returnOptions[0]?.returnSlice?.duration || 0));
         const bDuration = 'id' in b
           ? b.slices.reduce((sum, slice) => sum + slice.duration, 0)
           : (b.outboundSlice.duration + (b.returnOptions[0]?.returnSlice?.duration || 0));
-        
+
         const durationCompare = aDuration - bDuration;
         if (durationCompare !== 0) return durationCompare;
 
-        // If durations equal, compare by cash price (cheapest)
+        // Third: Compare by cash price (cheapest)
         const aPrice = aFlight.displayTotal || aFlight.totalAmount || 0;
         const bPrice = bFlight.displayTotal || bFlight.totalAmount || 0;
         const priceCompare = aPrice - bPrice;
         if (priceCompare !== 0) return priceCompare;
 
-        // If prices equal, prioritize mileage deals
+        // Fourth: Prioritize mileage deals
         const aMileageValue = (aFlight.totalMileage || 0) > 0
           ? ((aFlight.totalMileage || 0) * 0.015) + (aFlight.totalMileagePrice || 0)
           : Infinity;

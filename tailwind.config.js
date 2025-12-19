@@ -152,6 +152,15 @@ export default {
         'fast': '100ms',
         'slow': '200ms',
       },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 3s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

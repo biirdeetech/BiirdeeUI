@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Link } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
+import AwardWrapper from './AwardWrapper';
 import { FlightSolution, GroupedFlight } from '../types/flight';
 
 interface FlightCardGroupProps {
@@ -54,6 +55,68 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
         return primaryId !== flightId;
       })
     : [...similarFlights];
+
+  // Helper to detect awards and extract award info
+  const getAwardInfo = (flight: FlightSolution | GroupedFlight) => {
+    // Get carrier code
+    let carrierCode = '';
+    if ('id' in flight) {
+      const firstSlice = flight.slices[0];
+      if (firstSlice.segments && firstSlice.segments.length > 0 && firstSlice.segments[0].carrier?.code) {
+        carrierCode = firstSlice.segments[0].carrier.code;
+      } else {
+        const flightNumber = firstSlice.flights?.[0] || '';
+        carrierCode = flightNumber.slice(0, 2);
+      }
+    } else {
+      carrierCode = flight.carrier?.code || '';
+      if (!carrierCode) {
+        const flightNumber = flight.outboundSlice.flights?.[0] || '';
+        carrierCode = flightNumber.slice(0, 2);
+      }
+    }
+
+    // Check if this carrier has v2 enrichment data (awards)
+    const carrierEnrichment = v2EnrichmentData?.get(carrierCode);
+    if (!carrierEnrichment || carrierEnrichment.length === 0) {
+      return { hasAwards: false, awardCount: 0, minMiles: undefined, minCash: undefined, currency: 'USD' };
+    }
+
+    // Extract award counts and min values
+    let minMiles: number | undefined = undefined;
+    let minCash: number | undefined = undefined;
+    let awardCount = 0;
+
+    carrierEnrichment.forEach((item: any) => {
+      if (item.type === 'solution' && item.provider === 'awardtool-direct' && item.data) {
+        const flightData = item.data;
+        awardCount++;
+
+        // Extract miles and cash from award data
+        if (flightData.miles) {
+          if (minMiles === undefined || flightData.miles < minMiles) {
+            minMiles = flightData.miles;
+          }
+        }
+        if (flightData.tax || flightData.price) {
+          const cash = flightData.tax || flightData.price || 0;
+          if (minCash === undefined || cash < minCash) {
+            minCash = cash;
+          }
+        }
+      }
+    });
+
+    const currency = 'id' in flight && flight.currency ? flight.currency : 'USD';
+
+    return {
+      hasAwards: awardCount > 0,
+      awardCount,
+      minMiles,
+      minCash,
+      currency
+    };
+  };
 
   // Identify code-share flights (same segments/times but different airlines)
   const getCodeShareFlights = () => {
@@ -118,8 +181,15 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
 
   // If no similar flights, just render the primary flight
   if (similarFlights.length === 0) {
+    const awardInfo = getAwardInfo(primaryFlight);
     return (
-      <>
+      <AwardWrapper
+        hasAwards={awardInfo.hasAwards}
+        awardCount={awardInfo.awardCount}
+        minMiles={awardInfo.minMiles}
+        minCash={awardInfo.minCash}
+        currency={awardInfo.currency}
+      >
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
           <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         ) : (
@@ -147,13 +217,22 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             onFlightCardToggle={onFlightCardToggle}
           />
         )}
-      </>
+      </AwardWrapper>
     );
   }
+
+  const primaryAwardInfo = getAwardInfo(primaryFlight);
 
   return (
     <div className="space-y-2">
       {/* Primary Flight Card */}
+      <AwardWrapper
+        hasAwards={primaryAwardInfo.hasAwards}
+        awardCount={primaryAwardInfo.awardCount}
+        minMiles={primaryAwardInfo.minMiles}
+        minCash={primaryAwardInfo.minCash}
+        currency={primaryAwardInfo.currency}
+      >
         {'id' in primaryFlight && primaryFlight.slices.length >= 3 ? (
           <MultiLegFlightCard flight={primaryFlight} originTimezone={originTimezone} displayTimezone={displayTimezone} perCentValue={perCentValue} session={session} solutionSet={solutionSet} v2EnrichmentData={v2EnrichmentData} onEnrichFlight={onEnrichFlight} enrichingAirlines={enrichingAirlines} />
         ) : (
@@ -184,6 +263,7 @@ const FlightCardGroup: React.FC<FlightCardGroupProps> = ({
             onFlightCardToggle={onFlightCardToggle}
           />
         )}
+      </AwardWrapper>
 
       {/* Similar Flights - Expandable - Show ALL similar flights */}
       {isExpanded && similarFlights.length > 0 && (
