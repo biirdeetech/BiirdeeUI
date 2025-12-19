@@ -4,6 +4,8 @@
 **Last Updated:** December 19, 2025
 **Type:** Vite/React Frontend Application
 
+**Current Sprint:** Parallel Cabin Search Implementation (50% Complete)
+
 ---
 
 ## 🚧 ACTIVE DEVELOPMENT - UI Architecture Refactor
@@ -45,24 +47,41 @@
     - Wraps primary flight cards with opal effect when awards available
     - Extracts min miles and cash from award data
 
-**In Progress (High Priority - Architectural Changes Required):**
-1. 🚧 **Cabin/booking class moved to advanced section** (src/components/SearchForm.tsx:1155-1307)
+**Completed (High Priority - Architectural Changes Required):**
+1. ✅ **Cabin/booking class moved to advanced section** (src/components/SearchForm.tsx:1155-1307)
    - Now hidden by default
    - Shows only when "Advanced" button clicked (showAdvancedOptions=true)
    - Applied globally to all legs
-2. 🚧 **Flight signature utilities** created (src/utils/flightSignature.ts)
+2. ✅ **Flight signature utilities** created (src/utils/flightSignature.ts)
    - generateFlightSignature() for deduplication across cabins
    - mergeFlightsByCabin() to merge results from parallel searches
    - CabinPrice interface for storing per-cabin pricing data
    - FlightWithCabins interface for merged flight structure
+   - getBestPrice() and getCabinPrice() helper functions
+3. ✅ **Parallel cabin search service** created (src/services/parallelCabinSearch.ts)
+   - searchAllCabins() launches 4 concurrent API calls
+   - Progress tracking for each cabin search
+   - Callback support for streaming and metadata
+   - Automatic result merging using flight signatures
+4. ✅ **FlightSolution type extended** (src/types/flight.ts)
+   - Added baseFlightId for signature-based merging
+   - Added cabinPrices Record for per-cabin pricing
+   - Added selectedCabin for UI state
+   - CabinPrice interface exported
 
-**Not Started (High Priority):**
-3. ❌ 4 parallel cabin searches in SearchPage (lines 378-516) - NEXT
-4. ❌ Per-flight cabin buttons - needs data from 4 parallel cabin searches
-5. ❌ SearchPage integration with parallel search and merging logic
+**Not Started (High Priority - Integration Required):**
+5. ❌ **SearchPage integration** - Replace single search with parallel cabin searches
+   - Update searchFlights() to use searchAllCabins() service
+   - Handle merged results in state
+   - Update cache to support cabin-specific data
+6. ❌ **Per-flight cabin buttons** - UI for selecting cabin on each flight
+   - Add Economy/Premium/Business/First buttons to FlightCard
+   - Update price display based on selected cabin
+   - Persist cabin selection in state
+7. ❌ **FlightCard height increase** - Accommodate new cabin button row
 
 **Not Started (Medium Priority):**
-6. ❌ Award fetching strategy: From top-5 to per-unique-flight with view-first priority
+8. ❌ Award fetching strategy: From top-5 to per-unique-flight with view-first priority
 
 ### New Architecture Overview
 

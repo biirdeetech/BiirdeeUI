@@ -6,12 +6,12 @@ export interface CabinPrice {
   cabin: string;
   price: number;
   currency: string;
-  bookingClasses: string[];
+  bookingClasses?: string[];
 }
 
 export interface FlightWithCabins {
   baseFlightId: string;
-  cabinPrices: Map<string, CabinPrice>;
+  cabinPrices: Record<string, CabinPrice>;
   [key: string]: any;
 }
 
@@ -61,31 +61,31 @@ export function generateFlightSignature(flight: any): string {
  * Returns a map of unique flights with cabin price data
  */
 export function mergeFlightsByCabin(
-  flightsByCAbin: Map<string, any[]>
+  flightsByCabin: Record<string, any[]>
 ): Map<string, FlightWithCabins> {
   const mergedFlights = new Map<string, FlightWithCabins>();
 
-  flightsByCAbin.forEach((flights, cabin) => {
+  Object.entries(flightsByCabin).forEach(([cabin, flights]) => {
     flights.forEach(flight => {
       const signature = generateFlightSignature(flight);
 
       const cabinPrice: CabinPrice = {
         cabin,
-        price: flight.price?.total || flight.totalPrice || 0,
-        currency: flight.price?.currency || flight.currency || 'USD',
+        price: flight.totalAmount || flight.displayTotal || 0,
+        currency: flight.currency || 'USD',
         bookingClasses: flight.bookingClasses || []
       };
 
       if (mergedFlights.has(signature)) {
         // Add cabin price to existing flight
         const existing = mergedFlights.get(signature)!;
-        existing.cabinPrices.set(cabin, cabinPrice);
+        existing.cabinPrices[cabin] = cabinPrice;
       } else {
         // Create new merged flight entry
         const mergedFlight: FlightWithCabins = {
           ...flight,
           baseFlightId: signature,
-          cabinPrices: new Map([[cabin, cabinPrice]])
+          cabinPrices: { [cabin]: cabinPrice }
         };
         mergedFlights.set(signature, mergedFlight);
       }
@@ -99,11 +99,11 @@ export function mergeFlightsByCabin(
  * Get the best (lowest) price across all cabins for a flight
  */
 export function getBestPrice(flight: FlightWithCabins): CabinPrice | null {
-  if (!flight.cabinPrices || flight.cabinPrices.size === 0) return null;
+  if (!flight.cabinPrices || Object.keys(flight.cabinPrices).length === 0) return null;
 
   let bestPrice: CabinPrice | null = null;
 
-  flight.cabinPrices.forEach(cabinPrice => {
+  Object.values(flight.cabinPrices).forEach(cabinPrice => {
     if (!bestPrice || cabinPrice.price < bestPrice.price) {
       bestPrice = cabinPrice;
     }
@@ -116,5 +116,5 @@ export function getBestPrice(flight: FlightWithCabins): CabinPrice | null {
  * Get cabin-specific price for a flight
  */
 export function getCabinPrice(flight: FlightWithCabins, cabin: string): CabinPrice | null {
-  return flight.cabinPrices?.get(cabin) || null;
+  return flight.cabinPrices?.[cabin] || null;
 }

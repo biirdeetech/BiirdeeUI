@@ -97,6 +97,13 @@ export interface MileageDeal {
   duration?: number;
 }
 
+export interface CabinPrice {
+  cabin: string;
+  price: number;
+  currency: string;
+  bookingClasses?: string[];
+}
+
 export interface FlightSolution {
   id: string;
   totalAmount: number;
@@ -111,6 +118,10 @@ export interface FlightSolution {
   fullyEnriched?: boolean;
   matchType?: 'exact' | 'partial' | 'none';
   mileageDeals?: MileageDeal[];
+  // Parallel cabin search fields
+  baseFlightId?: string; // Signature for merging across cabins
+  cabinPrices?: Record<string, CabinPrice>; // Per-cabin pricing
+  selectedCabin?: string; // Currently displayed cabin
 }
 
 export interface GroupedFlight {
