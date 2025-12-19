@@ -1,8 +1,70 @@
 # Biirdee Pro - Knowledge Base
 
-**Version:** 1.0
-**Last Updated:** December 2025
+**Version:** 2.0 (In Progress - Major UI Refactor)
+**Last Updated:** December 19, 2025
 **Type:** Vite/React Frontend Application
+
+---
+
+## 🚧 ACTIVE DEVELOPMENT - UI Architecture Refactor
+
+**Status:** In Progress
+**Branch:** main
+**Target Completion:** TBD
+
+### Major Changes in Progress
+
+**Completed:**
+1. ✅ Search defaults updated: `pageSize=300` (was 25), `nonstop=false` (was true)
+2. ✅ Price display updated: Shows `$1,234` instead of `USD 1,234.56`
+3. ✅ All prices rounded to whole numbers across the system
+4. ✅ Currency symbols added for 30+ currencies (€, £, ¥, etc.)
+
+**In Progress:**
+1. 🔄 Flight display architecture shift: From airline-centric to flight-centric
+2. 🔄 Award fetching strategy: From top-5 to per-unique-flight with view-first priority
+3. 🔄 UI reorganization: Award-first display with opal/shiny wrapper
+4. 🔄 Code-share detection and parent-alliance hierarchy
+5. 🔄 Per-flight cabin buttons (Economy, Business, Premium, First)
+6. 🔄 Global Best/Cheap tabs with price indicators
+7. 🔄 4 parallel cabin searches on each query
+8. 🔄 Cabin/booking class moved to advanced settings
+
+### New Architecture Overview
+
+**Old Model (v1.0):**
+- Flights grouped by airline
+- Top 5 flights get award enrichment
+- Cabin/booking class visible in main form
+- Default: 25 results, nonstop only
+
+**New Model (v2.0):**
+- Flight-centric display (each flight is independent record)
+- Award enrichment for all unique flights (batched, view-first)
+- Award availability shown as primary UI element (opal wrapper)
+- Code-share hierarchy: Award → Parent Flight → Alliance Flights
+- Per-flight cabin selection buttons
+- Global Best (fastest) vs Cheap (cheapest) tabs
+- 4 parallel searches per query (one per cabin class)
+- Default: 300 results, all connections allowed
+
+### Breaking Changes
+
+**Display Logic:**
+- Airline grouping removed
+- FlightCardGroup component deprecated (will become legacy)
+- New hierarchy: Award wrapper → Code-share parent → Alternatives
+
+**Search Behavior:**
+- Always searches 4 cabin classes in parallel
+- Results merge and update existing flights
+- Cabin selection in UI filters displayed results, doesn't trigger new search
+
+**Award System:**
+- Persistent across tab switches and page actions
+- Background processing with progress indication
+- View-first priority (visible flights enriched first)
+- Batch processing (2 flights at a time)
 
 ---
 

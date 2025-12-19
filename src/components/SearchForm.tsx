@@ -70,7 +70,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       origins: [],
       destinations: [],
       vias: [],
-      nonstop: true,
+      nonstop: false,
       departDate: getDefaultDepartDate(),
       cabin: 'COACH',
       bookingClasses: (() => {
@@ -111,7 +111,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
   const [fakeRoundTripLegId, setFakeRoundTripLegId] = useState<string | null>(null);
 
   // Pagination and Aero options
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(300);
   const [pageNum, setPageNum] = useState(1);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [aeroEnabled, setAeroEnabled] = useState(true);
@@ -201,7 +201,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
       setPassengers(parseInt(searchParams.get('passengers') || '1'));
 
       // Initialize pagination and aero options from URL
-      setPageSize(parseInt(searchParams.get('pageSize') || '25'));
+      setPageSize(parseInt(searchParams.get('pageSize') || '300'));
       setPerCentValue(parseFloat(searchParams.get('perCentValue') || '0.015'));
       setPageNum(parseInt(searchParams.get('pageNum') || '1'));
       const urlAero = searchParams.get('aero');
@@ -1299,7 +1299,7 @@ const SearchForm: React.FC<SearchFormProps> = ({ compact = false, onNewSearch })
                 min="1"
                 max="500"
                 value={pageSize}
-                onChange={(e) => setPageSize(parseInt(e.target.value) || 25)}
+                onChange={(e) => setPageSize(parseInt(e.target.value) || 300)}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 text-sm focus:border-accent-500 focus:outline-none"
               />
             </div>
