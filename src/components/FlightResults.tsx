@@ -243,8 +243,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       return flight.slices.reduce((total, slice) => {
         if (slice.duration) {
           // Parse ISO8601 duration (e.g., "PT13H25M" or "PT1H30M")
-          const hours = slice.duration.match(/(\d+)H/);
-          const minutes = slice.duration.match(/(\d+)M/);
+          const durationStr = typeof slice.duration === 'string' ? slice.duration : String(slice.duration);
+          const hours = durationStr.match(/(\d+)H/);
+          const minutes = durationStr.match(/(\d+)M/);
           const h = hours ? parseInt(hours[1]) : 0;
           const m = minutes ? parseInt(minutes[1]) : 0;
           return total + (h * 60) + m;
@@ -254,8 +255,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     } else {
       // Grouped flight - use outbound slice duration
       if (flight.outboundSlice.duration) {
-        const hours = flight.outboundSlice.duration.match(/(\d+)H/);
-        const minutes = flight.outboundSlice.duration.match(/(\d+)M/);
+        const durationStr = typeof flight.outboundSlice.duration === 'string' ? flight.outboundSlice.duration : String(flight.outboundSlice.duration);
+        const hours = durationStr.match(/(\d+)H/);
+        const minutes = durationStr.match(/(\d+)M/);
         const h = hours ? parseInt(hours[1]) : 0;
         const m = minutes ? parseInt(minutes[1]) : 0;
         return (h * 60) + m;

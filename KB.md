@@ -6,6 +6,12 @@
 
 **Current Sprint:** UI Refactor (Item 7/10 Complete - View-First Award Enrichment ✅)
 
+**Recent Bug Fixes:**
+- ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
+  - Issue: duration property was sometimes not a string type
+  - Solution: Added type guard to convert to string before calling .match()
+  - Affected: getFlightDuration function for both regular and grouped flights
+
 ---
 
 ## 🚧 ACTIVE DEVELOPMENT - UI Architecture Refactor
