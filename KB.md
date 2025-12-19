@@ -4,7 +4,7 @@
 **Last Updated:** December 19, 2025
 **Type:** Vite/React Frontend Application
 
-**Current Sprint:** Parallel Cabin Search Implementation (85% Complete - Infrastructure Ready)
+**Current Sprint:** UI Refactor (Item 7/10 Complete - View-First Award Enrichment ✅)
 
 ---
 
@@ -86,21 +86,75 @@
    - Auto-hides if only one cabin available
    - Responsive hover states
 
-**Remaining (Low Priority - Final Polish):**
-7. ⏸️ **FlightCard integration** - Add CabinSelector to flight cards
-   - Import CabinSelector component into FlightCard
-   - Pass cabinPrices and selectedCabin props
-   - Wire up cabin selection callback
-   - Update displayed price when cabin changes
-   - Note: FlightCard is 5,954 lines - requires careful integration point selection
-8. ⏸️ **Enable parallel search** - Flip feature flag when ready for production
-   - Set ENABLE_PARALLEL_CABIN_SEARCH = true in SearchPage.tsx:19
-   - Test all search flows (one-way, round-trip, multi-city)
-   - Verify cache behavior with merged results
-   - Monitor performance with 4 simultaneous API calls
+**HIGH PRIORITY - Remaining Core Features:**
 
-**Not Started (Medium Priority):**
-9. ❌ Award fetching strategy: From top-5 to per-unique-flight with view-first priority
+7. ✅ **Award fetching strategy change** (current.prompt item 1-2) - COMPLETED
+   - ✅ Changed from top-5 auto-fetch to per-unique-flight batched fetching
+   - ✅ Implemented view-first priority (fetches visible flights first)
+   - ✅ Batch size: 2 flights at a time
+   - ✅ Persists progress in background when user switches tabs/actions
+   - ✅ New service: src/services/viewFirstEnrichment.ts (266 lines)
+   - ✅ Integration: src/pages/SearchPage.tsx (lines 697-738)
+   - Features:
+     - EnrichmentQueueItem with visibility tracking
+     - Priority queue (visible flights = priority 1, hidden = priority 2)
+     - Automatic deduplication (skips already enriched flights)
+     - Background processing with 500ms delay between batches
+     - Progress tracking via callbacks
+     - Graceful abort on search changes
+     - Singleton manager pattern for global state
+
+8. ❌ **Per-flight cabin buttons** (current.prompt item 6)
+   - Integrate CabinSelector into FlightCard
+   - Show Economy/Premium/Business/First buttons on each flight row
+   - Update price display based on selected cabin
+   - Location: src/components/FlightCard.tsx (needs integration point)
+   - **THIS IS SECOND PRIORITY**
+
+9. ⏸️ **Enable parallel cabin search** (current.prompt item 10)
+   - Set ENABLE_PARALLEL_CABIN_SEARCH = true in SearchPage.tsx:19
+   - Test all search flows thoroughly
+   - Monitor 4x API call performance
+   - **THIS IS THIRD PRIORITY**
+
+**MEDIUM PRIORITY - Final Polish:**
+
+10. ⏸️ **Currency formatting verification** (current.prompt item 4, 7, 19-20)
+    - Verify $ sign and rounding in ALL views:
+      - ✅ Search result cards (done)
+      - ✅ CabinSelector (done)
+      - ❓ Flight segment details/modals
+      - ❓ Award display panels
+      - ❓ FRT options
+      - ❓ Return flight options
+    - Scan FlightCard.tsx, FlightSummaryModal.tsx, etc.
+
+### Summary of View-First Award Enrichment
+
+**Status:** COMPLETED ✅
+
+**What Changed:**
+- **OLD:** Auto-enriched top 5 airlines immediately after search
+- **NEW:** Batched enrichment of ALL unique flights with view-first priority
+
+**How It Works:**
+1. After search completes, wait 2 seconds
+2. Add all flights to enrichment queue
+3. Sort queue by visibility (visible flights first)
+4. Process 2 flights at a time with 500ms delay between batches
+5. Update UI progressively as each batch completes
+6. Continue in background even if user navigates/scrolls
+
+**Key Benefits:**
+- Awards for ALL flights, not just top 5 airlines
+- Visible flights enriched first (better UX)
+- Background processing doesn't block UI
+- Deduplication prevents redundant API calls
+- Graceful cleanup on search changes
+
+**Implementation Files:**
+- `src/services/viewFirstEnrichment.ts` - Queue manager service
+- `src/pages/SearchPage.tsx` - Integration with callbacks
 
 ### Summary of Parallel Cabin Search Implementation
 

@@ -6,6 +6,7 @@ import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
 import ITAMatrixService from '../services/itaMatrixApi';
 import { searchAllCabins, mergedFlightsToResponse } from '../services/parallelCabinSearch';
+import { enrichmentManager, EnrichmentProgress } from '../services/viewFirstEnrichment';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
 import FlightResults from '../components/FlightResults';
@@ -51,6 +52,7 @@ const SearchPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [v2EnrichmentData, setV2EnrichmentData] = useState<Map<string, any[]>>(new Map());
   const [enrichingAirlines, setEnrichingAirlines] = useState<Set<string>>(new Set());
+  const [enrichmentProgress, setEnrichmentProgress] = useState<EnrichmentProgress | null>(null);
   const enrichmentTriggeredRef = useRef(false);
   const enrichmentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [perCentValue, setPerCentValue] = useState(0.015);
@@ -691,198 +693,48 @@ const SearchPage: React.FC = () => {
     
     // Wait 2 seconds after search/streaming completes before triggering enrichment
     console.log('⏳ SearchPage: Waiting 2 seconds after search completion before auto-enrichment...');
-    
-    enrichmentTimeoutRef.current = setTimeout(() => {
-      console.log('🌟 SearchPage: Auto-enrichment enabled (awardEnabled:', awardEnabled, '), extracting top 5 airlines');
-    
-    const extractTop5Airlines = (searchResponse: SearchResponse): string[] => {
-      if (!searchResponse.solutionList?.solutions) return [];
-      
-      const selectionMode = import.meta.env.VITE_TOP5_SELECTION_CRITERIA || 'price'; // 'price' or 'miles'
-      console.log('🎯 SearchPage: Top 5 selection mode:', selectionMode);
-      
-      // Create map of airline -> best flight info
-      interface AirlineBestFlight {
-        price: number;
-        stops: number;
-        mileageValue: number; // For miles mode
-        solution: any; // Reference to solution
-      }
-      
-      const airlineBestFlights = new Map<string, AirlineBestFlight>();
-      
-      searchResponse.solutionList.solutions.forEach(solution => {
-        solution.slices.forEach(slice => {
-          slice.segments?.forEach(segment => {
-            const code = segment.carrier?.code;
-            if (code && code.length === 2) {
-              const price = solution.displayTotal || solution.totalAmount || 0;
-              const stops = Math.max(...solution.slices.map(s => s.stops?.length || 0));
-              
-              // Calculate mileage value if available (from aero enrichment)
-              let mileageValue = Infinity;
-              if (solution.totalMileage && solution.totalMileage > 0) {
-                const mileageCash = (solution.totalMileage * (perCentValue / 100));
-                const mileagePrice = parseFloat(solution.totalMileagePrice || 0);
-                mileageValue = mileageCash + mileagePrice;
-              }
-              
-              const existing = airlineBestFlights.get(code);
-              if (!existing) {
-                airlineBestFlights.set(code, { price, stops, mileageValue, solution });
-              } else {
-                // Determine if this flight is better based on selection mode
-                let isBetter = false;
-                
-                if (selectionMode === 'miles') {
-                  // Miles mode: prefer fewer stops, then best mileage value (or price if no miles)
-                  if (stops < existing.stops) {
-                    isBetter = true;
-                  } else if (stops === existing.stops) {
-                    // Within same stop category, compare mileage value
-                    if (mileageValue !== Infinity && existing.mileageValue !== Infinity) {
-                      isBetter = mileageValue < existing.mileageValue;
-                    } else if (mileageValue !== Infinity) {
-                      isBetter = true; // Has miles, existing doesn't
-                    } else if (existing.mileageValue === Infinity) {
-                      isBetter = price < existing.price; // Neither has miles, use price
-                    }
-                  }
-                } else {
-                  // Price mode: prefer fewer stops, then lowest price
-                  if (stops < existing.stops) {
-                    isBetter = true;
-                  } else if (stops === existing.stops) {
-                    isBetter = price < existing.price;
-                  }
-                }
-                
-                if (isBetter) {
-                  airlineBestFlights.set(code, { price, stops, mileageValue, solution });
-                }
-              }
-            }
-          });
-        });
-      });
-      
-      // Sort airlines by their best flights
-      const top5 = Array.from(airlineBestFlights.entries())
-        .sort((a, b) => {
-          const flightA = a[1];
-          const flightB = b[1];
-          
-          // First priority: fewer stops (nonstop -> 1 stop -> 2 stops)
-          if (flightA.stops !== flightB.stops) {
-            return flightA.stops - flightB.stops;
-          }
-          
-          // Within same stop category, sort by selection criteria
-          if (selectionMode === 'miles') {
-            // Prefer mileage value if available
-            if (flightA.mileageValue !== Infinity && flightB.mileageValue !== Infinity) {
-              return flightA.mileageValue - flightB.mileageValue;
-            }
-            if (flightA.mileageValue !== Infinity) return -1;
-            if (flightB.mileageValue !== Infinity) return 1;
-            // Both don't have miles, fall back to price
-            return flightA.price - flightB.price;
-          } else {
-            // Price mode: sort by price
-            return flightA.price - flightB.price;
-          }
-        })
-        .slice(0, 5)
-        .map(([code]) => code);
-      
-      console.log(`🎯 SearchPage: Extracted top 5 airlines (${selectionMode} mode):`, top5);
-      return top5;
-    };
 
-    const enrichTop5 = async () => {
-      const top5Airlines = extractTop5Airlines(results);
-      
-      if (top5Airlines.length === 0) return;
-      
-      // Mark all airlines as enriching
-      setEnrichingAirlines(new Set(top5Airlines));
-      
-      try {
-        console.log(`🌟 SearchPage: Auto-enriching ${top5Airlines.length} airlines in batch...`);
-        // Single request with all 5 airlines
-        const enrichmentData = await ITAMatrixService.enrichWithV2Mileage(extractedParams, top5Airlines);
-        
-        // Parse enrichment data and store by carrier
-        // Handle both old format (ita-matrix-enriched) and new format (awardtool-direct)
-        const carrierMap = new Map<string, any[]>();
-        
-        enrichmentData.forEach((item: any) => {
-          // New format: awardtool-direct
-          if (item.type === 'solution' && item.provider === 'awardtool-direct' && item.data) {
-            const flightData = item.data;
-            const itineraries = flightData.itineraries || [];
-            
-            // Extract carrier from first segment
-            itineraries.forEach((itinerary: any) => {
-              const segments = itinerary.segments || [];
-              segments.forEach((segment: any) => {
-                const carrier = segment.carrierCode || segment.operating?.carrierCode;
-                if (carrier && carrier.length === 2) {
-                  if (!carrierMap.has(carrier)) {
-                    carrierMap.set(carrier, []);
-                  }
-                  carrierMap.get(carrier)!.push(item);
-                }
-              });
-            });
-          }
-          // Old format: ita-matrix-enriched
-          else if (item.type === 'solution' && item.itinerary?.slices) {
-            item.itinerary.slices.forEach((slice: any) => {
-              if (slice.mileageBreakdown) {
-                slice.mileageBreakdown.forEach((breakdown: any) => {
-                  if (breakdown.allMatchingFlights) {
-                    breakdown.allMatchingFlights.forEach((flight: any) => {
-                      const carrier = flight.carrierCode || flight.operatingCarrier;
-                      if (carrier) {
-                        if (!carrierMap.has(carrier)) {
-                          carrierMap.set(carrier, []);
-                        }
-                        carrierMap.get(carrier)!.push(item);
-                      }
-                    });
-                  }
-                });
-              }
-            });
-          }
-        });
-        
-        // Store all enrichment data
-        setV2EnrichmentData(carrierMap);
-        console.log(`✅ SearchPage: Auto-enrichment complete for ${carrierMap.size} carriers`);
-        // Mark as triggered to prevent re-triggering
-        enrichmentTriggeredRef.current = true;
-      } catch (enrichError) {
-        console.error(`⚠️ SearchPage: Auto-enrichment failed (non-fatal):`, enrichError);
-        // Mark as triggered even on error to prevent retry loops
-        enrichmentTriggeredRef.current = true;
-      } finally {
-        // Clear enriching state
-        setEnrichingAirlines(new Set());
-        enrichmentTimeoutRef.current = null;
-      }
-    };
-    
-    enrichTop5();
+    enrichmentTimeoutRef.current = setTimeout(() => {
+      console.log('🌟 SearchPage: Auto-enrichment enabled (awardEnabled:', awardEnabled, '), starting view-first enrichment');
+
+      // Initialize enrichment manager with callbacks
+      enrichmentManager.initialize(
+        // On enrichment complete callback
+        (carrierCode: string, data: any[]) => {
+          console.log(`✅ SearchPage: Enrichment complete for carrier: ${carrierCode}`);
+          setV2EnrichmentData(prev => {
+            const newMap = new Map(prev);
+            newMap.set(carrierCode, data);
+            return newMap;
+          });
+        },
+        // On progress update callback
+        (progress: EnrichmentProgress) => {
+          setEnrichmentProgress(progress);
+          setEnrichingAirlines(progress.inProgress);
+          console.log(`📊 SearchPage: Enrichment progress: ${progress.completed}/${progress.total} flights`);
+        }
+      );
+
+      // Reset manager for new search
+      enrichmentManager.reset();
+
+      // Add all flights to the enrichment queue
+      const flights = results.solutionList?.solutions || [];
+      enrichmentManager.addFlights(flights, extractedParams);
+
+      // Mark as triggered
+      enrichmentTriggeredRef.current = true;
     }, 2000); // Wait 2 seconds after search/streaming completes
-    
+
     // Cleanup function
     return () => {
       if (enrichmentTimeoutRef.current) {
         clearTimeout(enrichmentTimeoutRef.current);
         enrichmentTimeoutRef.current = null;
       }
+      // Reset enrichment manager when component unmounts or search changes
+      enrichmentManager.reset();
     };
   }, [results, loading, isStreaming, extractedParams.pageNum, searchParams]); // Run when results change, loading stops, streaming completes, or search params change
 
