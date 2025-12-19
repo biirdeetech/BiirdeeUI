@@ -1,0 +1,32 @@
+# task name 
+re-organise flight list/view and rendering 
+
+# description 
+currently when we search flight we show each airline as group, all its flight inside of it. the code-share (those who are similar in segment and time) are shown on link icon click. 
+
+# old changes
+1. award is fetched only for 5 top. 
+2. currently clicking on codeshare shows us top level compact search result but also automatically open the flight details to view. 
+3. currently there are no primary flight and alliance-flight when we find code-shares
+
+# new changes
+1. award will be fetched for each unique flight and segment we find. around 2 flight at a time in batch. preferring view-first, meaning those that are in user's view 
+2. user switching tab, opening or doing any other action ON-PAGE reserves and persist our award fetching and display progress in background without interrupting and re-fetching 
+3. currently we ARE grouping flights under its airline, this will no longer be required, we need to show all flights expanded. and redundantly added as it is streamed or returned from server with a new UI order explained more in its own section 
+4. the word "USD" in price should be "$" sign, 
+5. the decimal in price should be rounded. 
+6. the time/price options will persist but new changes will most likely make them unusable or barely usable due to new nature of UI order. so dont remove it, but dont prefer it either. let it be stale and legacy unused component for rare case full match render 
+7. USD and dollar sign, or decimal price should also reflect segment, modals, tabs. not just the compact view search result cards 
+
+# new UI order
+1. currently we made our search render airline-centric, we need to turn this into flight-centric, meaning all flight will have its own record 
+2. grouping of flight exists but in a complete re-work and re-order. 
+3. if award is available. we will render award in opacity, round, shiney, opal like UI, containing award information for a route, and on right showing "best of cabin" for all the flight/rows under it. meaning the award becomes the default visible record instead of search results gradually as award loads and becomes available. 
+4. inside the award collapsible. we see code-share, where the primary flight or parent main flight is considered that has less digit length in its airline, i.ve AA1234 vs AA123 here 123 is the parent code-share, while all others are its alliance. 
+5. to display alliance, we intend it inside the parent codeshare flight. which is intended to award available 
+6. each row, result, record now will show its own cabin buttons, and show economy, business, premium, first. this is not what we have now. because right now we show "best of" all flights under one airline. 
+7. we need to increase height of flight search result card so we can fit in awards, cash and more into cabin buttons. 
+8. we show two global tabs, taking inline width 50% each one saying "best" and another saying "cheap" both showing the price on it. best mean fastest. cheapest not just chepeast alone, cheapest mean cheapest alone without it being fast or slow. this will act as filter. 
+9. currently we render cabin class and booking class selection, now we will hide this and move this inside advanced button in search container, because on search we will launch 4 request. cabin class changes i.e cheap, business, premium, first, while booking class stays "all" 
+10. these 4 result will keep updating current flight rendered or be added if unique flights 
+11. by default we fetch 300 result size with nonstop being default false which is currently true.  
