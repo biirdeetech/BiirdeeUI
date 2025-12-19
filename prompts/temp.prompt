@@ -1,0 +1,10 @@
+you're pointed in negative, you have failed to evaluate against user's ask in kb.md and current.prompt. 
+
+current UI shows 220 flights in 1 stop. here are the problems 
+
+1. we see decimal in the stop tab, we must never have decimal 
+2. we see decimal in cabin class pricing 
+3. we see "USD" which was supposed to be "$" 
+4. the 220 flights were supposed to be listed out, not grouped in until unless there is award or code-share available. heirarichy of flight is award must be parent to code-share, code-share must be parent to its alliance, other than that no further grouping is needed. if award is not available then code-share-parent and code-share alliances are the heirarchy. the UI must show intended collapsible UI, where each cllapsible level is intended further
+5. we are NO LONGER grouping by time option or price option, all flight must appear as individual enteries unless they are point 4. 
+6. we are fetching multiple cabins per each search, we must run these request in sequence and show progress, update/link each time we have payload. 
