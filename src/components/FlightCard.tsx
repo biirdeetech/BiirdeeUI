@@ -1641,15 +1641,29 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
   };
 
   const formatPrice = (price: number, currencyCode: string, showPlus: boolean = false) => {
-    // Format number with commas, preserving decimals if they exist (up to 1 decimal place)
-    // This matches the precision shown in the top tabs
+    // Round to whole number - no decimals
+    const roundedPrice = Math.round(price);
+
+    // Format number with commas
     const formatted = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 1
-    }).format(price);
+      maximumFractionDigits: 0
+    }).format(roundedPrice);
 
-    // Return with currency code prefix and optional "+"
-    return `${currencyCode} ${formatted}${showPlus ? '+' : ''}`;
+    // Get currency symbol
+    const currencySymbols: Record<string, string> = {
+      'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': 'CA$',
+      'AUD': 'A$', 'CHF': 'CHF', 'CNY': '¥', 'INR': '₹', 'KRW': '₩',
+      'BRL': 'R$', 'MXN': 'MX$', 'ZAR': 'R', 'SGD': 'S$', 'HKD': 'HK$',
+      'NZD': 'NZ$', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr', 'PLN': 'zł',
+      'THB': '฿', 'IDR': 'Rp', 'MYR': 'RM', 'PHP': '₱', 'CZK': 'Kč',
+      'ILS': '₪', 'CLP': 'CLP', 'AED': 'AED', 'SAR': 'SAR', 'TRY': '₺', 'RUB': '₽'
+    };
+
+    const symbol = currencySymbols[currencyCode] || currencyCode + ' ';
+
+    // Return with currency symbol prefix and optional "+"
+    return `${symbol}${formatted}${showPlus ? '+' : ''}`;
   };
 
   const openHacksPage = () => {
@@ -1685,7 +1699,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
     window.open(`/hacks?${params.toString()}`, '_blank');
   };
   const formatPricePerMile = (pricePerMile: number) => {
-    return pricePerMile.toFixed(2);
+    return Math.round(pricePerMile).toFixed(0);
   };
 
   const formatDuration = (minutes: number) => {
@@ -2876,8 +2890,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   </div>
                 )}
 
-                {/* Time Options */}
-                {hasTimeOptions && (
+                {/* Time Options - Hidden as per current.prompt item 6: time/price options are legacy */}
+                {false && hasTimeOptions && (
                   <div className="px-4 py-3 border-b border-gray-800/30">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">

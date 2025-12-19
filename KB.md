@@ -6,11 +6,38 @@
 
 **Current Sprint:** UI Refactor (Item 7/10 Complete - View-First Award Enrichment ✅)
 
-**Recent Bug Fixes:**
+**Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
   - Issue: duration property was sometimes not a string type
   - Solution: Added type guard to convert to string before calling .match()
   - Affected: getFlightDuration function for both regular and grouped flights
+
+**Major Updates (Dec 19, 2025):**
+- ✅ Fixed decimal display in stop count tabs (FlightResults.tsx:1069)
+  - Changed from `{currency}{cheapestPrice.toLocaleString()}` to `formatPrice(cheapestPrice, currency)`
+- ✅ Fixed decimal display in cabin pricing (FlightCard.tsx:1643-1667)
+  - Updated formatPrice function to round to whole numbers (no decimals)
+  - Changed USD display from "USD 1,234.5" to "$1,234"
+  - Added currency symbol mapping for 30+ currencies
+- ✅ Fixed price per mile formatting (FlightCard.tsx:1701-1703)
+  - Changed from `toFixed(2)` to `Math.round().toFixed(0)`
+- ✅ Hidden time-based grouping UI (FlightCard.tsx:2893-2894)
+  - Time Options section now disabled with `{false &&` condition
+  - Kept as legacy code per current.prompt requirements
+- ✅ Implemented sequential cabin search (sequentialCabinSearch.ts)
+  - Replaces parallel cabin search with sequential mode
+  - Searches COACH, PREMIUM-COACH, BUSINESS, FIRST one after another
+  - Progress updates after each cabin completes
+  - Results merge and update progressively
+- ✅ Added cabin search progress component (CabinSearchProgress.tsx)
+  - Shows pending/streaming/complete/error status for each cabin
+  - Real-time progress with icon indicators
+  - Displays flight counts as each cabin completes
+- ✅ Updated SearchPage for sequential search (SearchPage.tsx)
+  - Changed ENABLE_PARALLEL_CABIN_SEARCH to ENABLE_MULTI_CABIN_SEARCH
+  - Set to true by default for all searches
+  - Integrated CabinSearchProgress component
+  - Progressive result updates as each cabin completes
 
 ---
 

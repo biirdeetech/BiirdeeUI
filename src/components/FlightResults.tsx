@@ -1066,7 +1066,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                       text-xs font-medium
                       ${isActive ? 'text-blue-400' : 'text-gray-500'}
                     `}>
-                      {currency}{cheapestPrice.toLocaleString()}
+                      {formatPrice(cheapestPrice, currency)}
                     </span>
                   </div>
                 </button>
