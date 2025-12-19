@@ -42,6 +42,11 @@
   - Issue: `mergeFlightsByCabin` expects `Record<cabin, flights[]>` format
   - Was incorrectly passing flat array instead of cabin-keyed object
   - Now correctly passes `cabinFlights` object to merge function
+- ✅ Fixed flight.slices undefined error (SearchPage.tsx:972, sequentialCabinSearch.ts:161)
+  - Issue: `mergedFlightsToResponse` was accessing `flight.baseFlight` which doesn't exist
+  - Merged flights already contain all properties including slices
+  - Fixed by spreading flight directly instead of flight.baseFlight
+  - Added safety check in `calculateAvailableStops` for flights without slices
 
 ---
 

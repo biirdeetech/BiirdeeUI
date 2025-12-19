@@ -158,9 +158,8 @@ export function mergedFlightsToResponse(
   }
 ): SearchResponse {
   const flights = Array.from(mergedFlights.values()).map(flight => ({
-    ...flight.baseFlight,
-    cabinPrices: flight.cabinPrices,
-    baseFlightId: flight.signature
+    ...flight,
+    // cabinPrices and baseFlightId are already in flight
   }));
 
   return {

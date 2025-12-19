@@ -969,6 +969,9 @@ const SearchPage: React.FC = () => {
 
     const stopsSet = new Set<number>();
     searchResponse.solutionList.solutions.forEach(flight => {
+      // Safety check: ensure flight has slices
+      if (!flight.slices || !Array.isArray(flight.slices)) return;
+
       flight.slices.forEach(slice => {
         const stopCount = slice.stops?.length || 0;
         stopsSet.add(stopCount);
