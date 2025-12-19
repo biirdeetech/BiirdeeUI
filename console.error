@@ -1,7 +1,77 @@
-✅ SequentialCabinSearch: FIRST search completed with 25 flights sequentialCabinSearch.ts:60:15
-❌ SequentialCabinSearch: Error searching FIRST: TypeError: flights.forEach is not a function
-    mergeFlightsByCabin https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/utils/flightSignature.ts:24
-    mergeFlightsByCabin https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/utils/flightSignature.ts:23
-    searchAllCabinsSequentially https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/services/sequentialCabinSearch.ts:61
-.webcontainer@runtime.365214aa.js:26:47410
-❌ SearchPage: Search failed: flights.forEach is not a function
+🏠 SearchPage: Component rendering SearchPage.tsx:39:11
+🔍 SearchPage: Extracted URL parameters: 
+Object { tripType: "oneWay", origin: "SFO", destination: "HND", departDate: "2025-12-26", returnDate: null, cabin: "COACH", passengers: 1, maxStops: -1, extraStops: -1, slices: (1) […], … }
+SearchPage.tsx:363:11
+🌍 SearchPage: Origin timezone: America/Los_Angeles SearchPage.tsx:364:11
+Uncaught TypeError: can't access property "forEach", flight.slices is undefined
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:806
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:805
+    SearchPage https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:953
+    renderWithHooks https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:11548
+    updateFunctionComponent https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:14582
+    beginWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:15924
+    callCallback2 https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3674
+    invokeGuardedCallbackDev https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3699
+    invokeGuardedCallback https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3733
+    beginWork$1 https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19765
+    performUnitOfWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19198
+    workLoopSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19137
+    renderRootSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19116
+    recoverFromConcurrentError https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18736
+    performConcurrentWorkOnRoot https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18684
+    workLoop https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:197
+    flushWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:176
+    performWorkUntilDeadline https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:384
+SearchPage.tsx:806:7
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:806
+    forEach self-hosted:157
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:805
+    SearchPage https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:953
+    renderWithHooks https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:11548
+    updateFunctionComponent https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:14582
+    beginWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:15924
+    callCallback2 https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3674
+    invokeGuardedCallbackDev https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3699
+    invokeGuardedCallback https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:3733
+    beginWork$1 https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19765
+    performUnitOfWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19198
+    workLoopSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19137
+    renderRootSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19116
+    recoverFromConcurrentError https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18736
+    performConcurrentWorkOnRoot https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18684
+    workLoop https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:197
+    flushWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:176
+    performWorkUntilDeadline https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:384
+The above error occurred in the <SearchPage> component:
+
+SearchPage@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:38:42
+RenderedRoute@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:5621:23
+Routes@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:6496:16
+Router@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:6439:16
+BrowserRouter@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:9541:23
+ProposalProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/contexts/ProposalContext.tsx:20:33
+AuthProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/hooks/useAuth.tsx:22:29
+NotificationProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/hooks/useNotification.tsx:21:37
+ErrorBoundary@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/App.tsx?t=1766182218863:39:5
+App
+ThemeProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/contexts/ThemeContext.tsx:20:30
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary. .webcontainer@runtime.365214aa.js:26:47410
+React Error Boundary caught an error: TypeError: can't access property "forEach", flight.slices is undefined
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:806
+    calculateAvailableStops https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:805
+    SearchPage https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:953
+    renderWithHooks https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:11548
+    updateFunctionComponent https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:14582
+    beginWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:15924
+    beginWork$1 https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19753
+    performUnitOfWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19198
+    workLoopSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19137
+    renderRootSync https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:19116
+    recoverFromConcurrentError https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18736
+    performConcurrentWorkOnRoot https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:18684
+    workLoop https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:197
+    flushWork https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:176
+    performWorkUntilDeadline https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/chunk-6VWAHX6D.js?v=68f3e50e:384
+ 
+Object { componentStack: "\nSearchPage@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/pages/SearchPage.tsx?t=1766183307156:38:42\nRenderedRoute@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:5621:23\nRoutes@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:6496:16\nRouter@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:6439:16\nBrowserRouter@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/node_modules/.vite/deps/react-router-dom.js?v=b0db9fd9:9541:23\nProposalProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/contexts/ProposalContext.tsx:20:33\nAuthProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/hooks/useAuth.tsx:22:29\nNotificationProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/hooks/useNotification.tsx:21:37\nErrorBoundary@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/App.tsx?t=1766182218863:39:5\nApp\nThemeProvider@https://zp1v56uxy8rdx5ypatb0ockcb9tr6a-oci3--5173--365214aa.local-credentialless.webcontainer-api.io/src/contexts/ThemeContext.tsx:20:30" }
