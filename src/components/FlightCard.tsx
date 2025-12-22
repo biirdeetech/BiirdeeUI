@@ -2466,7 +2466,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   }`}>
                     {cabinLabels[cabinKey]}
                   </div>
-                  {pricing && displayPrice !== null ? (
+                  {!isAwardModal && pricing && displayPrice !== null ? (
                     <>
                       <div className={`text-xs font-bold ${
                         isSelected ? 'text-white' : 'text-gray-300'
@@ -2494,7 +2494,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                         ) : null;
                       })()}
                     </>
-                  ) : cabinHasAero ? (
+                  ) : !isAwardModal && cabinHasAero ? (
                     <>
                       <div className={`text-xs font-bold ${
                         isSelected ? 'text-orange-400' : 'text-orange-500'
