@@ -398,7 +398,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         totalMileagePrice: regularFlight.totalMileagePrice || 0,
         matchType: regularFlight.matchType || 'none',
         mileageDeals: regularFlight.mileageDeals || [],
-        fullyEnriched: regularFlight.fullyEnriched || false
+        fullyEnriched: regularFlight.fullyEnriched || false,
+        isAwardFlight: regularFlight.isAwardFlight || false,
+        awardData: regularFlight.awardData
       };
     }
   };

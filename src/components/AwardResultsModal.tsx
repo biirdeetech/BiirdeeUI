@@ -14,6 +14,8 @@ interface AwardOption {
   itineraries: any[];
   price: any;
   data: any;
+  bookingUrl?: string;
+  airlineName?: string;
 }
 
 interface AwardResultsModalProps {
@@ -230,12 +232,26 @@ const AwardResultsModal: React.FC<AwardResultsModalProps> = ({
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-base">{cabinDisplay}</span>
                       {cheapestAward && (
-                        <span className={`
-                          text-xs font-semibold
-                          ${selectedCabin === cabinKey ? 'text-yellow-300' : 'text-gray-500'}
-                        `}>
-                          {cheapestAward.miles.toLocaleString()} mi
-                        </span>
+                        <>
+                          <span className={`
+                            text-xs font-semibold
+                            ${selectedCabin === cabinKey ? 'text-yellow-300' : 'text-gray-500'}
+                          `}>
+                            {cheapestAward.miles.toLocaleString()} mi
+                          </span>
+                          <span className={`
+                            text-[10px] font-medium
+                            ${selectedCabin === cabinKey ? 'text-green-400' : 'text-gray-600'}
+                          `}>
+                            +${cheapestAward.tax.toFixed(2)}
+                          </span>
+                          <span className={`
+                            text-[10px]
+                            ${selectedCabin === cabinKey ? 'text-gray-400' : 'text-gray-600'}
+                          `}>
+                            ≈ ${((cheapestAward.miles * perCentValue) + cheapestAward.tax).toFixed(0)}
+                          </span>
+                        </>
                       )}
                       <span className="text-[10px] text-gray-500">({cabinAwards.length})</span>
                     </div>

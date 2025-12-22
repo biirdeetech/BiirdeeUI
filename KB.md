@@ -44,6 +44,18 @@
     - Yellow theme for award flights (vs orange for Aero)
     - Only displays when `isAwardFlight` is true and `awardData` is present
     - Aero box hidden when displaying award flights to avoid confusion
+  - ✅ Enhanced Award Results Modal cabin tabs (AwardResultsModal.tsx:232-257):
+    - Cabin tabs now display comprehensive pricing information:
+      - Mileage required (e.g., "40,000 mi")
+      - Tax/fees amount (e.g., "+$11.00") in green
+      - Converted USD price (e.g., "≈ $411") calculated as (miles × perCentValue) + tax
+    - Shows cheapest option per cabin for easy comparison
+    - Color-coded: yellow for selected cabin, gray for unselected
+  - ✅ Fixed FlightCard award data passing (FlightCard.tsx:402-403):
+    - Added `isAwardFlight` and `awardData` to `getFlightData()` return object
+    - Ensures award flights properly render with yellow box and booking link
+    - Award box displays: miles, tax, and cash equivalent
+    - Booking button only shows when bookingUrl is available
 
 **Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
