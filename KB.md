@@ -17,7 +17,11 @@
   - Booking button appears when award has bookingUrl
   - Award flights sorted by cabin and price within each cabin
   - **Fixed cabin normalization (FlightResults.tsx:20-31)**: Award cabin names (economy, business, first) now properly normalized to standard codes (COACH, BUSINESS, FIRST)
-  - **Added detailed logging**: Console logs track award flight creation and cabin normalization for debugging
+  - **Added detailed logging for debugging (Dec 22, 2025)**:
+    - FlightResults.tsx:204-251: Logs each carrier, enrichment type, cabin processing, and award flight creation
+    - FlightResults.tsx:389-407: Logs cabin filtering process, award flights in filtered results
+    - cabinGrouping.ts:184-186: Logs award flight cabin assignment during grouping
+    - cabinGrouping.ts:235-243: Logs flight groups with award indicator and cabin options
   - Awards now correctly appear in their designated cabin tabs (e.g., economy awards in Economy tab, business awards in Business tab)
 - ✅ FRT modal reorganization (FrtResultsModal.tsx:74-225)
   - Removed inline FRT display from flight cards (was at FlightCard.tsx:3053-3181)

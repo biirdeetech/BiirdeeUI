@@ -386,7 +386,24 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
   // Filter flights by selected cabin
   const filteredByCabin = useMemo(() => {
-    return groupedByCabin.filter(group => group.cabinOptions.has(cabinFilter));
+    console.log(`🔍 FlightResults: Filtering ${groupedByCabin.length} groups by cabin=${cabinFilter}`);
+
+    const filtered = groupedByCabin.filter(group => {
+      const hasCabin = group.cabinOptions.has(cabinFilter);
+      const isAward = group.primaryFlight.isAwardFlight;
+
+      if (isAward) {
+        console.log(`🎖️ Award flight: ${group.flightNumbers.join(',')} @ ${group.departure.split('T')[1]}, cabins=[${Array.from(group.cabinOptions.keys()).join(', ')}], hasCabin(${cabinFilter})=${hasCabin}`);
+      }
+
+      return hasCabin;
+    });
+
+    console.log(`✅ FlightResults: Filtered to ${filtered.length} groups for cabin ${cabinFilter}`);
+    const awardCount = filtered.filter(g => g.primaryFlight.isAwardFlight).length;
+    console.log(`   - ${awardCount} award flights in filtered results`);
+
+    return filtered;
   }, [groupedByCabin, cabinFilter]);
 
   // Sort filtered flights by best or cheap

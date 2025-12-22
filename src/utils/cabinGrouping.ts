@@ -181,6 +181,10 @@ export function groupFlightsByCabin(flights: FlightSolution[]): GroupedFlightByC
     flightList.forEach(flight => {
       const cabin = getPrimaryCabin(flight);
 
+      if (flight.isAwardFlight) {
+        console.log(`🎖️ CabinGrouping: Award flight ${flight.id}, primary cabin=${cabin}, slice cabin=${flight.slices[0]?.cabins?.[0]}`);
+      }
+
       if (!cabinMap.has(cabin)) {
         cabinMap.set(cabin, []);
       }
@@ -228,11 +232,14 @@ export function groupFlightsByCabin(flights: FlightSolution[]): GroupedFlightByC
     });
 
     // Log grouping details
-    console.log(`✅ ${airlineCode} ${flightNumbers.join(',')} @ ${departure.split('T')[1]}`);
+    const isAwardGroup = flightList.some(f => f.isAwardFlight);
+    const groupLabel = isAwardGroup ? '🎖️' : '✅';
+    console.log(`${groupLabel} ${airlineCode} ${flightNumbers.join(',')} @ ${departure.split('T')[1]}`);
     console.log(`   Route: ${route}, Cabins: ${Array.from(cabinOptions.keys()).join(', ')}`);
     cabinOptions.forEach((option, cabin) => {
       const priceOpts = option.priceOptions?.length || 0;
-      console.log(`   - ${cabin}: $${option.price}${priceOpts > 0 ? ` (+${priceOpts} price options)` : ''}`);
+      const isAward = option.flight.isAwardFlight ? ' (AWARD)' : '';
+      console.log(`   - ${cabin}: $${option.price}${priceOpts > 0 ? ` (+${priceOpts} price options)` : ''}${isAward}`);
     });
   });
 
