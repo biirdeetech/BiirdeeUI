@@ -1217,30 +1217,50 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
     return Array.from(uniqueMap.values());
   };
 
-  // Extract ALL award options from v2 enrichment data
+  // Extract ALL award options from v2 enrichment data OR from the flight's awardData
   const getAllAwardOptions = (): any[] => {
+    const awardOptions: any[] = [];
+
+    // If this is an award flight (rendered in award modal), get award data from the flight object itself
+    if (isAwardModal && 'isAwardFlight' in flight && flight.isAwardFlight && flight.awardData) {
+      awardOptions.push({
+        id: flight.id || `award-${Date.now()}`,
+        miles: flight.awardData.miles,
+        tax: flight.awardData.tax,
+        cabin: flight.slices[0]?.cabins?.[0] || 'ECONOMY',
+        segments: [],
+        transferOptions: flight.awardData.transferOptions || [],
+        seats: flight.awardData.seats || 0,
+        itineraries: [],
+        price: { currency: flight.currency || 'USD' },
+        data: flight,
+        bookingUrl: flight.awardData.bookingUrl || null,
+        airlineName: flight.awardData.airlineName || null
+      });
+      return awardOptions;
+    }
+
+    // Otherwise, get from v2 enrichment data (normal search results)
     if (!v2EnrichmentData || v2EnrichmentData.size === 0 || !carrier.code) return [];
-    
+
     const carrierEnrichment = v2EnrichmentData.get(carrier.code);
     if (!carrierEnrichment || carrierEnrichment.length === 0) return [];
-    
-    const awardOptions: any[] = [];
-    
+
     carrierEnrichment.forEach((enrichment: any) => {
       // New format: awardtool-direct
       if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
         const flightData = enrichment.data;
         const awardtool = flightData.awardtool;
-        
+
         if (awardtool && awardtool.cabinPrices) {
           // Extract all cabin options from this solution
           Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
             if (cabinData.miles > 0) {
               // Generate unique ID that includes cabin to distinguish different cabin options from same flight
-              const uniqueId = flightData.id 
+              const uniqueId = flightData.id
                 ? `${flightData.id}_${cabinName.toUpperCase().replace(/\s+/g, '_')}`
                 : `${enrichment.segment?.origin}-${enrichment.segment?.destination}-${cabinName}-${Date.now()}`;
-              
+
               awardOptions.push({
                 id: uniqueId,
                 miles: cabinData.miles,
@@ -1264,7 +1284,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         }
       }
     });
-    
+
     // Deduplicate before returning
     return deduplicateAwardOptions(awardOptions);
   };
