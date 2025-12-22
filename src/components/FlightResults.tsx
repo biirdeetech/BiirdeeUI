@@ -322,7 +322,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Economy</span>
-              {cabinPriceRanges['COACH'].count > 0 && (
+              {cabinPriceRanges['COACH'].count > 0 && cabinPriceRanges['COACH'].cheapestPrice !== cabinPriceRanges['COACH'].bestPrice && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500'}
@@ -346,7 +346,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Premium</span>
-              {cabinPriceRanges['PREMIUM-COACH'].count > 0 && (
+              {cabinPriceRanges['PREMIUM-COACH'].count > 0 && cabinPriceRanges['PREMIUM-COACH'].cheapestPrice !== cabinPriceRanges['PREMIUM-COACH'].bestPrice && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500'}
@@ -370,7 +370,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Business</span>
-              {cabinPriceRanges['BUSINESS'].count > 0 && (
+              {cabinPriceRanges['BUSINESS'].count > 0 && cabinPriceRanges['BUSINESS'].cheapestPrice !== cabinPriceRanges['BUSINESS'].bestPrice && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500'}
@@ -394,7 +394,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">First</span>
-              {cabinPriceRanges['FIRST'].count > 0 && (
+              {cabinPriceRanges['FIRST'].count > 0 && cabinPriceRanges['FIRST'].cheapestPrice !== cabinPriceRanges['FIRST'].bestPrice && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500'}
@@ -408,53 +408,55 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </div>
       </div>
 
-      {/* Best / Cheap Sort Tabs */}
-      <div className="border-b border-gray-700/30">
-        <div className="grid grid-cols-2 gap-0">
-          <button
-            onClick={() => setSortMode('cheap')}
-            className={`
-              relative px-4 py-3 text-sm font-semibold transition-all duration-200
-              border-b-2 -mb-px
-              ${sortMode === 'cheap'
-                ? 'text-blue-400 border-blue-500 bg-blue-500/5'
-                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
-              }
-            `}
-          >
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-base">Cheapest</span>
-              <span className={`
-                text-xs font-semibold
-                ${sortMode === 'cheap' ? 'text-blue-300' : 'text-gray-500'}
-              `}>
-                {formatPrice(sortTabPrices.cheapPrice, currency)}
-              </span>
-            </div>
-          </button>
-          <button
-            onClick={() => setSortMode('best')}
-            className={`
-              relative px-4 py-3 text-sm font-semibold transition-all duration-200
-              border-b-2 -mb-px
-              ${sortMode === 'best'
-                ? 'text-blue-400 border-blue-500 bg-blue-500/5'
-                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
-              }
-            `}
-          >
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-base">Best</span>
-              <span className={`
-                text-xs font-semibold
-                ${sortMode === 'best' ? 'text-blue-300' : 'text-gray-500'}
-              `}>
-                {formatPrice(sortTabPrices.bestPrice, currency)}
-              </span>
-            </div>
-          </button>
+      {/* Best / Cheap Sort Tabs - only show if there's a meaningful difference */}
+      {sortTabPrices.cheapPrice !== sortTabPrices.bestPrice && (
+        <div className="border-b border-gray-700/30">
+          <div className="grid grid-cols-2 gap-0">
+            <button
+              onClick={() => setSortMode('cheap')}
+              className={`
+                relative px-4 py-3 text-sm font-semibold transition-all duration-200
+                border-b-2 -mb-px
+                ${sortMode === 'cheap'
+                  ? 'text-blue-400 border-blue-500 bg-blue-500/5'
+                  : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
+                }
+              `}
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-base">Cheapest</span>
+                <span className={`
+                  text-xs font-semibold
+                  ${sortMode === 'cheap' ? 'text-blue-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(sortTabPrices.cheapPrice, currency)}
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setSortMode('best')}
+              className={`
+                relative px-4 py-3 text-sm font-semibold transition-all duration-200
+                border-b-2 -mb-px
+                ${sortMode === 'best'
+                  ? 'text-blue-400 border-blue-500 bg-blue-500/5'
+                  : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
+                }
+              `}
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-base">Best</span>
+                <span className={`
+                  text-xs font-semibold
+                  ${sortMode === 'best' ? 'text-blue-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(sortTabPrices.bestPrice, currency)}
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Grouped Flight Cards */}
       <div className="mt-4 space-y-4">

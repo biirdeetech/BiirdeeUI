@@ -95,16 +95,19 @@
       - Each shows: "$cheapest — $best" and flight count
       - "$cheapest" = absolute lowest price in that cabin
       - "$best" = price of best-quality flight (fewest stops, fastest, then cheapest)
+      - **Conditional display**: Price range only shown if cheapest ≠ best
       - Filters flights to only show those with selected cabin available
       - If flight has Economy, appears in Economy tab; if no Economy, only in other tabs
     - **2 Sort Tabs** (Secondary navigation): Cheapest, Best
       - Positioned UNDER cabin tabs
+      - **Conditional display**: Only shown if cheapest ≠ best in selected cabin
       - **Cheapest**: Sorts ONLY by price (lowest first) - no regard to stops/duration
       - **Best**: Multi-criteria sort - fewest stops → fastest duration → lowest price
       - Shows corresponding price for the cheapest/best flight in selected cabin
     - Uses `groupFlightsByCabin()` to eliminate duplicates
     - One card per unique flight with cabin options
     - Empty state when no flights in selected cabin
+    - **Smart UI**: Hides redundant information when all flights have same price/quality
   - **Sorting Algorithm Details**:
     - **Cheapest**: Simple price ascending sort
     - **Best**: Three-tier sort priority:
