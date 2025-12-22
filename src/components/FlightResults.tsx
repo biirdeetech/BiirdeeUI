@@ -17,6 +17,19 @@ const parseDuration = (duration: string): number => {
   return 0;
 };
 
+const normalizeCabinCode = (cabin: string): string => {
+  const normalized: Record<string, string> = {
+    'COACH': 'COACH',
+    'ECONOMY': 'COACH',
+    'PREMIUM-COACH': 'PREMIUM-COACH',
+    'PREMIUM_ECONOMY': 'PREMIUM-COACH',
+    'PREMIUM': 'PREMIUM-COACH',
+    'BUSINESS': 'BUSINESS',
+    'FIRST': 'FIRST'
+  };
+  return normalized[cabin.toUpperCase()] || cabin.toUpperCase();
+};
+
 const convertAwardToFlightSolution = (award: any, carrierCode: string): FlightSolution | null => {
   try {
     const itinerary = award.itineraries?.[0];
@@ -27,6 +40,10 @@ const convertAwardToFlightSolution = (award: any, carrierCode: string): FlightSo
     const segments = itinerary.segments;
     const firstSegment = segments[0];
     const lastSegment = segments[segments.length - 1];
+
+    // Normalize cabin code to standard format
+    const normalizedCabin = normalizeCabinCode(award.cabin);
+    console.log(`🎖️ convertAwardToFlightSolution: Original cabin=${award.cabin}, normalized=${normalizedCabin}`);
 
     const flightSlice = {
       origin: {
@@ -41,7 +58,7 @@ const convertAwardToFlightSolution = (award: any, carrierCode: string): FlightSo
       arrival: lastSegment.arrival?.at || '',
       duration: itinerary.duration ? parseDuration(itinerary.duration) : 0,
       flights: segments.map((seg: any) => `${seg.carrierCode}${seg.number}`),
-      cabins: [award.cabin],
+      cabins: [normalizedCabin],
       stops: segments.length > 1 ? segments.slice(1).map((seg: any) => ({
         code: seg.departure?.iataCode || 'N/A',
         name: seg.departure?.cityName || ''
@@ -66,7 +83,7 @@ const convertAwardToFlightSolution = (award: any, carrierCode: string): FlightSo
           name: seg.arrival?.cityName || ''
         },
         duration: seg.duration ? parseDuration(seg.duration) : 0,
-        cabin: award.cabin
+        cabin: normalizedCabin
       }))
     };
 
@@ -197,19 +214,28 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     // Create synthetic award flights from v2EnrichmentData
     const awardFlights: FlightSolution[] = [];
     if (v2EnrichmentData && v2EnrichmentData.size > 0) {
+      console.log(`🎖️ FlightResults: Processing v2EnrichmentData with ${v2EnrichmentData.size} carrier(s)`);
       v2EnrichmentData.forEach((enrichments, carrierCode) => {
+        console.log(`🎖️ FlightResults: Carrier ${carrierCode} has ${enrichments.length} enrichment(s)`);
         enrichments.forEach((enrichment: any) => {
+          console.log(`🎖️ FlightResults: Enrichment type=${enrichment.type}, provider=${enrichment.provider}`);
           if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
             const awardtool = enrichment.data.awardtool;
             if (awardtool && awardtool.cabinPrices) {
+              console.log(`🎖️ FlightResults: Found awardtool data with cabins:`, Object.keys(awardtool.cabinPrices));
               Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
+                console.log(`🎖️ FlightResults: Processing cabin ${cabinName}, miles=${cabinData.miles}, itineraries=${cabinData.itineraries?.length}`);
                 if (cabinData.miles > 0 && cabinData.itineraries && cabinData.itineraries.length > 0) {
+                  // Normalize cabin code before creating award option
+                  const normalizedCabinName = normalizeCabinCode(cabinName);
+                  console.log(`🎖️ FlightResults: Normalizing cabin ${cabinName} -> ${normalizedCabinName}`);
+
                   // Convert award to FlightSolution format
                   const awardOption = {
-                    id: `award-${carrierCode}-${cabinName}-${Date.now()}-${Math.random()}`,
+                    id: `award-${carrierCode}-${normalizedCabinName}-${Date.now()}-${Math.random()}`,
                     miles: cabinData.miles,
                     tax: cabinData.tax || 0,
-                    cabin: cabinName.toUpperCase(),
+                    cabin: normalizedCabinName,
                     segments: [],
                     transferOptions: cabinData.transferOptions || [],
                     seats: cabinData.seats || 0,
@@ -222,7 +248,10 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
                   const flightSolution = convertAwardToFlightSolution(awardOption, carrierCode);
                   if (flightSolution) {
+                    console.log(`✅ FlightResults: Created award flight for ${carrierCode} ${cabinName}, cabin=${flightSolution.slices[0].cabins[0]}`);
                     awardFlights.push(flightSolution);
+                  } else {
+                    console.log(`❌ FlightResults: Failed to create award flight for ${carrierCode} ${cabinName}`);
                   }
                 }
               });
@@ -234,7 +263,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
     // Combine regular flights with award flights
     const allFlights = [...flatFlights, ...awardFlights];
-    console.log(`🎖️ FlightResults: Added ${awardFlights.length} award flights to results`);
+    console.log(`🎖️ FlightResults: Added ${awardFlights.length} award flights to ${flatFlights.length} regular flights, total=${allFlights.length}`);
 
     const grouped = groupFlightsByCabin(allFlights);
     console.log(`✅ FlightResults: Grouped into ${grouped.length} flight groups`);

@@ -7,7 +7,7 @@
 **Current Sprint:** UI Refactor (Item 8/10 Complete - Code-Share Detection ✅)
 
 **Recent Updates (Dec 22, 2025):**
-- ✅ Award flights as flight card entries in cabin tabs (FlightResults.tsx:100-154)
+- ✅ Award flights as flight card entries in cabin tabs (FlightResults.tsx:197-265)
   - Award flights now appear as actual flight cards in the main search results
   - Created synthetic FlightSolution objects from v2EnrichmentData award data
   - Award flights injected into groupedByCabin results alongside regular flights
@@ -16,6 +16,9 @@
   - Award cards display yellow pricing box with miles, tax, and cash equivalent
   - Booking button appears when award has bookingUrl
   - Award flights sorted by cabin and price within each cabin
+  - **Fixed cabin normalization (FlightResults.tsx:20-31)**: Award cabin names (economy, business, first) now properly normalized to standard codes (COACH, BUSINESS, FIRST)
+  - **Added detailed logging**: Console logs track award flight creation and cabin normalization for debugging
+  - Awards now correctly appear in their designated cabin tabs (e.g., economy awards in Economy tab, business awards in Business tab)
 - ✅ FRT modal reorganization (FrtResultsModal.tsx:74-225)
   - Removed inline FRT display from flight cards (was at FlightCard.tsx:3053-3181)
   - FRT results now organized by cabin class instead of return airport
@@ -25,6 +28,7 @@
   - Added `isFrtModal` prop to FlightCard component (FlightCard.tsx:49)
   - Action buttons (Details, FRT, Hacks, Add) hidden in FRT modal (FlightCard.tsx:3057)
   - Consistent UI with award modal for better user experience
+  - **Fixed cabin tabs visibility (FrtResultsModal.tsx:161)**: Cabin tabs now show even with single cabin (was requiring 2+ cabins)
 - ✅ Award pricing display in cabin tabs (FlightResults.tsx:156-262)
   - Cabin tabs now show cheapest award pricing when awards are available
   - Award prices calculated as (miles × perCentValue) + tax for cash equivalent

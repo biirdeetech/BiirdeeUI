@@ -158,7 +158,7 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
           </button>
         </div>
 
-        {availableCabins.length > 1 && (
+        {availableCabins.length > 0 && (
           <div className="border-b border-gray-700/50 px-4">
             <div className="flex gap-2 overflow-x-auto py-2">
               {availableCabins.map(cabinKey => {
