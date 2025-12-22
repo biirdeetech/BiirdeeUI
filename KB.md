@@ -19,17 +19,19 @@
   - Display timezone now defaults to origin airport timezone instead of browser timezone
   - Ensures all times shown match the departure city/airport timezone
   - Users can still change timezone via dropdown in advanced filters
-- ✅ Refactored Award and FRT display to use modals
+- ✅ Refactored Award and FRT display to use modals with centralized UI
   - Removed inline award badges and segments from flight cards
   - Removed inline FRT badges and segments from expanded view
-  - Created AwardResultsModal component to display all award options
-  - Created FrtResultsModal component to display all FRT options
+  - Removed Award Tools Tab content from expanded flight details
+  - Created AwardResultsModal and FrtResultsModal using existing FlightCard component
+  - Both modals reuse FlightCard for consistent, familiar UI with search results
+  - Award/FRT data converted to FlightSolution format for FlightCard compatibility
   - "Find Awards" button changes to "View Awards" after fetching enrichment data
   - "FRT" button changes to "View FRT" after fetching FRT options
-  - Both modals show results organized by cabin with full flight card rendering
-  - Award results sorted by cheapest first per cabin
-  - FRT results sorted by cheapest first per airport
-  - Consistent look and feel with main search results
+  - Both modals show results organized by cabin/airport with cabin tabs
+  - Award results sorted by cheapest first per cabin (miles × perCentValue + tax)
+  - FRT results sorted by cheapest first per airport (total round-trip price)
+  - Centralized UI reduces code duplication and maintenance burden
 
 **Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)

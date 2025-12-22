@@ -12,7 +12,6 @@ import FlightSummaryModal from './FlightSummaryModal';
 import MileageSegmentTooltip from './MileageSegmentTooltip';
 import MileageSelector from './MileageSelector';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
-import AwardNavigator from './AwardNavigator';
 import FrtConfigModal from './FrtConfigModal';
 import AwardResultsModal from './AwardResultsModal';
 import FrtResultsModal from './FrtResultsModal';
@@ -5205,54 +5204,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                     </>
                   )}
 
-                  {/* Award Tools Tab Content */}
-                  {showAwardTab && hasAwardForSlice && (
-                    <AwardCards
-                      awardOptions={sliceAwardOptions}
-                      perCentValue={perCentValue}
-                      onAdd={(award) => {
-                        const awardId = `award-${award.id}`;
-                        if (addedItems.has(awardId)) {
-                          // Remove if already added
-                          setAddedItems(prev => {
-                            const newSet = new Set(prev);
-                            newSet.delete(awardId);
-                            return newSet;
-                          });
-                          setPendingItems(prev => prev.filter(item => item.id !== awardId));
-                          setShowAddToProposal(false);
-                          setSelectedMileageFlight(null);
-                        } else {
-                          // Add new item (can add multiple award options)
-                          const awardData = {
-                            ...award,
-                            carrierCode: carrier.code,
-                            mileage: award.miles,
-                            mileagePrice: award.tax,
-                            cabin: award.cabin
-                          };
-                          setSelectedMileageFlight(awardData);
-                          setAddedItems(prev => new Set(prev).add(awardId));
-                          setPendingItems(prev => {
-                            // Add this award option to pending items
-                            return [...prev, { type: 'award', id: awardId, data: awardData }];
-                          });
-                          setShowAddToProposal(true);
-                        }
-                      }}
-                      addedItems={addedItems}
-                      hoveredAddButton={hoveredAddButton}
-                      setHoveredAddButton={setHoveredAddButton}
-                      onSelect={(awardId) => {
-                        setSelectedAwardPerSlice({ ...selectedAwardPerSlice, [sliceIndex]: awardId });
-                      }}
-                      selectedAwardId={selectedAwardPerSlice[sliceIndex]}
-                      formatTimeInOriginTZ={formatTimeInOriginTZ}
-                      formatDateInOriginTZ={formatDateInOriginTZ}
-                      originTimezone={originTimezone}
-                      groupAwards={groupAwardOptions}
-                    />
-                  )}
                     </div>
                   )}
                 </div>

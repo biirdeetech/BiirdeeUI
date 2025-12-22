@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { X, RefreshCw, Plane, Clock } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
+import FlightCard from './FlightCard';
+import { FlightSolution } from '../types/flight';
 import { formatPrice } from '../utils/priceFormatter';
 
 interface FrtOption {
@@ -20,6 +22,54 @@ interface FrtResultsModalProps {
   formatDate: (dateStr: string) => string;
   formatDuration: (duration: string) => string;
 }
+
+const convertFrtToFlightSolution = (frtOption: FrtOption): FlightSolution | null => {
+  try {
+    const returnFlight = frtOption.returnFlight;
+    if (!returnFlight || !returnFlight.slices || returnFlight.slices.length === 0) {
+      return null;
+    }
+
+    const slice = returnFlight.slices[0];
+
+    const flightSlice = {
+      origin: slice.origin || { code: 'N/A', name: '' },
+      destination: slice.destination || { code: 'N/A', name: '' },
+      departure: slice.departure || '',
+      arrival: slice.arrival || '',
+      duration: slice.duration || 0,
+      flights: slice.flights || [],
+      cabins: slice.cabins || [],
+      stops: slice.stops || [],
+      segments: (slice.segments || []).map((seg: any) => ({
+        carrier: seg.carrier || { code: 'N/A', name: 'N/A', shortName: 'N/A' },
+        marketingCarrier: seg.marketingCarrier || 'N/A',
+        pricings: seg.pricings || [],
+        departure: seg.departure || '',
+        arrival: seg.arrival || '',
+        flightNumber: seg.flightNumber || '',
+        origin: seg.origin || { code: 'N/A', name: '' },
+        destination: seg.destination || { code: 'N/A', name: '' },
+        duration: seg.duration || 0,
+        cabin: seg.cabin || ''
+      }))
+    };
+
+    return {
+      id: returnFlight.id || `frt-${frtOption.airport}-${Date.now()}-${Math.random()}`,
+      totalAmount: returnFlight.totalAmount || 0,
+      displayTotal: returnFlight.totalAmount || 0,
+      currency: returnFlight.currency || frtOption.currency || 'USD',
+      slices: [flightSlice],
+      ext: {
+        pricePerMile: returnFlight.ext?.pricePerMile || 0
+      }
+    };
+  } catch (error) {
+    console.error('Error converting FRT to flight solution:', error);
+    return null;
+  }
+};
 
 const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
   isOpen,
@@ -64,16 +114,19 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
     }
   }, [availableAirports, selectedAirport]);
 
-  const currentAirportOptions = useMemo(() => {
+  const currentAirportFlights = useMemo(() => {
     if (!selectedAirport) return [];
-    return optionsByAirport.get(selectedAirport) || [];
+    const options = optionsByAirport.get(selectedAirport) || [];
+    return options
+      .map(option => convertFrtToFlightSolution(option))
+      .filter((flight): flight is FlightSolution => flight !== null);
   }, [selectedAirport, optionsByAirport]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="bg-gray-900 rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col border border-gray-700">
+      <div className="bg-gray-900 rounded-lg shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-gray-700">
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <div className="flex items-center gap-3">
             <RefreshCw className="h-5 w-5 text-blue-400" />
@@ -140,137 +193,13 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-3">
-            {currentAirportOptions.map((option, index) => {
-              const returnFlight = option.returnFlight;
-              if (!returnFlight) return null;
-
-              const returnSlice = returnFlight.slices?.[0];
-              if (!returnSlice) return null;
-
-              const returnFlightPrice = returnFlight.totalAmount || 0;
-              const frtTotalPrice = originFlightPrice + returnFlightPrice;
-              const savings = originFlightPrice - frtTotalPrice;
-              const stops = returnSlice.stops || [];
-              const isNonstop = stops.length === 0;
-
-              return (
-                <div
-                  key={index}
-                  className="bg-gray-800/30 hover:bg-gray-800/50 rounded-lg border border-gray-700/60 transition-all p-4"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-semibold text-white">
-                        Return Flight
-                      </div>
-                      <span className="px-2 py-0.5 text-[10px] font-medium text-blue-400">
-                        {isNonstop ? 'Nonstop' : `${stops.length} stop${stops.length > 1 ? 's' : ''}`}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <div className="bg-blue-500/12 border border-blue-500/25 rounded px-3 py-1.5">
-                        <span className="text-sm font-semibold text-blue-400">
-                          FRT Total: {formatPrice(frtTotalPrice, currency)}
-                        </span>
-                      </div>
-                      <div className={`text-[10px] font-medium ${savings > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {savings > 0 ? `Save ${formatPrice(savings, currency)}` : `+${formatPrice(Math.abs(savings), currency)}`}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6 flex-1">
-                      <div className="text-center min-w-[80px]">
-                        <div className="text-lg font-semibold text-white">
-                          {formatTime(returnSlice.departure)}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {formatDate(returnSlice.departure)}
-                        </div>
-                        <div className="text-sm font-medium text-gray-200">
-                          {returnSlice.origin?.code || 'N/A'}
-                        </div>
-                        {returnSlice.origin?.name && (
-                          <div className="text-xs text-gray-400">{returnSlice.origin.name}</div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 px-4">
-                        {isNonstop ? (
-                          <>
-                            <div className="flex items-center gap-1 relative">
-                              <div className="flex-1 border-t-2 border-blue-500/40"></div>
-                              <Plane className="h-3 w-3 text-blue-400" />
-                              <div className="flex-1 border-t-2 border-blue-500/40"></div>
-                            </div>
-                            <div className="flex flex-col items-center gap-1 mt-2">
-                              <div className="text-sm font-medium text-gray-200 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(returnSlice.duration)}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1 text-gray-300 relative">
-                              <div className="flex-1 relative">
-                                <div className="border-t-2 border-gray-600"></div>
-                              </div>
-
-                              {stops.map((stop: any, stopIdx: number) => (
-                                <React.Fragment key={stopIdx}>
-                                  <div className="flex flex-col items-center gap-0.5 bg-orange-500/10 border border-orange-500/30 px-2 py-1.5 rounded">
-                                    <div className="text-[10px] font-semibold text-orange-300">{stop}</div>
-                                  </div>
-                                  {stopIdx < stops.length - 1 && (
-                                    <div className="flex-1 relative">
-                                      <div className="border-t-2 border-gray-600"></div>
-                                    </div>
-                                  )}
-                                </React.Fragment>
-                              ))}
-
-                              <div className="flex-1 relative">
-                                <div className="border-t-2 border-gray-600"></div>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-center gap-1 mt-2">
-                              <div className="text-sm font-medium text-gray-200 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(returnSlice.duration)}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="text-center min-w-[80px]">
-                        <div className="text-lg font-semibold text-white">
-                          {formatTime(returnSlice.arrival)}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {formatDate(returnSlice.arrival)}
-                        </div>
-                        <div className="text-sm font-medium text-gray-200">
-                          {returnSlice.destination?.code || 'N/A'}
-                        </div>
-                        {returnSlice.destination?.name && (
-                          <div className="text-xs text-gray-400">{returnSlice.destination.name}</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {returnSlice.flights && returnSlice.flights.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-700/50 text-xs text-gray-400">
-                      <span className="font-medium">Flight{returnSlice.flights.length > 1 ? 's' : ''}: </span>
-                      {returnSlice.flights.join(', ')}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {currentAirportFlights.map((flight) => (
+              <FlightCard
+                key={flight.id}
+                flight={flight}
+                perCentValue={0.015}
+              />
+            ))}
           </div>
         </div>
       </div>
