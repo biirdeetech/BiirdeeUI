@@ -296,7 +296,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     const cabinCodes = ['COACH', 'PREMIUM-COACH', 'BUSINESS', 'FIRST'] as const;
 
     cabinCodes.forEach(cabinCode => {
-      const flightsInCabin = groupedByCabin.filter(group => group.cabinOptions.has(cabinCode));
+      // Filter for flights with valid cabin data (not null/empty/N/A)
+      const flightsInCabin = groupedByCabin.filter(group => {
+        const cabinOption = group.cabinOptions.get(cabinCode);
+        // Show flight if cabin exists and has some valid data
+        return cabinOption !== undefined;
+      });
 
       if (flightsInCabin.length === 0) {
         ranges[cabinCode].cheapestPrice = 0;
@@ -399,19 +404,23 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return ranges;
   }, [groupedByCabin, v2EnrichmentData, perCentValue]);
 
-  // Filter flights by selected cabin
+  // Filter flights by selected cabin - show ANY flight that has data for this cabin
   const filteredByCabin = useMemo(() => {
     console.log(`🔍 FlightResults: Filtering ${groupedByCabin.length} groups by cabin=${cabinFilter}`);
 
     const filtered = groupedByCabin.filter(group => {
-      const hasCabin = group.cabinOptions.has(cabinFilter);
+      const cabinOption = group.cabinOptions.get(cabinFilter);
       const isAward = group.primaryFlight.isAwardFlight;
 
+      // Show flight if it has ANY data for this cabin (price, miles, etc.)
+      // Don't filter based on data quality - just show if cabin exists
+      const hasCabinData = cabinOption !== undefined;
+
       if (isAward) {
-        console.log(`🎖️ Award flight: ${group.flightNumbers.join(',')} @ ${group.departure.split('T')[1]}, cabins=[${Array.from(group.cabinOptions.keys()).join(', ')}], hasCabin(${cabinFilter})=${hasCabin}`);
+        console.log(`🎖️ Award flight: ${group.flightNumbers.join(',')} @ ${group.departure.split('T')[1]}, cabins=[${Array.from(group.cabinOptions.keys()).join(', ')}], hasCabin(${cabinFilter})=${hasCabinData}, price=${cabinOption?.price}, miles=${group.primaryFlight.totalMileage}`);
       }
 
-      return hasCabin;
+      return hasCabinData;
     });
 
     console.log(`✅ FlightResults: Filtered to ${filtered.length} groups for cabin ${cabinFilter}`);

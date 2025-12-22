@@ -202,14 +202,20 @@ export function groupFlightsByCabin(flights: FlightSolution[]): GroupedFlightByC
       const primaryFlight = cabinFlights[0];
       const priceOptions = cabinFlights.slice(1); // Additional price options for same cabin
 
-      cabinOptions.set(cabin, {
+      const cabinOption = {
         cabin,
         cabinDisplay: getCabinDisplay(cabin),
         price: primaryFlight.displayTotal || 0,
         currency: primaryFlight.currency || 'USD',
         flight: primaryFlight,
         priceOptions: priceOptions.length > 0 ? priceOptions : undefined
-      });
+      };
+
+      if (primaryFlight.isAwardFlight) {
+        console.log(`🎖️ CabinGrouping: Creating cabin option for award flight, cabin=${cabin}, price=${cabinOption.price}, miles=${primaryFlight.totalMileage}`);
+      }
+
+      cabinOptions.set(cabin, cabinOption);
     });
 
     // Find cheapest flight overall as primary

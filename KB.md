@@ -29,6 +29,13 @@
     - FlightResults.tsx:285: Added enrichmentDataKey to groupedByCabin dependency array
     - Ensures award flights are created when enrichment data arrives after initial search
     - Maps don't trigger React re-renders by reference comparison; serialized key forces update
+  - **Simplified cabin filtering logic (Dec 22, 2025)**:
+    - FlightResults.tsx:402-426: Updated filteredByCabin to show ANY flight with cabin data
+    - FlightResults.tsx:298-312: Updated cabin count logic to check for valid cabin options
+    - Removed strict validation - now shows flights if cabin exists, regardless of data quality
+    - cabinGrouping.ts:214-216: Added logging for award flight cabin option creation
+    - FlightResults.tsx:420: Enhanced award flight logging with price and miles data
+    - More lenient approach: show flights with any cabin data instead of filtering for complete data
   - Awards now correctly appear in their designated cabin tabs (e.g., economy awards in Economy tab, business awards in Business tab)
 - ✅ FRT modal reorganization (FrtResultsModal.tsx:74-225)
   - Removed inline FRT display from flight cards (was at FlightCard.tsx:3053-3181)
