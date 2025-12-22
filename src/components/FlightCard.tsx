@@ -14,6 +14,8 @@ import MileageSelector from './MileageSelector';
 import V2EnrichmentViewer from './V2EnrichmentViewer';
 import AwardNavigator from './AwardNavigator';
 import FrtConfigModal from './FrtConfigModal';
+import AwardResultsModal from './AwardResultsModal';
+import FrtResultsModal from './FrtResultsModal';
 import { useProposalContext } from '../contexts/ProposalContext';
 import { useFrt } from '../contexts/FrtContext';
 
@@ -327,6 +329,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
   const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
   const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
   const [isCodeShareExpanded, setIsCodeShareExpanded] = useState(false); // Track code-share partner expansion
+  const [showAwardResultsModal, setShowAwardResultsModal] = useState(false); // Track award results modal visibility
+  const [showFrtResultsModal, setShowFrtResultsModal] = useState(false); // Track FRT results modal visibility
 
   // Get current cabin for FRT (use selectedCabin or first available cabin)
   const currentFrtCabin = useMemo(() => {
@@ -2019,66 +2023,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   {slices[slices.length - 1].destination.code}
                 </div>
               </div>
-            
-            {/* Loading Award Indicator */}
-            {isEnriching && !hasV2Enrichment && (
-              <div className="px-2 py-0.5 bg-amber-500/10 text-amber-300 text-[10px] font-medium rounded border border-amber-600/30 flex items-center gap-1 animate-pulse">
-                <Zap className="h-2.5 w-2.5" />
-                Fetching...
-              </div>
-            )}
-            {/* Award Box - After flight segment display - Only show if no aero data */}
-            {hasAwardOptions && !isEnriching && !hasAeroMileage && (() => {
-              // Get all award options for the selected cabin
-              if (!selectedCabin) return null;
-
-              const cabinAwardOptions = allAwardOptions.filter(award => {
-                const awardCabin = award.cabin?.toUpperCase() || '';
-                if (selectedCabin === 'ECONOMY') {
-                  return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-                } else if (selectedCabin === 'BUSINESS') {
-                  return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-                } else if (selectedCabin === 'BUSINESS_PREMIUM') {
-                  return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-                } else if (selectedCabin === 'FIRST') {
-                  return awardCabin.includes('FIRST');
-                }
-                return false;
-              });
-
-              if (cabinAwardOptions.length === 0) return null;
-
-              // Use selected award if available, otherwise show cheapest
-              const selectedAwardId = selectedAwardPerSlice[0];
-              let displayAward = selectedAwardId
-                ? cabinAwardOptions.find(a => a.id === selectedAwardId)
-                : null;
-
-              // If no selected award, find cheapest
-              if (!displayAward) {
-                displayAward = cabinAwardOptions.reduce((best, award) => {
-                  const value = (award.miles * perCentValue) + award.tax;
-                  const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
-                  return value < bestValue ? award : best;
-                }, null as any);
-              }
-
-              if (!displayAward) return null;
-
-              const cashValue = (displayAward.miles * perCentValue) + displayAward.tax;
-
-              return (
-                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/5 border-yellow-500/30">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <Award className="h-3 w-3 text-yellow-500" />
-                    <span className="text-[9px] text-yellow-400 font-semibold uppercase">Award</span>
-                  </div>
-                  <div className="text-xs text-yellow-400 font-bold">{displayAward.miles.toLocaleString()}</div>
-                  <div className="text-[9px] text-gray-400">miles</div>
-                  <div className="text-[9px] text-green-400 font-semibold">+{formatPrice(displayAward.tax, displayAward.currency || 'USD', false)}</div>
-                </div>
-              );
-            })()}
 
             {/* Aero Box - Show Aero mileage option */}
             {hasAeroMileage && (() => {
@@ -2136,53 +2080,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   <div className="text-[9px] text-green-400 font-semibold">
                     {selectedProgram.totalPrice > 0 ? `+${formatPrice(selectedProgram.totalPrice, 'USD', false)}` : '$0'}
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* FRT Box - Show only selected FRT option */}
-            {frtState.selectedAirport && (() => {
-              const airportOptions = frtState.optionsByAirport.get(frtState.selectedAirport);
-              if (!airportOptions || airportOptions.length === 0) return null;
-
-              const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(frtState.selectedAirport) || 0;
-              const selectedFrt = airportOptions[selectedOptionIdx];
-              if (!selectedFrt) return null;
-
-              // Recalculate FRT total and savings based on current displayed flight price
-              const returnFlightPrice = selectedFrt.returnFlight?.totalAmount || 0;
-              const currentFrtTotalPrice = displayTotal + returnFlightPrice;
-              const currentSavings = displayTotal - currentFrtTotalPrice;
-
-              // Build route tooltip
-              const returnSlice = selectedFrt.returnFlight?.slices?.[0];
-              const viaAirports = returnSlice?.stops || [];
-              const routeText = viaAirports.length > 0
-                ? `${returnSlice?.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice?.destination?.code}`
-                : `${returnSlice?.origin?.code} → ${returnSlice?.destination?.code}`;
-
-              return (
-                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-blue-500/5 border-blue-500/30" title={routeText}>
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <RefreshCw className="h-3 w-3 text-blue-500" />
-                    <span className="text-[9px] text-blue-400 font-semibold uppercase">FRT</span>
-                  </div>
-                  <div className="text-xs text-blue-400 font-bold">{formatPrice(currentFrtTotalPrice, selectedFrt.currency || 'USD', false)}</div>
-                  <div className="text-[9px] text-gray-400">round-trip</div>
-                  {(() => {
-                    if (currentSavings < 0) {
-                      return (
-                        <div className="text-[9px] text-red-400 font-semibold">
-                          Extra +{formatPrice(Math.abs(currentSavings), currency, false)}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="text-[9px] text-green-400 font-semibold">
-                        Save {formatPrice(currentSavings, currency, false)}
-                      </div>
-                    );
-                  })()}
                 </div>
               );
             })()}
@@ -3374,24 +3271,35 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
               )}
             </div>
 
-            {/* Find Awards Button - Only if no enrichment */}
-            {onEnrichFlight && !hasAnyEnrichmentForCarrier && !isEnriching && (
+            {/* Awards Button - Find or View Awards */}
+            {onEnrichFlight && (
               <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleEnrichClick();
+                    if (hasAnyEnrichmentForCarrier) {
+                      setShowAwardResultsModal(true);
+                    } else if (!isEnriching) {
+                      handleEnrichClick();
+                    }
                   }}
                   onMouseEnter={() => setTooltipStates(prev => ({ ...prev, awards: true }))}
                   onMouseLeave={() => setTooltipStates(prev => ({ ...prev, awards: false }))}
-                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-amber-500/15 rounded transition-colors text-amber-300 hover:text-amber-200"
+                  disabled={isEnriching}
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-amber-500/15 rounded transition-colors text-amber-300 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Award className="h-4 w-4" />
-                  <span className="text-[10px] font-medium">Find Awards</span>
+                  {isEnriching ? (
+                    <Loader className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Award className="h-4 w-4" />
+                  )}
+                  <span className="text-[10px] font-medium">
+                    {isEnriching ? 'Fetching' : hasAnyEnrichmentForCarrier ? 'View Awards' : 'Find Awards'}
+                  </span>
                 </button>
                 {tooltipStates.awards && (
                   <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                    Find Award Availability
+                    {hasAnyEnrichmentForCarrier ? 'View Award Options' : 'Find Award Availability'}
                     <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
                   </div>
                 )}
@@ -3403,7 +3311,11 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowFrtConfig(true);
+                  if (frtOptions.length > 0) {
+                    setShowFrtResultsModal(true);
+                  } else if (!isFetchingFrt) {
+                    setShowFrtConfig(true);
+                  }
                 }}
                 onMouseEnter={() => setTooltipStates(prev => ({ ...prev, frt: true }))}
                 onMouseLeave={() => setTooltipStates(prev => ({ ...prev, frt: false }))}
@@ -3416,12 +3328,12 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   <RefreshCw className="h-4 w-4" />
                 )}
                 <span className="text-[10px] font-medium">
-                  {frtOptions.length > 0 ? 'FRT' : 'FRT'}
+                  {isFetchingFrt ? 'Fetching' : frtOptions.length > 0 ? 'View FRT' : 'FRT'}
                 </span>
               </button>
               {tooltipStates.frt && (
                 <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                  {frtOptions.length > 0 ? 'Reconfigure Fake Round Trip' : 'Find Fake Round Trip'}
+                  {frtOptions.length > 0 ? 'View FRT Options' : 'Find Fake Round Trip'}
                   <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
                 </div>
               )}
@@ -5447,248 +5359,6 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         </div>
       )}
 
-      {/* FRT Segment Details - Show when flight card is expanded and FRT option is selected */}
-      {isExpanded && frtState.selectedAirport && (() => {
-        const airportOptions = frtState.optionsByAirport.get(frtState.selectedAirport);
-        if (!airportOptions || airportOptions.length === 0) return null;
-
-        const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(frtState.selectedAirport) || 0;
-        const selectedFrt = airportOptions[selectedOptionIdx];
-        if (!selectedFrt) return null;
-
-        const returnFlight = selectedFrt.returnFlight;
-
-        if (!returnFlight) return null;
-
-        const returnSlice = returnFlight.slices?.[0];
-        if (!returnSlice) return null;
-
-        // Recalculate FRT total and savings based on current displayed flight price
-        const returnFlightPrice = returnFlight.totalAmount || 0;
-        const currentFrtTotalPrice = displayTotal + returnFlightPrice;
-        const currentSavings = displayTotal - currentFrtTotalPrice;
-
-        const { segments: segmentTimes, layovers: layoverTimes } = calculateSegmentTimes(returnSlice);
-        const isNonstop = !returnSlice.stops || returnSlice.stops.length === 0;
-
-        return (
-          <div className="mt-2 border border-blue-500/20 bg-blue-500/5 rounded-lg px-4 py-3">
-            <div className="text-xs font-semibold text-blue-400 mb-3 flex items-center gap-2">
-              <RefreshCw className="h-3 w-3" />
-              FRT Return Flight
-            </div>
-
-            {/* Compact Segment Viewer - Same as Main Search Results */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 flex-1">
-                {/* Departure Airport */}
-                <div className="text-center min-w-[80px]">
-                  <div className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                    {formatTime(returnSlice.departure)}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatDate(returnSlice.departure)}
-                  </div>
-                  <div className="text-xs sm:text-sm font-medium text-gray-200">{returnSlice.origin?.code || 'N/A'}</div>
-                  {returnSlice.origin?.name && (
-                    <div className="text-xs text-gray-400 hidden lg:block">{returnSlice.origin.name}</div>
-                  )}
-                  {returnSlice.cabins && returnSlice.cabins.length > 0 && returnSlice.cabins[0] && (
-                    <div className="text-[10px] text-teal-200 mt-1">
-                      {returnSlice.cabins[0]}
-                    </div>
-                  )}
-                  {(!returnSlice.stops || returnSlice.stops.length > 0) && returnSlice.flights && returnSlice.flights.length > 0 && returnSlice.flights[0] && (
-                    <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
-                      {returnSlice.flights[0]}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 px-1 sm:px-2 lg:px-4">
-                  {isNonstop ? (
-                    <>
-                      <div className="flex items-center gap-1 relative">
-                        <div className="flex-1 border-t-2 border-emerald-500/40"></div>
-                        <Plane className="h-3 w-3 text-emerald-400" />
-                        <div className="flex-1 border-t-2 border-emerald-500/40"></div>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 mt-2">
-                        <div className="text-xs lg:text-sm font-medium text-gray-200 flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
-                          {formatDuration(returnSlice.duration)}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-1 text-gray-300 relative">
-                        <div className="flex-1 relative">
-                          <div className="border-t-2 border-gray-600"></div>
-                          {segmentTimes[0] && (
-                            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
-                              {formatDuration(segmentTimes[0].duration)}
-                            </div>
-                          )}
-                        </div>
-
-                        {returnSlice.stops && returnSlice.stops.length > 0 && returnSlice.stops.map((stop: any, stopIdx: number) => {
-                          const nextFlightIdx = stopIdx + 1;
-                          const nextCarrier = returnSlice.segments && returnSlice.segments[nextFlightIdx] ? returnSlice.segments[nextFlightIdx].carrier : null;
-
-                          return (
-                            <React.Fragment key={stopIdx}>
-                              <div className="flex flex-col items-center gap-0.5 bg-orange-500/10 border border-orange-500/30 px-2 py-1.5 rounded relative">
-                                {nextCarrier && nextCarrier.code && (
-                                  <img
-                                    src={`https://www.gstatic.com/flights/airline_logos/35px/${nextCarrier.code}.png`}
-                                    alt={nextCarrier.code || 'airline'}
-                                    className="h-3 w-3 object-contain"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                )}
-                                <span className="text-[10px] text-gray-200 font-semibold">
-                                  {stop?.code || 'N/A'}
-                                </span>
-                                {layoverTimes[stopIdx] && (
-                                  <span className="text-[9px] text-orange-400 font-bold whitespace-nowrap">
-                                    {formatDuration(layoverTimes[stopIdx].duration)}
-                                  </span>
-                                )}
-                                {returnSlice.flights && returnSlice.flights[nextFlightIdx] && (
-                                  <span className="text-[8px] text-gray-500 font-mono">
-                                    {returnSlice.flights[nextFlightIdx]}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex-1 relative">
-                                <div className={`border-t-2 ${
-                                  returnSlice.stops && stopIdx < returnSlice.stops.length - 1 ? 'border-dashed border-gray-600' : 'border-gray-600'
-                                }`}></div>
-                                {segmentTimes[nextFlightIdx] && (
-                                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-gray-400 whitespace-nowrap">
-                                    {formatDuration(segmentTimes[nextFlightIdx].duration)}
-                                  </div>
-                                )}
-                              </div>
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-
-                      <div className="relative mt-8">
-                        <div className="border-t border-gray-700"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-900 px-2">
-                          <div className="text-center text-[10px] font-medium text-gray-300 flex items-center gap-1">
-                            <Clock className="h-2.5 w-2.5 inline" />
-                            {formatDuration(returnSlice.duration)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {returnSlice.stops && returnSlice.stops.length > 0 && (
-                        <div className="text-center text-[10px] text-gray-400 mt-2">
-                          {returnSlice.stops.length === 1 ? '1 stop' : `${returnSlice.stops.length} stops`}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Arrival Airport */}
-                <div className="text-center min-w-[80px]">
-                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                    <span className="text-base sm:text-lg lg:text-xl font-semibold text-white">
-                      {formatTime(returnSlice.arrival)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatDate(returnSlice.arrival)}
-                  </div>
-                  <div className="text-xs sm:text-sm font-medium text-gray-200">{returnSlice.destination?.code || 'N/A'}</div>
-                  {returnSlice.destination?.name && (
-                    <div className="text-xs text-gray-400 hidden lg:block">{returnSlice.destination.name}</div>
-                  )}
-                  {returnSlice.cabins && returnSlice.cabins.length > 0 && returnSlice.cabins[returnSlice.cabins.length - 1] && (
-                    <div className="text-[10px] text-teal-200 mt-1">
-                      {returnSlice.cabins[returnSlice.cabins.length - 1]}
-                    </div>
-                  )}
-                  {(!returnSlice.stops || returnSlice.stops.length > 0) && returnSlice.flights && returnSlice.flights.length > 0 && returnSlice.flights[returnSlice.flights.length - 1] && (
-                    <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
-                      {returnSlice.flights[returnSlice.flights.length - 1]}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* FRT Pricing Footer */}
-            <div className="pt-3 border-t border-blue-500/20 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">Return to:</span>
-                <span className="text-gray-300 font-mono font-medium">{selectedFrt.returnAirport}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-500/12 border border-blue-500/25 rounded px-2 py-1">
-                  <span className="text-sm font-bold text-blue-400">
-                    {formatPrice(currentFrtTotalPrice, selectedFrt.currency || 'USD', false)}
-                  </span>
-                  <span className="text-[10px] text-blue-400/70"> total</span>
-                </div>
-                {currentSavings !== 0 && (
-                  currentSavings > 0 ? (
-                    <span className="text-xs text-green-400">
-                      Save {formatPrice(currentSavings, selectedFrt.currency || 'USD', false)}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-red-400">
-                      Extra +{formatPrice(Math.abs(currentSavings), selectedFrt.currency || 'USD', false)}
-                    </span>
-                  )
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const frtId = `frt-${frtState.selectedAirport}-${selectedOptionIdx}`;
-                    if (addedItems.has(frtId)) {
-                      setAddedItems(prev => {
-                        const newSet = new Set(prev);
-                        newSet.delete(frtId);
-                        return newSet;
-                      });
-                      setPendingItems(prev => prev.filter(item => item.id !== frtId));
-                    } else {
-                      setAddedItems(prev => new Set(prev).add(frtId));
-                      setPendingItems(prev => [...prev, {
-                        id: frtId,
-                        type: 'frt',
-                        flight: flight,
-                        returnFlight: returnFlight,
-                        returnAirport: frtState.selectedAirport,
-                        totalPrice: currentFrtTotalPrice,
-                        currency: selectedFrt.currency || 'USD',
-                        savings: currentSavings
-                      }]);
-                      setShowAddToProposal(true);
-                    }
-                  }}
-                  className={`px-3 py-1 rounded border text-xs font-medium transition-all ${
-                    addedItems.has(`frt-${frtState.selectedAirport}-${selectedOptionIdx}`)
-                      ? 'bg-success-500/20 border-success-500/40 text-success-300 hover:bg-success-500/30'
-                      : 'bg-gray-700/50 border-gray-600/50 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500/60'
-                  }`}
-                >
-                  {addedItems.has(`frt-${frtState.selectedAirport}-${selectedOptionIdx}`) ? 'Added' : '+ Add'}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
 
     {/* Add to Proposal Modal */}
@@ -5973,6 +5643,34 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         }}
         originCode={slices[0].origin.code}
         destinationCode={slices[slices.length - 1].destination.code}
+      />
+    )}
+
+    {/* Award Results Modal */}
+    {showAwardResultsModal && hasAwardOptions && (
+      <AwardResultsModal
+        isOpen={showAwardResultsModal}
+        onClose={() => setShowAwardResultsModal(false)}
+        awardOptions={allAwardOptions}
+        perCentValue={perCentValue}
+        formatTimeInOriginTZ={formatTimeInOriginTZ}
+        formatDateInOriginTZ={formatDateInOriginTZ}
+        originTimezone={originTimezone}
+        displayTimezone={displayTimezone}
+      />
+    )}
+
+    {/* FRT Results Modal */}
+    {showFrtResultsModal && frtOptions.length > 0 && (
+      <FrtResultsModal
+        isOpen={showFrtResultsModal}
+        onClose={() => setShowFrtResultsModal(false)}
+        frtOptions={frtOptions}
+        originFlightPrice={displayTotal}
+        currency={currency}
+        formatTime={formatTime}
+        formatDate={formatDate}
+        formatDuration={formatDuration}
       />
     )}
     </>
