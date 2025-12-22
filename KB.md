@@ -92,10 +92,11 @@
     - Additional same-cabin flights become "price options"
   - **FlightResults.tsx**: Complete UI redesign with cabin-first navigation
     - **4 Cabin Tabs** (Primary navigation): Economy, Premium, Business, First
-      - Each shows: "$cheapest — $best" and flight count
+      - Always shows cheapest price when flights available
       - "$cheapest" = absolute lowest price in that cabin
       - "$best" = price of best-quality flight (fewest stops, fastest, then cheapest)
-      - **Conditional display**: Price range only shown if cheapest ≠ best
+      - **Adaptive display**: Shows "$cheapest" when all same price, "$cheapest — $best" when different
+      - Shows flight count in parentheses
       - Filters flights to only show those with selected cabin available
       - If flight has Economy, appears in Economy tab; if no Economy, only in other tabs
     - **2 Sort Tabs** (Secondary navigation): Cheapest, Best
@@ -107,7 +108,7 @@
     - Uses `groupFlightsByCabin()` to eliminate duplicates
     - One card per unique flight with cabin options
     - Empty state when no flights in selected cabin
-    - **Smart UI**: Hides redundant information when all flights have same price/quality
+    - **Smart UI**: Shows single price or range in cabin tabs; hides sort tabs when no choice exists
   - **Sorting Algorithm Details**:
     - **Cheapest**: Simple price ascending sort
     - **Best**: Three-tier sort priority:

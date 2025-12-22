@@ -322,12 +322,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Economy</span>
-              {cabinPriceRanges['COACH'].count > 0 && cabinPriceRanges['COACH'].cheapestPrice !== cabinPriceRanges['COACH'].bestPrice && (
+              {cabinPriceRanges['COACH'].count > 0 && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['COACH'].bestPrice, currency)}
+                  {cabinPriceRanges['COACH'].cheapestPrice === cabinPriceRanges['COACH'].bestPrice
+                    ? formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)
+                    : `${formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['COACH'].bestPrice, currency)}`
+                  }
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['COACH'].count})</span>
@@ -346,12 +349,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Premium</span>
-              {cabinPriceRanges['PREMIUM-COACH'].count > 0 && cabinPriceRanges['PREMIUM-COACH'].cheapestPrice !== cabinPriceRanges['PREMIUM-COACH'].bestPrice && (
+              {cabinPriceRanges['PREMIUM-COACH'].count > 0 && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['PREMIUM-COACH'].bestPrice, currency)}
+                  {cabinPriceRanges['PREMIUM-COACH'].cheapestPrice === cabinPriceRanges['PREMIUM-COACH'].bestPrice
+                    ? formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)
+                    : `${formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['PREMIUM-COACH'].bestPrice, currency)}`
+                  }
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['PREMIUM-COACH'].count})</span>
@@ -370,12 +376,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Business</span>
-              {cabinPriceRanges['BUSINESS'].count > 0 && cabinPriceRanges['BUSINESS'].cheapestPrice !== cabinPriceRanges['BUSINESS'].bestPrice && (
+              {cabinPriceRanges['BUSINESS'].count > 0 && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['BUSINESS'].bestPrice, currency)}
+                  {cabinPriceRanges['BUSINESS'].cheapestPrice === cabinPriceRanges['BUSINESS'].bestPrice
+                    ? formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)
+                    : `${formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['BUSINESS'].bestPrice, currency)}`
+                  }
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['BUSINESS'].count})</span>
@@ -394,12 +403,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
           >
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">First</span>
-              {cabinPriceRanges['FIRST'].count > 0 && cabinPriceRanges['FIRST'].cheapestPrice !== cabinPriceRanges['FIRST'].bestPrice && (
+              {cabinPriceRanges['FIRST'].count > 0 && (
                 <span className={`
                   text-xs font-semibold
                   ${cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['FIRST'].bestPrice, currency)}
+                  {cabinPriceRanges['FIRST'].cheapestPrice === cabinPriceRanges['FIRST'].bestPrice
+                    ? formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)
+                    : `${formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['FIRST'].bestPrice, currency)}`
+                  }
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['FIRST'].count})</span>
