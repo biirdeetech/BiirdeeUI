@@ -271,6 +271,7 @@ const AwardResultsModal: React.FC<AwardResultsModalProps> = ({
                 originTimezone={originTimezone}
                 displayTimezone={displayTimezone}
                 perCentValue={perCentValue}
+                isAwardModal={true}
               />
             ))}
           </div>

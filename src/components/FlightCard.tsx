@@ -45,6 +45,7 @@ interface FlightCardProps {
   searchKey?: string;
   expandedFlightCardId?: string | null; // Track which flight card is expanded (for exclusive expansion)
   onFlightCardToggle?: (flightId: string | null) => void; // Callback to toggle flight card expansion
+  isAwardModal?: boolean; // True when rendered inside award modal
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -228,7 +229,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, isParentCodeShare = false, isChildCodeShare = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, isParentCodeShare = false, isChildCodeShare = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle, isAwardModal = false }) => {
   // Get flight ID for FRT context
   const flightId = 'id' in flight ? flight.id : `grouped-${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
 
@@ -2025,8 +2026,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                 </div>
               </div>
 
-            {/* Award Box - Show Award mileage and tax */}
-            {flightData.isAwardFlight && flightData.awardData && (() => {
+            {/* Award Box - Show Award mileage and tax (hidden in award modal) */}
+            {!isAwardModal && flightData.isAwardFlight && flightData.awardData && (() => {
               const cashEquivalent = (flightData.awardData.miles * perCentValue) + flightData.awardData.tax;
 
               return (
@@ -2535,42 +2536,65 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                     </>
                   ) : cabinHasAwards ? (
                     <>
-                      <div className={`text-xs font-bold ${
-                        isSelected ? 'text-yellow-400' : 'text-yellow-500'
-                      }`}>
-                        {(() => {
-                          // Find cheapest award for this cabin
-                          const cabinAwards = allAwardOptions.filter(award => {
-                            const awardCabin = award.cabin?.toUpperCase() || '';
-                            if (cabinKey === 'ECONOMY') {
-                              return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
-                            } else if (cabinKey === 'BUSINESS') {
-                              return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
-                            } else if (cabinKey === 'BUSINESS_PREMIUM') {
-                              return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
-                            } else if (cabinKey === 'FIRST') {
-                              return awardCabin.includes('FIRST');
-                            }
-                            return false;
-                          });
+                      {(() => {
+                        // Find cheapest award for this cabin
+                        const cabinAwards = allAwardOptions.filter(award => {
+                          const awardCabin = award.cabin?.toUpperCase() || '';
+                          if (cabinKey === 'ECONOMY') {
+                            return awardCabin.includes('ECONOMY') || awardCabin.includes('COACH');
+                          } else if (cabinKey === 'BUSINESS') {
+                            return awardCabin.includes('BUSINESS') && !awardCabin.includes('PREMIUM');
+                          } else if (cabinKey === 'BUSINESS_PREMIUM') {
+                            return awardCabin.includes('BUSINESS') && awardCabin.includes('PREMIUM');
+                          } else if (cabinKey === 'FIRST') {
+                            return awardCabin.includes('FIRST');
+                          }
+                          return false;
+                        });
 
-                          if (cabinAwards.length === 0) return 'N/A';
+                        if (cabinAwards.length === 0) return <div className="text-[10px] text-gray-600">N/A</div>;
 
-                          const cheapestAward = cabinAwards.reduce((best, award) => {
-                            const value = (award.miles * perCentValue) + award.tax;
-                            const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
-                            return value < bestValue ? award : best;
-                          }, null as any);
+                        const cheapestAward = cabinAwards.reduce((best, award) => {
+                          const value = (award.miles * perCentValue) + award.tax;
+                          const bestValue = best ? (best.miles * perCentValue) + best.tax : Infinity;
+                          return value < bestValue ? award : best;
+                        }, null as any);
 
-                          if (!cheapestAward) return 'N/A';
+                        if (!cheapestAward) return <div className="text-[10px] text-gray-600">N/A</div>;
 
-                          const cashValue = (cheapestAward.miles * perCentValue) + cheapestAward.tax;
-                          return `$${cashValue.toFixed(0)}`;
-                        })()}
-                      </div>
-                      <div className="text-[9px] text-yellow-500/70 mt-0.5">
-                        award
-                      </div>
+                        const cashValue = (cheapestAward.miles * perCentValue) + cheapestAward.tax;
+
+                        // Show detailed breakdown in award modal
+                        if (isAwardModal) {
+                          return (
+                            <>
+                              <div className="text-[9px] text-yellow-400 font-semibold">
+                                {cheapestAward.miles.toLocaleString()} mi
+                              </div>
+                              <div className="text-[9px] text-green-400">
+                                +${cheapestAward.tax.toFixed(2)}
+                              </div>
+                              <div className="text-[9px] text-gray-400">
+                                ≈ ${cashValue.toFixed(0)}
+                              </div>
+                            </>
+                          );
+                        }
+
+                        // Show simple cash value outside modal
+                        return (
+                          <>
+                            <div className={`text-xs font-bold ${
+                              isSelected ? 'text-yellow-400' : 'text-yellow-500'
+                            }`}>
+                              ${cashValue.toFixed(0)}
+                            </div>
+                            <div className="text-[9px] text-yellow-500/70 mt-0.5">
+                              award
+                            </div>
+                          </>
+                        );
+                      })()}
                     </>
                   ) : (
                     <div className="text-[10px] text-gray-600">N/A</div>
@@ -3137,121 +3161,188 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
           })()}
 
           {/* Action Buttons - First 80px on right side */}
-          <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
-            {/* Details Button */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowSummaryModal(true);
-                }}
-                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, details: true }))}
-                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, details: false }))}
-                className="flex flex-col items-center gap-1.5 p-2 hover:bg-gray-800/50 rounded transition-colors text-gray-400 hover:text-gray-300"
-              >
-                <Eye className="h-4 w-4" />
-                <span className="text-[10px] font-medium">Details</span>
-              </button>
-              {tooltipStates.details && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                  View Flight Details
-                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
-                </div>
-              )}
-            </div>
-
-            {/* Awards Button - Find or View Awards */}
-            {onEnrichFlight && (
+          {/* Action buttons - Hidden in award modal except Book button */}
+          {!isAwardModal && (
+            <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
+              {/* Details Button */}
               <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (hasAnyEnrichmentForCarrier) {
-                      setShowAwardResultsModal(true);
-                    } else if (!isEnriching) {
-                      handleEnrichClick();
-                    }
+                    setShowSummaryModal(true);
                   }}
-                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, awards: true }))}
-                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, awards: false }))}
-                  disabled={isEnriching}
-                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-amber-500/15 rounded transition-colors text-amber-300 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, details: true }))}
+                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, details: false }))}
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-gray-800/50 rounded transition-colors text-gray-400 hover:text-gray-300"
                 >
-                  {isEnriching ? (
-                    <Loader className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Award className="h-4 w-4" />
-                  )}
-                  <span className="text-[10px] font-medium">
-                    {isEnriching ? 'Fetching' : hasAnyEnrichmentForCarrier ? 'View Awards' : 'Find Awards'}
-                  </span>
+                  <Eye className="h-4 w-4" />
+                  <span className="text-[10px] font-medium">Details</span>
                 </button>
-                {tooltipStates.awards && (
+                {tooltipStates.details && (
                   <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                    {hasAnyEnrichmentForCarrier ? 'View Award Options' : 'Find Award Availability'}
+                    View Flight Details
                     <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
                   </div>
                 )}
               </div>
-            )}
 
-            {/* FRT Button */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (frtOptions.length > 0) {
-                    setShowFrtResultsModal(true);
-                  } else if (!isFetchingFrt) {
-                    setShowFrtConfig(true);
-                  }
-                }}
-                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, frt: true }))}
-                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, frt: false }))}
-                disabled={isFetchingFrt}
-                className="flex flex-col items-center gap-1.5 p-2 hover:bg-blue-500/15 rounded transition-colors text-blue-300 hover:text-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isFetchingFrt ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
+              {/* Awards Button - Find or View Awards */}
+              {onEnrichFlight && (
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (hasAnyEnrichmentForCarrier) {
+                        setShowAwardResultsModal(true);
+                      } else if (!isEnriching) {
+                        handleEnrichClick();
+                      }
+                    }}
+                    onMouseEnter={() => setTooltipStates(prev => ({ ...prev, awards: true }))}
+                    onMouseLeave={() => setTooltipStates(prev => ({ ...prev, awards: false }))}
+                    disabled={isEnriching}
+                    className="flex flex-col items-center gap-1.5 p-2 hover:bg-amber-500/15 rounded transition-colors text-amber-300 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isEnriching ? (
+                      <Loader className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Award className="h-4 w-4" />
+                    )}
+                    <span className="text-[10px] font-medium">
+                      {isEnriching ? 'Fetching' : hasAnyEnrichmentForCarrier ? 'View Awards' : 'Find Awards'}
+                    </span>
+                  </button>
+                  {tooltipStates.awards && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                      {hasAnyEnrichmentForCarrier ? 'View Award Options' : 'Find Award Availability'}
+                      <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* FRT Button */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (frtOptions.length > 0) {
+                      setShowFrtResultsModal(true);
+                    } else if (!isFetchingFrt) {
+                      setShowFrtConfig(true);
+                    }
+                  }}
+                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, frt: true }))}
+                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, frt: false }))}
+                  disabled={isFetchingFrt}
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-blue-500/15 rounded transition-colors text-blue-300 hover:text-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isFetchingFrt ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  <span className="text-[10px] font-medium">
+                    {isFetchingFrt ? 'Fetching' : frtOptions.length > 0 ? 'View FRT' : 'FRT'}
+                  </span>
+                </button>
+                {tooltipStates.frt && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                    {frtOptions.length > 0 ? 'View FRT Options' : 'Find Fake Round Trip'}
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                  </div>
                 )}
-                <span className="text-[10px] font-medium">
-                  {isFetchingFrt ? 'Fetching' : frtOptions.length > 0 ? 'View FRT' : 'FRT'}
-                </span>
-              </button>
-              {tooltipStates.frt && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                  {frtOptions.length > 0 ? 'View FRT Options' : 'Find Fake Round Trip'}
-                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
-                </div>
-              )}
-            </div>
+              </div>
 
-            {/* Hacks Button */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openHacksPage();
-                }}
-                onMouseEnter={() => setTooltipStates(prev => ({ ...prev, hacks: true }))}
-                onMouseLeave={() => setTooltipStates(prev => ({ ...prev, hacks: false }))}
-                className="flex flex-col items-center gap-1.5 p-2 hover:bg-teal-500/15 rounded transition-colors text-teal-300 hover:text-teal-200"
-              >
-                <Target className="h-4 w-4" />
-                <span className="text-[10px] font-medium">Hacks</span>
-              </button>
-              {tooltipStates.hacks && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                  View Flight Hacks
-                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
-                </div>
-              )}
-            </div>
+              {/* Hacks Button */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openHacksPage();
+                  }}
+                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, hacks: true }))}
+                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, hacks: false }))}
+                  className="flex flex-col items-center gap-1.5 p-2 hover:bg-teal-500/15 rounded transition-colors text-teal-300 hover:text-teal-200"
+                >
+                  <Target className="h-4 w-4" />
+                  <span className="text-[10px] font-medium">Hacks</span>
+                </button>
+                {tooltipStates.hacks && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                    View Flight Hacks
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                  </div>
+                )}
+              </div>
 
-            {/* Book Award Button - Only for award flights */}
-            {flightData.isAwardFlight && flightData.awardData?.bookingUrl && (
+              {/* Add to Proposal Button */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (addedItems.has('flight')) {
+                      const newSet = new Set(addedItems);
+                      newSet.delete('flight');
+                      Array.from(newSet).forEach(item => {
+                        if (item.startsWith('aero-') || item.startsWith('award-')) {
+                          newSet.delete(item);
+                        }
+                      });
+                      setAddedItems(newSet);
+                      setPendingItems(prev => prev.filter(item => item.type !== 'flight' && !item.id.startsWith('aero-') && !item.id.startsWith('award-')));
+                      setShowAddToProposal(false);
+                      setSelectedMileageFlight(null);
+                    } else {
+                      setAddedItems(prev => new Set(prev).add('flight'));
+                      setPendingItems(prev => {
+                        const filtered = prev.filter(item => item.type !== 'flight');
+                        return [...filtered, { type: 'flight', id: 'flight', data: flight }];
+                      });
+                      setShowAddToProposal(true);
+                    }
+                  }}
+                  onMouseEnter={() => {
+                    setTooltipStates(prev => ({ ...prev, add: true }));
+                    if (addedItems.has('flight')) {
+                      setHoveredAddButton('flight');
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setTooltipStates(prev => ({ ...prev, add: false }));
+                    setHoveredAddButton(null);
+                  }}
+                  className={`flex flex-col items-center gap-1.5 p-2 rounded transition-colors ${
+                    addedItems.has('flight')
+                      ? 'bg-success-500/20 hover:bg-error-500/20 text-success-400 hover:text-error-400'
+                      : 'bg-slate-500/15 hover:bg-slate-500/20 text-slate-300 hover:text-slate-200'
+                  }`}
+                >
+                  {addedItems.has('flight') ? (
+                    <>
+                      <span className="text-sm">✓</span>
+                      <span className="text-[10px] font-medium">Added</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span className="text-[10px] font-medium">Add</span>
+                    </>
+                  )}
+                </button>
+                {tooltipStates.add && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                    {addedItems.has('flight') ? (hoveredAddButton === 'flight' ? 'Remove from proposal' : 'Added to proposal') : 'Add to proposal'}
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Book Award Button - Only for award flights (shown in both modes) */}
+          {isAwardModal && flightData.isAwardFlight && flightData.awardData?.bookingUrl && (
+            <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
               <div className="relative">
                 <a
                   href={flightData.awardData.bookingUrl}
@@ -3272,70 +3363,8 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Add to Proposal Button */}
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (addedItems.has('flight')) {
-                    const newSet = new Set(addedItems);
-                    newSet.delete('flight');
-                    Array.from(newSet).forEach(item => {
-                      if (item.startsWith('aero-') || item.startsWith('award-')) {
-                        newSet.delete(item);
-                      }
-                    });
-                    setAddedItems(newSet);
-                    setPendingItems(prev => prev.filter(item => item.type !== 'flight' && !item.id.startsWith('aero-') && !item.id.startsWith('award-')));
-                    setShowAddToProposal(false);
-                    setSelectedMileageFlight(null);
-                  } else {
-                    setAddedItems(prev => new Set(prev).add('flight'));
-                    setPendingItems(prev => {
-                      const filtered = prev.filter(item => item.type !== 'flight');
-                      return [...filtered, { type: 'flight', id: 'flight', data: flight }];
-                    });
-                    setShowAddToProposal(true);
-                  }
-                }}
-                onMouseEnter={() => {
-                  setTooltipStates(prev => ({ ...prev, add: true }));
-                  if (addedItems.has('flight')) {
-                    setHoveredAddButton('flight');
-                  }
-                }}
-                onMouseLeave={() => {
-                  setTooltipStates(prev => ({ ...prev, add: false }));
-                  setHoveredAddButton(null);
-                }}
-                className={`flex flex-col items-center gap-1.5 p-2 rounded transition-colors ${
-                  addedItems.has('flight')
-                    ? 'bg-success-500/20 hover:bg-error-500/20 text-success-400 hover:text-error-400'
-                    : 'bg-slate-500/15 hover:bg-slate-500/20 text-slate-300 hover:text-slate-200'
-                }`}
-              >
-                {addedItems.has('flight') ? (
-                  <>
-                    <span className="text-sm">✓</span>
-                    <span className="text-[10px] font-medium">Added</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    <span className="text-[10px] font-medium">Add</span>
-                  </>
-                )}
-              </button>
-              {tooltipStates.add && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
-                  {addedItems.has('flight') ? (hoveredAddButton === 'flight' ? 'Remove from proposal' : 'Added to proposal') : 'Add to proposal'}
-                  <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
 
           {/* Selected Mileage Badge - If selected */}
