@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
 import ITAMatrixService from '../services/itaMatrixApi';
-import { searchAllCabinsSequentially, mergedFlightsToResponse as mergedFlightsToResponseSequential, SequentialSearchProgress } from '../services/sequentialCabinSearch';
+import { searchAllCabins, mergedFlightsToResponse as mergedFlightsToResponseParallel, ParallelSearchProgress } from '../services/parallelCabinSearch';
 import { enrichmentManager, EnrichmentProgress } from '../services/viewFirstEnrichment';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
@@ -17,8 +17,8 @@ import { useAuth } from '../hooks/useAuth';
 import { getDefaultBookingClasses, bookingClassesToExt } from '../utils/bookingClasses';
 import { FrtProvider } from '../contexts/FrtContext';
 
-// Feature flag for multi-cabin search (sequential mode)
-const ENABLE_MULTI_CABIN_SEARCH = true; // Searches all 4 cabins sequentially
+// Feature flag for multi-cabin search (parallel mode)
+const ENABLE_MULTI_CABIN_SEARCH = true; // Searches all 4 cabins in parallel
 
 const SearchPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -54,7 +54,7 @@ const SearchPage: React.FC = () => {
   const [v2EnrichmentData, setV2EnrichmentData] = useState<Map<string, any[]>>(new Map());
   const [enrichingAirlines, setEnrichingAirlines] = useState<Set<string>>(new Set());
   const [enrichmentProgress, setEnrichmentProgress] = useState<EnrichmentProgress | null>(null);
-  const [cabinSearchProgress, setCabinSearchProgress] = useState<Record<string, SequentialSearchProgress>>({});
+  const [cabinSearchProgress, setCabinSearchProgress] = useState<Record<string, ParallelSearchProgress>>({});
   const enrichmentTriggeredRef = useRef(false);
   const enrichmentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [perCentValue, setPerCentValue] = useState(0.015);
@@ -478,13 +478,19 @@ const SearchPage: React.FC = () => {
       let searchResults: SearchResponse;
 
       if (ENABLE_MULTI_CABIN_SEARCH) {
-        // Sequential cabin search - searches cabins one after another with progress updates
-        console.log('🔄 SearchPage: Using sequential cabin search mode');
+        // Parallel cabin search - searches all cabins simultaneously
+        console.log('🔄 SearchPage: Using parallel cabin search mode');
 
-        // Track cabin metadata as they complete (for session/solutionSet info)
-        let firstCabinMetadata: { session?: string; solutionSet?: string; pagination?: any } = {};
+        // Initialize progress tracking
+        const progressTracker: Record<string, ParallelSearchProgress> = {
+          'COACH': { cabin: 'COACH', status: 'pending' },
+          'PREMIUM-COACH': { cabin: 'PREMIUM-COACH', status: 'pending' },
+          'BUSINESS': { cabin: 'BUSINESS', status: 'pending' },
+          'FIRST': { cabin: 'FIRST', status: 'pending' }
+        };
+        setCabinSearchProgress(progressTracker);
 
-        const sequentialResult = await searchAllCabinsSequentially(
+        const parallelResult = await searchAllCabins(
           extractedParams,
           extractedParams.aero ? (cabin: string, flight: any) => {
             console.log(`📥 SearchPage: Received ${cabin} flight:`, flight.id);
@@ -492,65 +498,40 @@ const SearchPage: React.FC = () => {
           } : undefined,
           extractedParams.aero ? (cabin: string, metadata: any) => {
             console.log(`📊 SearchPage: Received ${cabin} metadata:`, metadata);
-            // Store first cabin metadata for progressive updates
-            if (!firstCabinMetadata.session) {
-              firstCabinMetadata = {
-                session: metadata.session,
-                solutionSet: metadata.solutionSet,
-                pagination: metadata.pagination
-              };
-            }
+            // Update progress with streaming status
+            progressTracker[cabin] = {
+              ...progressTracker[cabin],
+              status: 'streaming',
+              solutionCount: metadata.solutionCount
+            };
+            setCabinSearchProgress({ ...progressTracker });
             onMetadata(metadata);
           } : undefined,
-          (cabin: string, mergedFlights: any, cabinResult: SearchResponse) => {
-            console.log(`✅ SearchPage: ${cabin} search complete, merged flights count:`, mergedFlights.size);
-            // Store first cabin metadata if not already set (for non-aero mode)
-            if (!firstCabinMetadata.session) {
-              firstCabinMetadata = {
-                session: cabinResult.session,
-                solutionSet: cabinResult.solutionSet,
-                pagination: cabinResult.pagination
-              };
-            }
-            // Update results progressively as each cabin completes
-            const progressiveResults = mergedFlightsToResponseSequential(
-              mergedFlights,
-              {
-                session: firstCabinMetadata.session,
-                solutionSet: firstCabinMetadata.solutionSet,
-                solutionCount: mergedFlights.size,
-                pagination: firstCabinMetadata.pagination
-              }
-            );
-            console.log(`📊 SearchPage: Setting progressive results with ${progressiveResults.solutionList?.solutions?.length} flights`);
-            setResults(progressiveResults);
-            // Turn off loading state when first cabin completes
-            if (loading) {
-              console.log('✨ SearchPage: First cabin complete, turning off loading state');
-              setLoading(false);
-              setHasSearched(true);
-            }
-          },
-          (progress: Record<string, SequentialSearchProgress>) => {
-            // Update progress UI
-            setCabinSearchProgress(progress);
+          (cabin: string) => {
+            console.log(`✅ SearchPage: ${cabin} search complete`);
+            // Update progress with completed status
+            progressTracker[cabin] = {
+              ...progressTracker[cabin],
+              status: 'complete'
+            };
+            setCabinSearchProgress({ ...progressTracker });
           }
         );
 
         // Convert merged results back to SearchResponse format
         // Use metadata from first completed cabin search
-        const firstCabinResult = Object.values(sequentialResult.cabinResults)[0];
-        searchResults = mergedFlightsToResponseSequential(
-          sequentialResult.mergedFlights,
+        const firstCabinResult = Object.values(parallelResult.cabinResults)[0];
+        searchResults = mergedFlightsToResponseParallel(
+          parallelResult.mergedFlights,
           {
             session: firstCabinResult?.session,
             solutionSet: firstCabinResult?.solutionSet,
-            solutionCount: sequentialResult.mergedFlights.size,
+            solutionCount: parallelResult.mergedFlights.size,
             pagination: firstCabinResult?.pagination
           }
         );
 
-        console.log('✅ SearchPage: Sequential search completed with', sequentialResult.mergedFlights.size, 'unique flights');
+        console.log('✅ SearchPage: Parallel search completed with', parallelResult.mergedFlights.size, 'unique flights');
       } else {
         // Standard single-cabin search
         searchResults = await FlightApi.searchFlights(
