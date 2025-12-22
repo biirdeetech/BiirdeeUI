@@ -71,6 +71,13 @@ const convertFrtToFlightSolution = (frtOption: FrtOption): FlightSolution | null
   }
 };
 
+const cabinDisplayMap: Record<string, string> = {
+  'COACH': 'Economy',
+  'PREMIUM-COACH': 'Premium Economy',
+  'BUSINESS': 'Business',
+  'FIRST': 'First'
+};
+
 const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
   isOpen,
   onClose,
@@ -81,19 +88,22 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
   formatDate,
   formatDuration
 }) => {
-  const [selectedAirport, setSelectedAirport] = useState<string>('');
+  const [selectedCabin, setSelectedCabin] = useState<string>('');
 
-  const optionsByAirport = useMemo(() => {
+  const optionsByCabin = useMemo(() => {
     const map = new Map<string, FrtOption[]>();
     frtOptions.forEach(option => {
-      const airport = option.airport || 'Unknown';
-      if (!map.has(airport)) {
-        map.set(airport, []);
+      const returnSlice = option.returnFlight?.slices?.[0];
+      if (!returnSlice || !returnSlice.cabins || returnSlice.cabins.length === 0) return;
+
+      const cabin = returnSlice.cabins[0];
+      if (!map.has(cabin)) {
+        map.set(cabin, []);
       }
-      map.get(airport)!.push(option);
+      map.get(cabin)!.push(option);
     });
 
-    map.forEach((options, airport) => {
+    map.forEach((options) => {
       options.sort((a, b) => {
         const aTotalPrice = originFlightPrice + (a.returnFlight?.totalAmount || 0);
         const bTotalPrice = originFlightPrice + (b.returnFlight?.totalAmount || 0);
@@ -104,23 +114,28 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
     return map;
   }, [frtOptions, originFlightPrice]);
 
-  const availableAirports = useMemo(() => {
-    return Array.from(optionsByAirport.keys()).sort();
-  }, [optionsByAirport]);
+  const cabinOrder = ['COACH', 'PREMIUM-COACH', 'BUSINESS', 'FIRST'];
+  const availableCabins = useMemo(() => {
+    return Array.from(optionsByCabin.keys()).sort((a, b) => {
+      const aIndex = cabinOrder.indexOf(a) !== -1 ? cabinOrder.indexOf(a) : 999;
+      const bIndex = cabinOrder.indexOf(b) !== -1 ? cabinOrder.indexOf(b) : 999;
+      return aIndex - bIndex;
+    });
+  }, [optionsByCabin]);
 
   React.useEffect(() => {
-    if (availableAirports.length > 0 && !selectedAirport) {
-      setSelectedAirport(availableAirports[0]);
+    if (availableCabins.length > 0 && !selectedCabin) {
+      setSelectedCabin(availableCabins[0]);
     }
-  }, [availableAirports, selectedAirport]);
+  }, [availableCabins, selectedCabin]);
 
-  const currentAirportFlights = useMemo(() => {
-    if (!selectedAirport) return [];
-    const options = optionsByAirport.get(selectedAirport) || [];
+  const currentCabinFlights = useMemo(() => {
+    if (!selectedCabin) return [];
+    const options = optionsByCabin.get(selectedCabin) || [];
     return options
       .map(option => convertFrtToFlightSolution(option))
       .filter((flight): flight is FlightSolution => flight !== null);
-  }, [selectedAirport, optionsByAirport]);
+  }, [selectedCabin, optionsByCabin]);
 
   if (!isOpen) return null;
 
@@ -143,34 +158,35 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
           </button>
         </div>
 
-        {availableAirports.length > 1 && (
+        {availableCabins.length > 1 && (
           <div className="border-b border-gray-700/50 px-4">
             <div className="flex gap-2 overflow-x-auto py-2">
-              {availableAirports.map(airport => {
-                const airportOptions = optionsByAirport.get(airport) || [];
-                const cheapestOption = airportOptions[0];
+              {availableCabins.map(cabinKey => {
+                const cabinOptions = optionsByCabin.get(cabinKey) || [];
+                const cabinDisplay = cabinDisplayMap[cabinKey] || cabinKey;
+                const cheapestOption = cabinOptions[0];
                 const cheapestTotal = cheapestOption ? originFlightPrice + (cheapestOption.returnFlight?.totalAmount || 0) : 0;
                 const savings = cheapestOption ? originFlightPrice - cheapestTotal : 0;
 
                 return (
                   <button
-                    key={airport}
-                    onClick={() => setSelectedAirport(airport)}
+                    key={cabinKey}
+                    onClick={() => setSelectedCabin(cabinKey)}
                     className={`
                       px-4 py-3 text-sm font-bold transition-all duration-200 rounded-lg whitespace-nowrap
-                      ${selectedAirport === airport
+                      ${selectedCabin === cabinKey
                         ? 'text-blue-400 border-2 border-blue-500 bg-blue-500/10'
                         : 'text-gray-400 border-2 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
                       }
                     `}
                   >
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-base">{airport}</span>
+                      <span className="text-base">{cabinDisplay}</span>
                       {cheapestOption && (
                         <>
                           <span className={`
                             text-xs font-semibold
-                            ${selectedAirport === airport ? 'text-blue-300' : 'text-gray-500'}
+                            ${selectedCabin === cabinKey ? 'text-blue-300' : 'text-gray-500'}
                           `}>
                             {formatPrice(cheapestTotal, currency)}
                           </span>
@@ -182,7 +198,7 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
                           </span>
                         </>
                       )}
-                      <span className="text-[10px] text-gray-500">({airportOptions.length})</span>
+                      <span className="text-[10px] text-gray-500">({cabinOptions.length})</span>
                     </div>
                   </button>
                 );
@@ -193,11 +209,12 @@ const FrtResultsModal: React.FC<FrtResultsModalProps> = ({
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-3">
-            {currentAirportFlights.map((flight) => (
+            {currentCabinFlights.map((flight) => (
               <FlightCard
                 key={flight.id}
                 flight={flight}
                 perCentValue={0.015}
+                isFrtModal={true}
               />
             ))}
           </div>

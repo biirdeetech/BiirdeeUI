@@ -46,6 +46,7 @@ interface FlightCardProps {
   expandedFlightCardId?: string | null; // Track which flight card is expanded (for exclusive expansion)
   onFlightCardToggle?: (flightId: string | null) => void; // Callback to toggle flight card expansion
   isAwardModal?: boolean; // True when rendered inside award modal
+  isFrtModal?: boolean; // True when rendered inside FRT modal
 }
 
 // Helper to group similar mileage flights for cleaner display
@@ -229,7 +230,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, isParentCodeShare = false, isChildCodeShare = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle, isAwardModal = false }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, isParentCodeShare = false, isChildCodeShare = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle, isAwardModal = false, isFrtModal = false }) => {
   // Get flight ID for FRT context
   const flightId = 'id' in flight ? flight.id : `grouped-${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
 
@@ -3050,139 +3051,10 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
             );
           })()}
 
-          {/* FRT Options - Grouped by Return Airport */}
-          {frtState.optionsByAirport.size > 0 && (() => {
-            const airports = Array.from(frtState.optionsByAirport.keys());
-            const originCode = slices[0].origin.code;
-
-            return airports.map((airport, airportIdx) => {
-              const airportOptions = frtState.optionsByAirport.get(airport) || [];
-              if (airportOptions.length === 0) return null;
-
-              const selectedOptionIdx = frtState.selectedOptionIndexPerAirport.get(airport) || 0;
-              const selectedOption = airportOptions[selectedOptionIdx];
-              if (!selectedOption) return null;
-
-              // Build route tooltip text
-              const returnSlice = selectedOption.returnFlight?.slices?.[0];
-              if (!returnSlice) return null;
-
-              const viaAirports = returnSlice.stops || [];
-              const routeText = viaAirports.length > 0
-                ? `${returnSlice.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice.destination?.code}`
-                : `${returnSlice.origin?.code} → ${returnSlice.destination?.code}`;
-
-              return (
-                <div key={`frt-airport-${airport}`} className="px-4 py-3 border-b border-gray-800/30">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-gray-300 whitespace-nowrap" title={routeText}>
-                      FRT {airportIdx + 1}:
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const prevIdx = selectedOptionIdx > 0 ? selectedOptionIdx - 1 : airportOptions.length - 1;
-                        frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, prevIdx);
-                      }}
-                      disabled={airportOptions.length <= 1}
-                      className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                    >
-                      <ChevronDown className="h-3 w-3 text-gray-300 rotate-90" />
-                    </button>
-                    <div className="flex items-center gap-2 overflow-x-auto flex-1 pointer-events-auto">
-                      {airportOptions.map((frt, idx) => {
-                        const returnSlice = frt.returnFlight?.slices?.[0];
-                        if (!returnSlice) return null;
-
-                        const isSelected = frtState.selectedAirport === airport && selectedOptionIdx === idx;
-                        const stops = returnSlice.segments?.length - 1 || 0;
-
-                        // Recalculate FRT total and savings
-                        const returnFlightPrice = frt.returnFlight?.totalAmount || 0;
-                        const currentFrtTotalPrice = displayTotal + returnFlightPrice;
-                        const currentSavings = displayTotal - currentFrtTotalPrice;
-
-                        // Build route for this option
-                        const viaAirports = returnSlice.stops || [];
-                        const optionRouteText = viaAirports.length > 0
-                          ? `${returnSlice.origin?.code} → ${viaAirports.join(' → ')} → ${returnSlice.destination?.code}`
-                          : `${returnSlice.origin?.code} → ${returnSlice.destination?.code}`;
-
-                        return (
-                          <button
-                            key={`frt-${airport}-${idx}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, idx);
-                            }}
-                            title={optionRouteText}
-                            className={`px-2.5 py-1 rounded border transition-all whitespace-nowrap text-xs font-medium cursor-pointer relative z-10 ${
-                              isSelected
-                                ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                                : 'bg-gray-700/40 border-gray-600/40 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500/60'
-                            }`}
-                          >
-                            <span className="font-mono">
-                              {returnSlice.origin?.code}→{returnSlice.destination?.code}
-                            </span>
-                            {' '}
-                            <span className="opacity-70">
-                              {stops === 0 ? 'nonstop' : `${stops}stop`}
-                            </span>
-                            {' @ '}
-                            <span className={currentSavings > 0 ? 'text-green-400 font-semibold' : currentSavings < 0 ? 'text-red-400 font-semibold' : ''}>
-                              {formatPrice(currentFrtTotalPrice, frt.currency || 'USD', false)}
-                            </span>
-                            {currentSavings !== 0 && (
-                              currentSavings > 0 ? (
-                                <span className="text-green-400 font-medium">
-                                  {' '}(-{formatPrice(Math.abs(currentSavings), currency, false)})
-                                </span>
-                              ) : (
-                                <span className="text-red-400 font-medium">
-                                  {' '}(+{formatPrice(Math.abs(currentSavings), currency, false)})
-                                </span>
-                              )
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const nextIdx = selectedOptionIdx < airportOptions.length - 1 ? selectedOptionIdx + 1 : 0;
-                        frtContext.setSelectedOptionForAirport(getFrtKey(currentFrtCabin), airport, nextIdx);
-                      }}
-                      disabled={airportOptions.length <= 1}
-                      className="p-1 bg-gray-700/40 hover:bg-gray-700/60 disabled:bg-gray-800/20 disabled:opacity-30 disabled:cursor-not-allowed rounded border border-gray-600/40 transition-colors"
-                    >
-                      <ChevronDown className="h-3 w-3 text-gray-300 -rotate-90" />
-                    </button>
-                    {airportIdx === 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowFrtConfig(true);
-                        }}
-                        className="p-1 bg-gray-700/40 hover:bg-gray-700/60 rounded border border-gray-600/40 transition-colors"
-                        title="Reconfigure FRT"
-                      >
-                        <RefreshCw className="h-3 w-3 text-gray-300" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="text-center text-[10px] text-gray-400 mt-2">
-                    Option {selectedOptionIdx + 1} of {airportOptions.length}
-                  </div>
-                </div>
-              );
-            });
-          })()}
 
           {/* Action Buttons - First 80px on right side */}
-          {/* Action buttons - Hidden in award modal except Book button */}
-          {!isAwardModal && (
+          {/* Action buttons - Hidden in award/FRT modal except Book button */}
+          {!isAwardModal && !isFrtModal && (
             <div className="px-4 py-3 flex items-start justify-end gap-3 h-20 border-b border-gray-800/30">
               {/* Details Button */}
               <div className="relative">

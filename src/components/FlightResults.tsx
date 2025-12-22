@@ -7,6 +7,99 @@ import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 import { formatPrice } from '../utils/priceFormatter';
 import { groupFlightsByCabin, GroupedFlightByCabin, detectCodeShares } from '../utils/cabinGrouping';
 
+const parseDuration = (duration: string): number => {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (match) {
+    const hours = parseInt(match[1] || '0');
+    const minutes = parseInt(match[2] || '0');
+    return hours * 60 + minutes;
+  }
+  return 0;
+};
+
+const convertAwardToFlightSolution = (award: any, carrierCode: string): FlightSolution | null => {
+  try {
+    const itinerary = award.itineraries?.[0];
+    if (!itinerary || !itinerary.segments || itinerary.segments.length === 0) {
+      return null;
+    }
+
+    const segments = itinerary.segments;
+    const firstSegment = segments[0];
+    const lastSegment = segments[segments.length - 1];
+
+    const flightSlice = {
+      origin: {
+        code: firstSegment.departure?.iataCode || 'N/A',
+        name: firstSegment.departure?.cityName || ''
+      },
+      destination: {
+        code: lastSegment.arrival?.iataCode || 'N/A',
+        name: lastSegment.arrival?.cityName || ''
+      },
+      departure: firstSegment.departure?.at || '',
+      arrival: lastSegment.arrival?.at || '',
+      duration: itinerary.duration ? parseDuration(itinerary.duration) : 0,
+      flights: segments.map((seg: any) => `${seg.carrierCode}${seg.number}`),
+      cabins: [award.cabin],
+      stops: segments.length > 1 ? segments.slice(1).map((seg: any) => ({
+        code: seg.departure?.iataCode || 'N/A',
+        name: seg.departure?.cityName || ''
+      })) : [],
+      segments: segments.map((seg: any) => ({
+        carrier: {
+          code: seg.carrierCode || 'N/A',
+          name: seg.carrierName || seg.carrierCode || 'N/A',
+          shortName: seg.carrierCode || 'N/A'
+        },
+        marketingCarrier: seg.marketingCarrier || seg.carrierCode || 'N/A',
+        pricings: seg.pricings || [],
+        departure: seg.departure?.at || '',
+        arrival: seg.arrival?.at || '',
+        flightNumber: `${seg.carrierCode}${seg.number}`,
+        origin: {
+          code: seg.departure?.iataCode || 'N/A',
+          name: seg.departure?.cityName || ''
+        },
+        destination: {
+          code: seg.arrival?.iataCode || 'N/A',
+          name: seg.arrival?.cityName || ''
+        },
+        duration: seg.duration ? parseDuration(seg.duration) : 0,
+        cabin: award.cabin
+      }))
+    };
+
+    const totalMiles = award.miles || 0;
+    const totalTax = award.tax || 0;
+
+    return {
+      id: award.id || `award-${Date.now()}-${Math.random()}`,
+      totalAmount: totalTax,
+      displayTotal: totalTax,
+      currency: award.price?.currency || 'USD',
+      slices: [flightSlice],
+      ext: {
+        pricePerMile: totalMiles > 0 ? totalTax / totalMiles : 0
+      },
+      totalMileage: totalMiles,
+      totalMileagePrice: totalTax,
+      isAwardFlight: true,
+      awardData: {
+        miles: totalMiles,
+        tax: totalTax,
+        bookingUrl: award.bookingUrl,
+        airlineName: award.airlineName,
+        seats: award.seats || 0,
+        transferOptions: award.transferOptions || []
+      }
+    };
+  } catch (error) {
+    console.error('Error converting award to flight solution:', error);
+    return null;
+  }
+};
+
 interface FlightResultsProps {
   results: SearchResponse | null;
   loading: boolean;
@@ -100,7 +193,50 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   // Group flights by cabin and detect code-shares
   const groupedByCabin = useMemo(() => {
     console.log('🔄 FlightResults: Grouping flights by cabin');
-    const grouped = groupFlightsByCabin(flatFlights);
+
+    // Create synthetic award flights from v2EnrichmentData
+    const awardFlights: FlightSolution[] = [];
+    if (v2EnrichmentData && v2EnrichmentData.size > 0) {
+      v2EnrichmentData.forEach((enrichments, carrierCode) => {
+        enrichments.forEach((enrichment: any) => {
+          if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
+            const awardtool = enrichment.data.awardtool;
+            if (awardtool && awardtool.cabinPrices) {
+              Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
+                if (cabinData.miles > 0 && cabinData.itineraries && cabinData.itineraries.length > 0) {
+                  // Convert award to FlightSolution format
+                  const awardOption = {
+                    id: `award-${carrierCode}-${cabinName}-${Date.now()}-${Math.random()}`,
+                    miles: cabinData.miles,
+                    tax: cabinData.tax || 0,
+                    cabin: cabinName.toUpperCase(),
+                    segments: [],
+                    transferOptions: cabinData.transferOptions || [],
+                    seats: cabinData.seats || 0,
+                    itineraries: cabinData.itineraries,
+                    price: { currency: 'USD' },
+                    data: cabinData,
+                    bookingUrl: cabinData.bookingUrl,
+                    airlineName: enrichment.airline || carrierCode
+                  };
+
+                  const flightSolution = convertAwardToFlightSolution(awardOption, carrierCode);
+                  if (flightSolution) {
+                    awardFlights.push(flightSolution);
+                  }
+                }
+              });
+            }
+          }
+        });
+      });
+    }
+
+    // Combine regular flights with award flights
+    const allFlights = [...flatFlights, ...awardFlights];
+    console.log(`🎖️ FlightResults: Added ${awardFlights.length} award flights to results`);
+
+    const grouped = groupFlightsByCabin(allFlights);
     console.log(`✅ FlightResults: Grouped into ${grouped.length} flight groups`);
 
     // Detect code-share relationships
@@ -108,7 +244,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     console.log(`✅ FlightResults: Code-share detection complete`);
 
     return withCodeShares;
-  }, [flatFlights]);
+  }, [flatFlights, v2EnrichmentData, perCentValue]);
 
   // Calculate cheapest and best prices for each cabin tab
   const cabinPriceRanges = useMemo(() => {
