@@ -123,6 +123,14 @@ export interface FlightSolution {
   cabinPrices?: Record<string, CabinPrice>; // Per-cabin pricing
   selectedCabin?: string; // Currently displayed cabin
   isAwardFlight?: boolean; // Flag to indicate this is an award flight (for special pricing display)
+  awardData?: {
+    miles: number;
+    tax: number;
+    bookingUrl?: string;
+    airlineName?: string;
+    seats?: number;
+    transferOptions?: any[];
+  };
 }
 
 export interface GroupedFlight {

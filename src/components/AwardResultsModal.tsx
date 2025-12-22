@@ -103,7 +103,15 @@ const convertAwardToFlightSolution = (award: AwardOption): FlightSolution | null
       },
       totalMileage: totalMiles,
       totalMileagePrice: totalTax,
-      isAwardFlight: true
+      isAwardFlight: true,
+      awardData: {
+        miles: totalMiles,
+        tax: totalTax,
+        bookingUrl: award.bookingUrl,
+        airlineName: award.airlineName,
+        seats: award.seats || 0,
+        transferOptions: award.transferOptions || []
+      }
     };
   } catch (error) {
     console.error('Error converting award to flight solution:', error);

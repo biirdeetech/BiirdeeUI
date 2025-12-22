@@ -2023,8 +2023,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                 </div>
               </div>
 
+            {/* Award Box - Show Award mileage and tax */}
+            {flightData.isAwardFlight && flightData.awardData && (() => {
+              const cashEquivalent = (flightData.awardData.miles * perCentValue) + flightData.awardData.tax;
+
+              return (
+                <div className="relative flex flex-col items-center justify-center min-w-[95px] px-2 py-1.5 rounded border bg-yellow-500/5 border-yellow-500/30">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Award className="h-3 w-3 text-yellow-500" />
+                    <span className="text-[9px] text-yellow-400 font-semibold uppercase">Award</span>
+                  </div>
+                  <div className="text-xs text-yellow-400 font-bold">{flightData.awardData.miles.toLocaleString()}</div>
+                  <div className="text-[9px] text-gray-400">miles</div>
+                  <div className="text-[9px] text-green-400 font-semibold">
+                    +${flightData.awardData.tax.toFixed(2)}
+                  </div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">
+                    ≈ ${cashEquivalent.toFixed(0)}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Aero Box - Show Aero mileage option */}
-            {hasAeroMileage && (() => {
+            {!flightData.isAwardFlight && hasAeroMileage && (() => {
               // Show if we have mileage breakdown
               if (!slices[0].mileageBreakdown) return null;
 
@@ -3225,6 +3247,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
                 </div>
               )}
             </div>
+
+            {/* Book Award Button - Only for award flights */}
+            {flightData.isAwardFlight && flightData.awardData?.bookingUrl && (
+              <div className="relative">
+                <a
+                  href={flightData.awardData.bookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={() => setTooltipStates(prev => ({ ...prev, book: true }))}
+                  onMouseLeave={() => setTooltipStates(prev => ({ ...prev, book: false }))}
+                  className="flex flex-col items-center gap-1.5 p-2 rounded transition-colors bg-accent-500/20 hover:bg-accent-500/30 text-accent-300 hover:text-accent-200"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="text-[10px] font-medium">Book</span>
+                </a>
+                {tooltipStates.book && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-2 text-xs text-gray-300">
+                    Book on {flightData.awardData.airlineName || 'airline website'}
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-800 border-t border-l border-gray-700 transform rotate-45"></div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Add to Proposal Button */}
             <div className="relative">

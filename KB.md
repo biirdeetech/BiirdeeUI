@@ -30,6 +30,7 @@
   - Both modals reuse FlightCard for consistent, familiar UI with search results
   - Award/FRT data converted to FlightSolution format for FlightCard compatibility
   - Added `isAwardFlight` flag to FlightSolution type for special handling
+  - Added `awardData` object to FlightSolution containing miles, tax, bookingUrl, airlineName, seats, transferOptions
   - "Find Awards" button changes to "View Awards" after fetching enrichment data
   - "FRT" button changes to "View FRT" after fetching FRT options
   - Both modals show results organized by cabin/airport with cabin tabs
@@ -37,6 +38,12 @@
   - FRT results sorted by cheapest first per airport (total round-trip price)
   - Centralized UI reduces code duplication and maintenance burden
   - Award flights now display ONLY in modal, not inline in flight cards
+  - ✅ Enhanced FlightCard to support award flight display:
+    - Award pricing box shows mileage, tax, and cash equivalent (next to airline info)
+    - "Book" button appears in action buttons area with airline booking link
+    - Yellow theme for award flights (vs orange for Aero)
+    - Only displays when `isAwardFlight` is true and `awardData` is present
+    - Aero box hidden when displaying award flights to avoid confusion
 
 **Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
