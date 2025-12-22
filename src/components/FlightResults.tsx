@@ -210,6 +210,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   // Group flights by cabin and detect code-shares
   const groupedByCabin = useMemo(() => {
     console.log('🔄 FlightResults: Grouping flights by cabin');
+    console.log(`🔍 FlightResults: v2EnrichmentData exists=${!!v2EnrichmentData}, size=${v2EnrichmentData?.size || 0}`);
 
     // Create synthetic award flights from v2EnrichmentData
     const awardFlights: FlightSolution[] = [];
@@ -338,13 +339,16 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
     // Check for award pricing from v2EnrichmentData
     if (v2EnrichmentData && v2EnrichmentData.size > 0) {
+      console.log(`💰 CabinPriceRanges: Checking award pricing from ${v2EnrichmentData.size} carrier(s)`);
       v2EnrichmentData.forEach((enrichments, carrierCode) => {
         enrichments.forEach((enrichment: any) => {
           if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
+            console.log(`💰 CabinPriceRanges: Found awardtool data for ${carrierCode}`);
             const awardtool = enrichment.data.awardtool;
 
             if (awardtool && awardtool.cabinPrices) {
               Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
+                console.log(`💰 CabinPriceRanges: Processing cabin=${cabinName}, miles=${cabinData.miles}`);
                 if (cabinData.miles > 0) {
                   const awardCashEquivalent = (cabinData.miles * perCentValue) + (cabinData.tax || 0);
 
@@ -363,6 +367,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   }
 
                   if (targetCabinCode) {
+                    console.log(`💰 CabinPriceRanges: Mapped ${cabinName} -> ${targetCabinCode}, cash equivalent=$${awardCashEquivalent}`);
                     // Update cheapest award price
                     if (!ranges[targetCabinCode].cheapestAwardPrice || awardCashEquivalent < ranges[targetCabinCode].cheapestAwardPrice!) {
                       ranges[targetCabinCode].cheapestAwardPrice = awardCashEquivalent;
@@ -372,6 +377,8 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                     if (awardCashEquivalent < ranges[targetCabinCode].cheapestPrice) {
                       ranges[targetCabinCode].cheapestPrice = awardCashEquivalent;
                     }
+                  } else {
+                    console.log(`⚠️ CabinPriceRanges: Could not map cabin ${cabinName} to a target cabin code`);
                   }
                 }
               });
