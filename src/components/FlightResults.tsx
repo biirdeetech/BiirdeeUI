@@ -112,11 +112,11 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
   // Calculate cheapest and best prices for each cabin tab
   const cabinPriceRanges = useMemo(() => {
-    const ranges: Record<string, { cheapestPrice: number; bestPrice: number; count: number }> = {
-      'COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
-      'PREMIUM-COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
-      'BUSINESS': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
-      'FIRST': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 }
+    const ranges: Record<string, { cheapestPrice: number; bestPrice: number; count: number; codeShareParentCount: number }> = {
+      'COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
+      'PREMIUM-COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
+      'BUSINESS': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
+      'FIRST': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 }
     };
 
     const cabinCodes = ['COACH', 'PREMIUM-COACH', 'BUSINESS', 'FIRST'] as const;
@@ -131,6 +131,9 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       }
 
       ranges[cabinCode].count = flightsInCabin.length;
+
+      // Count code-share parents
+      ranges[cabinCode].codeShareParentCount = flightsInCabin.filter(group => group.isParentCodeShare).length;
 
       // Find cheapest price
       let minPrice = Infinity;
@@ -338,7 +341,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   }
                 </span>
               )}
-              <span className="text-[10px] text-gray-500">({cabinPriceRanges['COACH'].count})</span>
+              <span className="text-[10px] text-gray-500">
+                ({cabinPriceRanges['COACH'].count}
+                {cabinPriceRanges['COACH'].codeShareParentCount > 0 &&
+                  ` • ${cabinPriceRanges['COACH'].codeShareParentCount} code-share parent${cabinPriceRanges['COACH'].codeShareParentCount !== 1 ? 's' : ''}`
+                })
+              </span>
             </div>
           </button>
           <button
@@ -365,7 +373,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   }
                 </span>
               )}
-              <span className="text-[10px] text-gray-500">({cabinPriceRanges['PREMIUM-COACH'].count})</span>
+              <span className="text-[10px] text-gray-500">
+                ({cabinPriceRanges['PREMIUM-COACH'].count}
+                {cabinPriceRanges['PREMIUM-COACH'].codeShareParentCount > 0 &&
+                  ` • ${cabinPriceRanges['PREMIUM-COACH'].codeShareParentCount} code-share parent${cabinPriceRanges['PREMIUM-COACH'].codeShareParentCount !== 1 ? 's' : ''}`
+                })
+              </span>
             </div>
           </button>
           <button
@@ -392,7 +405,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   }
                 </span>
               )}
-              <span className="text-[10px] text-gray-500">({cabinPriceRanges['BUSINESS'].count})</span>
+              <span className="text-[10px] text-gray-500">
+                ({cabinPriceRanges['BUSINESS'].count}
+                {cabinPriceRanges['BUSINESS'].codeShareParentCount > 0 &&
+                  ` • ${cabinPriceRanges['BUSINESS'].codeShareParentCount} code-share parent${cabinPriceRanges['BUSINESS'].codeShareParentCount !== 1 ? 's' : ''}`
+                })
+              </span>
             </div>
           </button>
           <button
@@ -419,7 +437,12 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   }
                 </span>
               )}
-              <span className="text-[10px] text-gray-500">({cabinPriceRanges['FIRST'].count})</span>
+              <span className="text-[10px] text-gray-500">
+                ({cabinPriceRanges['FIRST'].count}
+                {cabinPriceRanges['FIRST'].codeShareParentCount > 0 &&
+                  ` • ${cabinPriceRanges['FIRST'].codeShareParentCount} code-share parent${cabinPriceRanges['FIRST'].codeShareParentCount !== 1 ? 's' : ''}`
+                })
+              </span>
             </div>
           </button>
         </div>
@@ -501,7 +524,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                 similarFlights={similarFlights}
                 codeShareFlights={codeSharePartnerFlights}
                 codeShareFlightsCount={codeSharePartnerFlights.length}
-                showCodeShareOptions={codeSharePartnerFlights.length > 0}
+                showCodeShareOptions={true}
                 isParentCodeShare={group.isParentCodeShare}
                 isChildCodeShare={group.isChildCodeShare}
                 originTimezone={originTimezone}

@@ -350,10 +350,15 @@ const SearchPage: React.FC = () => {
 
   const extractedParams = extractSearchParams();
 
-  // Extract origin timezone from URL params
+  // Extract origin timezone from URL params and set as default display timezone
   useEffect(() => {
     const timezone = searchParams.get('leg0_originTimezone') || searchParams.get('originTimezone');
     setOriginTimezone(timezone || undefined);
+
+    // Use origin timezone as default display timezone
+    if (timezone) {
+      setDisplayTimezone(timezone);
+    }
 
     const perCent = parseFloat(searchParams.get('perCentValue') || '0.015');
     setPerCentValue(perCent);

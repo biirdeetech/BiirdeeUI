@@ -2670,26 +2670,27 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
               <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Code-Share Icon - Right of Chevron */}
-            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
+            {/* Code-Share Icon - Always visible for UI alignment */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (codeShareFlightsCount && codeShareFlightsCount > 0) {
                   setIsCodeShareExpanded(!isCodeShareExpanded);
-                }}
-                className={`relative p-1.5 hover:bg-gray-800/50 rounded transition-colors ml-1 ${
-                  isCodeShareExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
-                }`}
-                title="Code-share partners"
-              >
-                <Link className="h-4 w-4" />
-                <span className={`absolute -top-1 -right-1 text-[9px] font-bold px-1 rounded ${
-                  isCodeShareExpanded ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300'
-                }`}>
-                  {codeShareFlightsCount}
-                </span>
-              </button>
-            )}
+                }
+              }}
+              className={`relative p-1.5 hover:bg-gray-800/50 rounded transition-colors ml-1 ${
+                isCodeShareExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
+              } ${!codeShareFlightsCount || codeShareFlightsCount === 0 ? 'opacity-30 cursor-default' : ''}`}
+              title={codeShareFlightsCount && codeShareFlightsCount > 0 ? "Code-share partners" : "No code-share partners"}
+              disabled={!codeShareFlightsCount || codeShareFlightsCount === 0}
+            >
+              <Link className="h-4 w-4" />
+              <span className={`absolute -top-1 -right-1 text-[9px] font-bold px-1 rounded ${
+                isCodeShareExpanded ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300'
+              }`}>
+                {codeShareFlightsCount || 0}
+              </span>
+            </button>
           </div>
         </div>
       </div>

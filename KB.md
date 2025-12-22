@@ -13,6 +13,12 @@
   - Visual badges: "Parent" (yellow) and "Partner" (amber) under airline logos
   - Link icon with partner count, expands to show minimized partner cards
   - Compact partner display with airline, flight number, times, price
+  - Link icon always visible (shows 0 for non-code-share flights) for UI alignment
+  - Cabin tabs show "N code-share parents" count alongside flight count
+- ✅ Set origin timezone as default display timezone
+  - Display timezone now defaults to origin airport timezone instead of browser timezone
+  - Ensures all times shown match the departure city/airport timezone
+  - Users can still change timezone via dropdown in advanced filters
 
 **Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
