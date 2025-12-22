@@ -207,10 +207,18 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return results.solutionList.solutions.filter(f => 'id' in f) as FlightSolution[];
   }, [results]);
 
+  // Convert Map to serializable format to ensure React detects changes
+  const enrichmentDataKey = useMemo(() => {
+    if (!v2EnrichmentData || v2EnrichmentData.size === 0) return '';
+    const carriers = Array.from(v2EnrichmentData.keys()).sort();
+    const counts = carriers.map(c => v2EnrichmentData.get(c)?.length || 0);
+    return `${carriers.join(',')}-${counts.join(',')}`;
+  }, [v2EnrichmentData]);
+
   // Group flights by cabin and detect code-shares
   const groupedByCabin = useMemo(() => {
     console.log('🔄 FlightResults: Grouping flights by cabin');
-    console.log(`🔍 FlightResults: v2EnrichmentData exists=${!!v2EnrichmentData}, size=${v2EnrichmentData?.size || 0}`);
+    console.log(`🔍 FlightResults: v2EnrichmentData exists=${!!v2EnrichmentData}, size=${v2EnrichmentData?.size || 0}, key=${enrichmentDataKey}`);
 
     // Create synthetic award flights from v2EnrichmentData
     const awardFlights: FlightSolution[] = [];
@@ -274,7 +282,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     console.log(`✅ FlightResults: Code-share detection complete`);
 
     return withCodeShares;
-  }, [flatFlights, v2EnrichmentData, perCentValue]);
+  }, [flatFlights, v2EnrichmentData, enrichmentDataKey, perCentValue]);
 
   // Calculate cheapest and best prices for each cabin tab
   const cabinPriceRanges = useMemo(() => {

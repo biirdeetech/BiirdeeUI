@@ -18,12 +18,17 @@
   - Award flights sorted by cabin and price within each cabin
   - **Fixed cabin normalization (FlightResults.tsx:20-31)**: Award cabin names (economy, business, first) now properly normalized to standard codes (COACH, BUSINESS, FIRST)
   - **Added detailed logging for debugging (Dec 22, 2025)**:
-    - FlightResults.tsx:213: Logs v2EnrichmentData existence and size
-    - FlightResults.tsx:218-255: Logs award flight creation (carrier, enrichment type, cabin processing, normalization)
-    - FlightResults.tsx:342-382: Logs cabin price range calculation for award pricing (carrier, cabin mapping)
-    - FlightResults.tsx:391-409: Logs cabin filtering process, award flights in filtered results
+    - FlightResults.tsx:221: Logs v2EnrichmentData existence, size, and enrichmentDataKey
+    - FlightResults.tsx:226-263: Logs award flight creation (carrier, enrichment type, cabin processing, normalization)
+    - FlightResults.tsx:350-390: Logs cabin price range calculation for award pricing (carrier, cabin mapping)
+    - FlightResults.tsx:399-419: Logs cabin filtering process, award flights in filtered results
     - cabinGrouping.ts:184-186: Logs award flight cabin assignment during grouping
     - cabinGrouping.ts:235-243: Logs flight groups with award indicator and cabin options
+  - **Fixed React re-render issue for award flights (Dec 22, 2025)**:
+    - FlightResults.tsx:211-216: Created enrichmentDataKey to serialize Map changes for React dependency detection
+    - FlightResults.tsx:285: Added enrichmentDataKey to groupedByCabin dependency array
+    - Ensures award flights are created when enrichment data arrives after initial search
+    - Maps don't trigger React re-renders by reference comparison; serialized key forces update
   - Awards now correctly appear in their designated cabin tabs (e.g., economy awards in Economy tab, business awards in Business tab)
 - ✅ FRT modal reorganization (FrtResultsModal.tsx:74-225)
   - Removed inline FRT display from flight cards (was at FlightCard.tsx:3053-3181)
