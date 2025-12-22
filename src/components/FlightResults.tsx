@@ -112,7 +112,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
   // Calculate cheapest and best prices for each cabin tab
   const cabinPriceRanges = useMemo(() => {
-    const ranges: Record<string, { cheapestPrice: number; bestPrice: number; count: number; codeShareParentCount: number }> = {
+    const ranges: Record<string, { cheapestPrice: number; bestPrice: number; count: number; codeShareParentCount: number; cheapestAwardPrice?: number }> = {
       'COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
       'PREMIUM-COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
       'BUSINESS': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0, codeShareParentCount: 0 },
@@ -171,8 +171,53 @@ const FlightResults: React.FC<FlightResultsProps> = ({
       ranges[cabinCode].bestPrice = bestPrice;
     });
 
+    // Check for award pricing from v2EnrichmentData
+    if (v2EnrichmentData && v2EnrichmentData.size > 0) {
+      v2EnrichmentData.forEach((enrichments, carrierCode) => {
+        enrichments.forEach((enrichment: any) => {
+          if (enrichment.type === 'solution' && enrichment.provider === 'awardtool-direct' && enrichment.data) {
+            const awardtool = enrichment.data.awardtool;
+
+            if (awardtool && awardtool.cabinPrices) {
+              Object.entries(awardtool.cabinPrices).forEach(([cabinName, cabinData]: [string, any]) => {
+                if (cabinData.miles > 0) {
+                  const awardCashEquivalent = (cabinData.miles * perCentValue) + (cabinData.tax || 0);
+
+                  // Map cabin name to cabin code
+                  const cabinKey = cabinName.toUpperCase();
+                  let targetCabinCode: 'COACH' | 'PREMIUM-COACH' | 'BUSINESS' | 'FIRST' | null = null;
+
+                  if (cabinKey.includes('ECONOMY') || cabinKey.includes('COACH')) {
+                    targetCabinCode = 'COACH';
+                  } else if (cabinKey.includes('PREMIUM')) {
+                    targetCabinCode = 'PREMIUM-COACH';
+                  } else if (cabinKey.includes('BUSINESS')) {
+                    targetCabinCode = 'BUSINESS';
+                  } else if (cabinKey.includes('FIRST')) {
+                    targetCabinCode = 'FIRST';
+                  }
+
+                  if (targetCabinCode) {
+                    // Update cheapest award price
+                    if (!ranges[targetCabinCode].cheapestAwardPrice || awardCashEquivalent < ranges[targetCabinCode].cheapestAwardPrice!) {
+                      ranges[targetCabinCode].cheapestAwardPrice = awardCashEquivalent;
+                    }
+
+                    // Update overall cheapest price if award is cheaper
+                    if (awardCashEquivalent < ranges[targetCabinCode].cheapestPrice) {
+                      ranges[targetCabinCode].cheapestPrice = awardCashEquivalent;
+                    }
+                  }
+                }
+              });
+            }
+          }
+        });
+      });
+    }
+
     return ranges;
-  }, [groupedByCabin]);
+  }, [groupedByCabin, v2EnrichmentData, perCentValue]);
 
   // Filter flights by selected cabin
   const filteredByCabin = useMemo(() => {
@@ -331,15 +376,23 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Economy</span>
               {cabinPriceRanges['COACH'].count > 0 && (
-                <span className={`
-                  text-xs font-semibold
-                  ${cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500'}
-                `}>
-                  {cabinPriceRanges['COACH'].cheapestPrice === cabinPriceRanges['COACH'].bestPrice
-                    ? formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)
-                    : `${formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['COACH'].bestPrice, currency)}`
-                  }
-                </span>
+                <>
+                  <span className={`
+                    text-xs font-semibold
+                    ${cabinPriceRanges['COACH'].cheapestAwardPrice && cabinPriceRanges['COACH'].cheapestPrice === cabinPriceRanges['COACH'].cheapestAwardPrice
+                      ? (cabinFilter === 'COACH' ? 'text-orange-400' : 'text-orange-500')
+                      : (cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500')
+                    }
+                  `}>
+                    {cabinPriceRanges['COACH'].cheapestPrice === cabinPriceRanges['COACH'].bestPrice
+                      ? formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)
+                      : `${formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['COACH'].bestPrice, currency)}`
+                    }
+                  </span>
+                  {cabinPriceRanges['COACH'].cheapestAwardPrice && cabinPriceRanges['COACH'].cheapestPrice === cabinPriceRanges['COACH'].cheapestAwardPrice && (
+                    <span className="text-[9px] text-orange-500/70">award</span>
+                  )}
+                </>
               )}
               <span className="text-[10px] text-gray-500">
                 ({cabinPriceRanges['COACH'].count}
@@ -363,15 +416,23 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Premium</span>
               {cabinPriceRanges['PREMIUM-COACH'].count > 0 && (
-                <span className={`
-                  text-xs font-semibold
-                  ${cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500'}
-                `}>
-                  {cabinPriceRanges['PREMIUM-COACH'].cheapestPrice === cabinPriceRanges['PREMIUM-COACH'].bestPrice
-                    ? formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)
-                    : `${formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['PREMIUM-COACH'].bestPrice, currency)}`
-                  }
-                </span>
+                <>
+                  <span className={`
+                    text-xs font-semibold
+                    ${cabinPriceRanges['PREMIUM-COACH'].cheapestAwardPrice && cabinPriceRanges['PREMIUM-COACH'].cheapestPrice === cabinPriceRanges['PREMIUM-COACH'].cheapestAwardPrice
+                      ? (cabinFilter === 'PREMIUM-COACH' ? 'text-orange-400' : 'text-orange-500')
+                      : (cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500')
+                    }
+                  `}>
+                    {cabinPriceRanges['PREMIUM-COACH'].cheapestPrice === cabinPriceRanges['PREMIUM-COACH'].bestPrice
+                      ? formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)
+                      : `${formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['PREMIUM-COACH'].bestPrice, currency)}`
+                    }
+                  </span>
+                  {cabinPriceRanges['PREMIUM-COACH'].cheapestAwardPrice && cabinPriceRanges['PREMIUM-COACH'].cheapestPrice === cabinPriceRanges['PREMIUM-COACH'].cheapestAwardPrice && (
+                    <span className="text-[9px] text-orange-500/70">award</span>
+                  )}
+                </>
               )}
               <span className="text-[10px] text-gray-500">
                 ({cabinPriceRanges['PREMIUM-COACH'].count}
@@ -395,15 +456,23 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">Business</span>
               {cabinPriceRanges['BUSINESS'].count > 0 && (
-                <span className={`
-                  text-xs font-semibold
-                  ${cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500'}
-                `}>
-                  {cabinPriceRanges['BUSINESS'].cheapestPrice === cabinPriceRanges['BUSINESS'].bestPrice
-                    ? formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)
-                    : `${formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['BUSINESS'].bestPrice, currency)}`
-                  }
-                </span>
+                <>
+                  <span className={`
+                    text-xs font-semibold
+                    ${cabinPriceRanges['BUSINESS'].cheapestAwardPrice && cabinPriceRanges['BUSINESS'].cheapestPrice === cabinPriceRanges['BUSINESS'].cheapestAwardPrice
+                      ? (cabinFilter === 'BUSINESS' ? 'text-orange-400' : 'text-orange-500')
+                      : (cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500')
+                    }
+                  `}>
+                    {cabinPriceRanges['BUSINESS'].cheapestPrice === cabinPriceRanges['BUSINESS'].bestPrice
+                      ? formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)
+                      : `${formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['BUSINESS'].bestPrice, currency)}`
+                    }
+                  </span>
+                  {cabinPriceRanges['BUSINESS'].cheapestAwardPrice && cabinPriceRanges['BUSINESS'].cheapestPrice === cabinPriceRanges['BUSINESS'].cheapestAwardPrice && (
+                    <span className="text-[9px] text-orange-500/70">award</span>
+                  )}
+                </>
               )}
               <span className="text-[10px] text-gray-500">
                 ({cabinPriceRanges['BUSINESS'].count}
@@ -427,15 +496,23 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             <div className="flex flex-col items-center gap-1">
               <span className="text-base">First</span>
               {cabinPriceRanges['FIRST'].count > 0 && (
-                <span className={`
-                  text-xs font-semibold
-                  ${cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500'}
-                `}>
-                  {cabinPriceRanges['FIRST'].cheapestPrice === cabinPriceRanges['FIRST'].bestPrice
-                    ? formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)
-                    : `${formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['FIRST'].bestPrice, currency)}`
-                  }
-                </span>
+                <>
+                  <span className={`
+                    text-xs font-semibold
+                    ${cabinPriceRanges['FIRST'].cheapestAwardPrice && cabinPriceRanges['FIRST'].cheapestPrice === cabinPriceRanges['FIRST'].cheapestAwardPrice
+                      ? (cabinFilter === 'FIRST' ? 'text-orange-400' : 'text-orange-500')
+                      : (cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500')
+                    }
+                  `}>
+                    {cabinPriceRanges['FIRST'].cheapestPrice === cabinPriceRanges['FIRST'].bestPrice
+                      ? formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)
+                      : `${formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)} — ${formatPrice(cabinPriceRanges['FIRST'].bestPrice, currency)}`
+                    }
+                  </span>
+                  {cabinPriceRanges['FIRST'].cheapestAwardPrice && cabinPriceRanges['FIRST'].cheapestPrice === cabinPriceRanges['FIRST'].cheapestAwardPrice && (
+                    <span className="text-[9px] text-orange-500/70">award</span>
+                  )}
+                </>
               )}
               <span className="text-[10px] text-gray-500">
                 ({cabinPriceRanges['FIRST'].count}

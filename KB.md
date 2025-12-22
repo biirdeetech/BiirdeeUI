@@ -7,6 +7,21 @@
 **Current Sprint:** UI Refactor (Item 8/10 Complete - Code-Share Detection ✅)
 
 **Recent Updates (Dec 22, 2025):**
+- ✅ Award pricing display in cabin tabs (FlightResults.tsx:114-220)
+  - Cabin tabs now show cheapest award pricing when awards are available
+  - Award prices calculated as (miles × perCentValue) + tax for cash equivalent
+  - Award prices compared with cash prices to show overall cheapest option
+  - Visual indicator: Orange text + "award" label when award is cheapest
+  - Added `cheapestAwardPrice` field to `cabinPriceRanges` type
+  - Scans all v2EnrichmentData for awardtool-direct solutions across all carriers
+  - Maps award cabin names to standard cabin codes (COACH, PREMIUM-COACH, BUSINESS, FIRST)
+  - Updates both cheapestAwardPrice and overall cheapestPrice if award is cheaper
+- ✅ Award modal pricing fix (FlightCard.tsx:1220-1290)
+  - Fixed "N/A" pricing display in award modal
+  - `getAllAwardOptions()` now checks if flight is in award modal context
+  - If `isAwardFlight` is true, extracts award data directly from flight.awardData
+  - Awards from modal no longer require v2EnrichmentData lookup
+  - Ensures award pricing displays correctly in AwardResultsModal
 - ✅ Implemented code-share detection and display
   - Automatically detects flights with same route/time but different airlines
   - Parent/child identification based on flight number digits (3-digit vs 4-digit)
