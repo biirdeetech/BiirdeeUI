@@ -5,7 +5,6 @@
 
 import { FlightSearchParams, SearchResponse } from '../types/flight';
 import { FlightApi } from './flightApiConfig';
-import { generateFlightSignature, mergeFlightsByCabin, FlightWithCabins } from '../utils/flightSignature';
 
 export interface ParallelSearchProgress {
   cabin: string;
@@ -16,7 +15,7 @@ export interface ParallelSearchProgress {
 }
 
 export interface ParallelSearchResult {
-  mergedFlights: Map<string, FlightWithCabins>;
+  allFlights: any[];
   cabinResults: Record<string, SearchResponse>;
   progress: Record<string, ParallelSearchProgress>;
 }
@@ -137,13 +136,16 @@ export async function searchAllCabins(
   // Wait for all searches to complete
   await Promise.all(cabinSearches);
 
-  // Merge results by flight signature
-  console.log('🔄 ParallelCabinSearch: Merging results across cabins');
-  const mergedFlights = mergeFlightsByCabin(cabinFlights);
-  console.log(`✅ ParallelCabinSearch: Merged into ${mergedFlights.size} unique flights`);
+  // Flatten all flights from all cabins (no merging/grouping)
+  console.log('🔄 ParallelCabinSearch: Flattening results from all cabins');
+  const allFlights: any[] = [];
+  Object.values(cabinFlights).forEach(flights => {
+    allFlights.push(...flights);
+  });
+  console.log(`✅ ParallelCabinSearch: Total ${allFlights.length} flights across all cabins`);
 
   return {
-    mergedFlights,
+    allFlights,
     cabinResults,
     progress
   };
@@ -167,10 +169,10 @@ export function getCabinSearchParams(
 }
 
 /**
- * Convert merged flights back to standard SearchResponse format
+ * Convert flat flights array back to standard SearchResponse format
  */
-export function mergedFlightsToResponse(
-  mergedFlights: Map<string, FlightWithCabins>,
+export function flatFlightsToResponse(
+  flights: any[],
   metadata?: {
     session?: string;
     solutionSet?: string;
@@ -178,15 +180,13 @@ export function mergedFlightsToResponse(
     pagination?: any;
   }
 ): SearchResponse {
-  const solutions = Array.from(mergedFlights.values());
-
   return {
     solutionList: {
-      solutions
+      solutions: flights
     },
     session: metadata?.session,
     solutionSet: metadata?.solutionSet,
-    solutionCount: metadata?.solutionCount || solutions.length,
+    solutionCount: metadata?.solutionCount || flights.length,
     pagination: metadata?.pagination
   };
 }

@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FlightApi } from '../services/flightApiConfig';
 import { flightCache } from '../services/flightCacheService';
 import ITAMatrixService from '../services/itaMatrixApi';
-import { searchAllCabins, mergedFlightsToResponse as mergedFlightsToResponseParallel, ParallelSearchProgress } from '../services/parallelCabinSearch';
+import { searchAllCabins, flatFlightsToResponse, ParallelSearchProgress } from '../services/parallelCabinSearch';
 import { enrichmentManager, EnrichmentProgress } from '../services/viewFirstEnrichment';
 import SearchForm from '../components/SearchForm';
 import Navigation from '../components/Navigation';
@@ -518,20 +518,20 @@ const SearchPage: React.FC = () => {
           }
         );
 
-        // Convert merged results back to SearchResponse format
+        // Convert flat results back to SearchResponse format
         // Use metadata from first completed cabin search
         const firstCabinResult = Object.values(parallelResult.cabinResults)[0];
-        searchResults = mergedFlightsToResponseParallel(
-          parallelResult.mergedFlights,
+        searchResults = flatFlightsToResponse(
+          parallelResult.allFlights,
           {
             session: firstCabinResult?.session,
             solutionSet: firstCabinResult?.solutionSet,
-            solutionCount: parallelResult.mergedFlights.size,
+            solutionCount: parallelResult.allFlights.length,
             pagination: firstCabinResult?.pagination
           }
         );
 
-        console.log('✅ SearchPage: Parallel search completed with', parallelResult.mergedFlights.size, 'unique flights');
+        console.log('✅ SearchPage: Parallel search completed with', parallelResult.allFlights.length, 'total flights');
       } else {
         // Standard single-cabin search
         searchResults = await FlightApi.searchFlights(

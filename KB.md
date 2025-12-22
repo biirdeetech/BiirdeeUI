@@ -79,6 +79,20 @@
   - All 4 cabins (Economy, Premium, Business, First) now search simultaneously
   - Progress tracking updated to show parallel status
   - Significantly faster multi-cabin searches
+- ✅ Removed ALL flight grouping and merging logic
+  - **parallelCabinSearch.ts**: Removed `mergeFlightsByCabin`, now returns flat `allFlights[]` array
+  - **SearchPage.tsx**: Updated to use `flatFlightsToResponse` instead of `mergedFlightsToResponse`
+  - **FlightResults.tsx**: Completely rewritten to remove all grouping:
+    - Removed `groupSimilarFlights()` function
+    - Removed `groupByStops()` function
+    - Removed stop count tabs
+    - Removed cabin grouping/price options
+    - Removed time grouping
+    - Removed similar flight grouping
+    - Each flight from each cabin now displays as a separate card
+    - Simple flat list sorted by Best (fastest) or Cheap (lowest price)
+  - **Result**: Every flight variant (same route, different cabin, different time) shows as individual card
+  - No more cabin price options, no more "similar flights" - completely flat display
 
 ---
 
