@@ -79,20 +79,28 @@
   - All 4 cabins (Economy, Premium, Business, First) now search simultaneously
   - Progress tracking updated to show parallel status
   - Significantly faster multi-cabin searches
-- ✅ Removed ALL flight grouping and merging logic
+- ✅ Removed ALL flight grouping and merging logic (First attempt - caused redundancy)
   - **parallelCabinSearch.ts**: Removed `mergeFlightsByCabin`, now returns flat `allFlights[]` array
   - **SearchPage.tsx**: Updated to use `flatFlightsToResponse` instead of `mergedFlightsToResponse`
-  - **FlightResults.tsx**: Completely rewritten to remove all grouping:
-    - Removed `groupSimilarFlights()` function
-    - Removed `groupByStops()` function
-    - Removed stop count tabs
-    - Removed cabin grouping/price options
-    - Removed time grouping
-    - Removed similar flight grouping
-    - Each flight from each cabin now displays as a separate card
-    - Simple flat list sorted by Best (fastest) or Cheap (lowest price)
-  - **Result**: Every flight variant (same route, different cabin, different time) shows as individual card
-  - No more cabin price options, no more "similar flights" - completely flat display
+  - **FlightResults.tsx**: Completely rewritten to remove all grouping
+  - **Result**: Caused redundant flights - same flight showing multiple times from different cabin searches
+- ✅ Implemented SMART CABIN GROUPING (Current implementation)
+  - **utils/cabinGrouping.ts**: New utility for intelligent cabin-based grouping
+    - Groups by: airline + route + departure time + flight numbers + segments
+    - Creates unique fingerprint for each physical flight
+    - Max 4 cabin entries per flight (Economy, Premium, Business, First)
+    - Additional same-cabin flights become "price options"
+  - **FlightResults.tsx**: Updated to use smart cabin grouping
+    - Uses `groupFlightsByCabin()` to group flights by identity
+    - One card per unique flight
+    - Different cabins shown as options within same card via `similarFlights` prop
+    - Displays "X unique flights found (Y total options)" in header
+  - **Grouping Rules**:
+    - Same flight number + same time + same route = ONE card
+    - Different cabin classes = options within that card
+    - Multiple prices for same cabin = "price options"
+    - Eliminates 100% duplicate flights across cabin searches
+  - **Result**: Clean display with no redundancy, cabin options properly grouped
 
 ---
 

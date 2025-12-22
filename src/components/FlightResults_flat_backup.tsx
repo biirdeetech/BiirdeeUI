@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader, AlertCircle, Plane } from 'lucide-react';
 import FlightCard from './FlightCard';
 import MultiLegFlightCard from './MultiLegFlightCard';
 import Pagination from './Pagination';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 import { formatPrice } from '../utils/priceFormatter';
-import { groupFlightsByCabin, GroupedFlightByCabin } from '../utils/cabinGrouping';
 
 interface FlightResultsProps {
   results: SearchResponse | null;
@@ -52,6 +51,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   // Helper to calculate total duration of a flight in minutes
   const getFlightDuration = (flight: FlightSolution | GroupedFlight): number => {
     if ('id' in flight) {
+      // Regular flight - sum all slice durations
       return flight.slices.reduce((total, slice) => {
         if (slice.duration) {
           const durationStr = typeof slice.duration === 'string' ? slice.duration : String(slice.duration);
@@ -64,6 +64,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         return total;
       }, 0);
     } else {
+      // Grouped flight - use outbound slice duration
       if (flight.outboundSlice.duration) {
         const durationStr = typeof flight.outboundSlice.duration === 'string' ? flight.outboundSlice.duration : String(flight.outboundSlice.duration);
         const hours = durationStr.match(/(\d+)H/);
@@ -76,87 +77,83 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     }
   };
 
-  // Get flat list of flights (only FlightSolution, not GroupedFlight)
+  // Get flat list of flights
   const flatFlights = useMemo(() => {
     if (!results || !results.solutionList || !results.solutionList.solutions) {
       return [];
     }
-    // Filter to only FlightSolution (exclude GroupedFlight from round trip searches)
-    return results.solutionList.solutions.filter(f => 'id' in f) as FlightSolution[];
+    return results.solutionList.solutions;
   }, [results]);
-
-  // Group flights by cabin
-  const groupedByCabin = useMemo(() => {
-    console.log('🔄 FlightResults: Grouping flights by cabin');
-    const grouped = groupFlightsByCabin(flatFlights);
-    console.log(`✅ FlightResults: Grouped into ${grouped.length} flight groups`);
-    return grouped;
-  }, [flatFlights]);
 
   // Calculate prices for Best and Cheap tabs
   const tabPrices = useMemo(() => {
-    if (groupedByCabin.length === 0) {
+    if (flatFlights.length === 0) {
       return { bestPrice: 0, cheapPrice: 0 };
     }
 
     // Find fastest flight (best)
-    let fastestGroup = groupedByCabin[0];
-    let minDuration = getFlightDuration(fastestGroup.primaryFlight);
+    let fastestFlight = flatFlights[0];
+    let minDuration = getFlightDuration(fastestFlight);
 
-    for (const group of groupedByCabin) {
-      const duration = getFlightDuration(group.primaryFlight);
+    for (const flight of flatFlights) {
+      const duration = getFlightDuration(flight);
       if (duration < minDuration) {
         minDuration = duration;
-        fastestGroup = group;
+        fastestFlight = flight;
       }
     }
 
     // Find cheapest flight
-    let cheapestGroup = groupedByCabin[0];
-    let minPrice = cheapestGroup.primaryFlight.displayTotal || 0;
+    let cheapestFlight = flatFlights[0];
+    let minPrice = 'id' in cheapestFlight ? cheapestFlight.displayTotal : cheapestFlight.returnOptions[0]?.displayTotal || 0;
 
-    for (const group of groupedByCabin) {
-      const price = group.primaryFlight.displayTotal || 0;
+    for (const flight of flatFlights) {
+      const price = 'id' in flight ? flight.displayTotal : flight.returnOptions[0]?.displayTotal || 0;
       if (price < minPrice) {
         minPrice = price;
-        cheapestGroup = group;
+        cheapestFlight = flight;
       }
     }
 
-    const bestPrice = fastestGroup.primaryFlight.displayTotal || 0;
-    const cheapPrice = cheapestGroup.primaryFlight.displayTotal || 0;
+    const bestPrice = 'id' in fastestFlight ? fastestFlight.displayTotal : fastestFlight.returnOptions[0]?.displayTotal || 0;
+    const cheapPrice = 'id' in cheapestFlight ? cheapestFlight.displayTotal : cheapestFlight.returnOptions[0]?.displayTotal || 0;
 
     return { bestPrice, cheapPrice };
-  }, [groupedByCabin]);
+  }, [flatFlights]);
 
-  // Sort flight groups by best (fastest) or cheap (lowest price)
-  const sortedGroups = useMemo(() => {
-    const groups = [...groupedByCabin];
+  // Sort flights by best (fastest) or cheap (lowest price)
+  const sortedFlights = useMemo(() => {
+    const flights = [...flatFlights];
 
     if (sortMode === 'best') {
       // Sort by duration (fastest first)
-      groups.sort((a, b) => {
-        const aDuration = getFlightDuration(a.primaryFlight);
-        const bDuration = getFlightDuration(b.primaryFlight);
+      flights.sort((a, b) => {
+        const aDuration = getFlightDuration(a);
+        const bDuration = getFlightDuration(b);
         return aDuration - bDuration;
       });
     } else {
       // Sort by price (cheapest first)
-      groups.sort((a, b) => {
-        const aPrice = a.primaryFlight.displayTotal || 0;
-        const bPrice = b.primaryFlight.displayTotal || 0;
+      flights.sort((a, b) => {
+        const aPrice = 'id' in a ? a.displayTotal : a.returnOptions[0]?.displayTotal || 0;
+        const bPrice = 'id' in b ? b.displayTotal : b.returnOptions[0]?.displayTotal || 0;
         return aPrice - bPrice;
       });
     }
 
-    return groups;
-  }, [groupedByCabin, sortMode]);
+    return flights;
+  }, [flatFlights, sortMode]);
 
   // Determine top 5 for FRT auto-trigger
   const top5FlightIds = useMemo(() => {
-    const rankedFlights = sortedGroups.slice(0, 5).map(group => group.primaryFlight.id);
+    const rankedFlights = sortedFlights.slice(0, 5).map(flight => {
+      if ('id' in flight) {
+        return flight.id;
+      }
+      return `${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
+    });
     return new Set(rankedFlights);
-  }, [sortedGroups]);
+  }, [sortedFlights]);
 
   // Loading state
   if (loading) {
@@ -179,7 +176,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   }
 
   // No results
-  if (!results || !results.solutionList || sortedGroups.length === 0) {
+  if (!results || !results.solutionList || sortedFlights.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center px-4">
         <Plane className="h-12 w-12 text-gray-500 mb-4" />
@@ -191,18 +188,20 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     );
   }
 
-  const currency = sortedGroups[0]?.primaryFlight.currency || 'USD';
+  const firstFlight = sortedFlights[0];
+  const currency = firstFlight && 'id' in firstFlight ? firstFlight.currency : 'USD';
 
   return (
     <div className="space-y-6">
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">
-          {sortedGroups.length} unique flight{sortedGroups.length !== 1 ? 's' : ''} found
-          {flatFlights.length > sortedGroups.length && (
-            <span className="text-sm text-gray-400 ml-2">
-              ({flatFlights.length} total options)
-            </span>
+          {results.solutionCount ? (
+            sortedFlights.length < results.solutionCount && sortedFlights.length > 0
+              ? `Showing ${sortedFlights.length} of ${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''}`
+              : `${results.solutionCount} flight${results.solutionCount !== 1 ? 's' : ''} found`
+          ) : (
+            `${sortedFlights.length} flight${sortedFlights.length !== 1 ? 's' : ''} found`
           )}
         </h2>
       </div>
@@ -257,35 +256,55 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </div>
       </div>
 
-      {/* Grouped Flight Cards */}
+      {/* Flat Flight Cards */}
       <div className="mt-4 space-y-4">
-        {sortedGroups.map((group, index) => {
-          const flightId = group.primaryFlight.id;
+        {sortedFlights.map((flight, index) => {
+          // Determine if this flight should auto-trigger FRT
+          const flightId = 'id' in flight
+            ? flight.id
+            : `${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
           const shouldAutoTriggerFrt = top5FlightIds.has(flightId);
 
-          // Convert cabin options to similar flights array for FlightCard
-          const similarFlights = group.allFlights.filter(f => f.id !== group.primaryFlight.id);
-
-          return (
-            <FlightCard
-              key={`flight-group-${index}-${flightId}`}
-              flight={group.primaryFlight}
-              similarFlights={similarFlights}
-              originTimezone={originTimezone}
-              displayTimezone={displayTimezone}
-              perCentValue={perCentValue}
-              session={results.session}
-              solutionSet={results.solutionSet}
-              v2EnrichmentData={v2EnrichmentData}
-              onEnrichFlight={onEnrichFlight}
-              enrichingAirlines={enrichingAirlines}
-              shouldAutoTriggerFrt={shouldAutoTriggerFrt}
-              isSearchComplete={isSearchComplete}
-              searchKey={searchKey}
-              expanded={expandedFlightCardId === flightId}
-              onToggle={() => setExpandedFlightCardId(expandedFlightCardId === flightId ? null : flightId)}
-            />
-          );
+          // Render MultiLegFlightCard for grouped flights, FlightCard for single flights
+          if ('outboundSlice' in flight) {
+            return (
+              <MultiLegFlightCard
+                key={`flight-${index}-${flightId}`}
+                flight={flight}
+                originTimezone={originTimezone}
+                displayTimezone={displayTimezone}
+                perCentValue={perCentValue}
+                session={results.session}
+                solutionSet={results.solutionSet}
+                v2EnrichmentData={v2EnrichmentData}
+                onEnrichFlight={onEnrichFlight}
+                enrichingAirlines={enrichingAirlines}
+                shouldAutoTriggerFrt={shouldAutoTriggerFrt}
+                isSearchComplete={isSearchComplete}
+                searchKey={searchKey}
+              />
+            );
+          } else {
+            return (
+              <FlightCard
+                key={`flight-${index}-${flightId}`}
+                flight={flight}
+                originTimezone={originTimezone}
+                displayTimezone={displayTimezone}
+                perCentValue={perCentValue}
+                session={results.session}
+                solutionSet={results.solutionSet}
+                v2EnrichmentData={v2EnrichmentData}
+                onEnrichFlight={onEnrichFlight}
+                enrichingAirlines={enrichingAirlines}
+                shouldAutoTriggerFrt={shouldAutoTriggerFrt}
+                isSearchComplete={isSearchComplete}
+                searchKey={searchKey}
+                expanded={expandedFlightCardId === flightId}
+                onToggle={() => setExpandedFlightCardId(expandedFlightCardId === flightId ? null : flightId)}
+              />
+            );
+          }
         })}
       </div>
 
