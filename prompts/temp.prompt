@@ -59,3 +59,8 @@ next, we can see in temp.ndjson in responses folder. the data we have is quite r
 2. i can see same route, same airline, same time, different price is added twice when it should've become "price option" 
 3. clicking on the partner or parent inside the code-share dropdown takes me to the tab or page scroll position 
 4. the stops in the flight card are colored gray while the nonstop has a green color plane icon. we need to make stop color as green too, so the ui is consistent. 
+
+
+--- 
+
+1. some of the flight have same price, time, airline, carrier, cabins, date, stops, yet they are added as separate entry. these kind of 100% match should be redundant and skipped in rendering. 
