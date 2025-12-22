@@ -46,6 +46,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   isSearchComplete = false,
   searchKey = ''
 }) => {
+  const [cabinFilter, setCabinFilter] = useState<'COACH' | 'PREMIUM-COACH' | 'BUSINESS' | 'FIRST'>('COACH');
   const [sortMode, setSortMode] = useState<'best' | 'cheap'>('cheap');
   const [expandedFlightCardId, setExpandedFlightCardId] = useState<string | null>(null);
 
@@ -93,45 +94,44 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return grouped;
   }, [flatFlights]);
 
-  // Calculate prices for Best and Cheap tabs
-  const tabPrices = useMemo(() => {
-    if (groupedByCabin.length === 0) {
-      return { bestPrice: 0, cheapPrice: 0 };
-    }
+  // Calculate price ranges for each cabin tab
+  const cabinPriceRanges = useMemo(() => {
+    const ranges: Record<string, { min: number; max: number; count: number }> = {
+      'COACH': { min: Infinity, max: 0, count: 0 },
+      'PREMIUM-COACH': { min: Infinity, max: 0, count: 0 },
+      'BUSINESS': { min: Infinity, max: 0, count: 0 },
+      'FIRST': { min: Infinity, max: 0, count: 0 }
+    };
 
-    // Find fastest flight (best)
-    let fastestGroup = groupedByCabin[0];
-    let minDuration = getFlightDuration(fastestGroup.primaryFlight);
+    groupedByCabin.forEach(group => {
+      group.cabinOptions.forEach((option, cabinCode) => {
+        if (ranges[cabinCode]) {
+          const price = option.price;
+          ranges[cabinCode].min = Math.min(ranges[cabinCode].min, price);
+          ranges[cabinCode].max = Math.max(ranges[cabinCode].max, price);
+          ranges[cabinCode].count++;
+        }
+      });
+    });
 
-    for (const group of groupedByCabin) {
-      const duration = getFlightDuration(group.primaryFlight);
-      if (duration < minDuration) {
-        minDuration = duration;
-        fastestGroup = group;
+    // Clean up Infinity values
+    Object.keys(ranges).forEach(cabin => {
+      if (ranges[cabin].min === Infinity) {
+        ranges[cabin].min = 0;
       }
-    }
+    });
 
-    // Find cheapest flight
-    let cheapestGroup = groupedByCabin[0];
-    let minPrice = cheapestGroup.primaryFlight.displayTotal || 0;
-
-    for (const group of groupedByCabin) {
-      const price = group.primaryFlight.displayTotal || 0;
-      if (price < minPrice) {
-        minPrice = price;
-        cheapestGroup = group;
-      }
-    }
-
-    const bestPrice = fastestGroup.primaryFlight.displayTotal || 0;
-    const cheapPrice = cheapestGroup.primaryFlight.displayTotal || 0;
-
-    return { bestPrice, cheapPrice };
+    return ranges;
   }, [groupedByCabin]);
 
-  // Sort flight groups by best (fastest) or cheap (lowest price)
+  // Filter flights by selected cabin
+  const filteredByCabin = useMemo(() => {
+    return groupedByCabin.filter(group => group.cabinOptions.has(cabinFilter));
+  }, [groupedByCabin, cabinFilter]);
+
+  // Sort filtered flights by best (fastest) or cheap (lowest price)
   const sortedGroups = useMemo(() => {
-    const groups = [...groupedByCabin];
+    const groups = [...filteredByCabin];
 
     if (sortMode === 'best') {
       // Sort by duration (fastest first)
@@ -143,14 +143,52 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     } else {
       // Sort by price (cheapest first)
       groups.sort((a, b) => {
-        const aPrice = a.primaryFlight.displayTotal || 0;
-        const bPrice = b.primaryFlight.displayTotal || 0;
+        const aCabinOption = a.cabinOptions.get(cabinFilter);
+        const bCabinOption = b.cabinOptions.get(cabinFilter);
+        const aPrice = aCabinOption?.price || 0;
+        const bPrice = bCabinOption?.price || 0;
         return aPrice - bPrice;
       });
     }
 
     return groups;
-  }, [groupedByCabin, sortMode]);
+  }, [filteredByCabin, sortMode, cabinFilter]);
+
+  // Calculate prices for Best and Cheap tabs (within selected cabin)
+  const sortTabPrices = useMemo(() => {
+    if (filteredByCabin.length === 0) {
+      return { bestPrice: 0, cheapPrice: 0 };
+    }
+
+    // Find fastest flight (best) in this cabin
+    let fastestGroup = filteredByCabin[0];
+    let minDuration = getFlightDuration(fastestGroup.primaryFlight);
+
+    for (const group of filteredByCabin) {
+      const duration = getFlightDuration(group.primaryFlight);
+      if (duration < minDuration) {
+        minDuration = duration;
+        fastestGroup = group;
+      }
+    }
+
+    // Find cheapest flight in this cabin
+    let cheapestGroup = filteredByCabin[0];
+    let minPrice = cheapestGroup.cabinOptions.get(cabinFilter)?.price || 0;
+
+    for (const group of filteredByCabin) {
+      const price = group.cabinOptions.get(cabinFilter)?.price || 0;
+      if (price < minPrice) {
+        minPrice = price;
+        cheapestGroup = group;
+      }
+    }
+
+    const bestPrice = fastestGroup.cabinOptions.get(cabinFilter)?.price || 0;
+    const cheapPrice = cheapestGroup.cabinOptions.get(cabinFilter)?.price || 0;
+
+    return { bestPrice, cheapPrice };
+  }, [filteredByCabin, cabinFilter]);
 
   // Determine top 5 for FRT auto-trigger
   const top5FlightIds = useMemo(() => {
@@ -179,7 +217,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
   }
 
   // No results
-  if (!results || !results.solutionList || sortedGroups.length === 0) {
+  if (!results || !results.solutionList || groupedByCabin.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center px-4">
         <Plane className="h-12 w-12 text-gray-500 mb-4" />
@@ -191,15 +229,15 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     );
   }
 
-  const currency = sortedGroups[0]?.primaryFlight.currency || 'USD';
+  const currency = groupedByCabin[0]?.primaryFlight.currency || 'USD';
 
   return (
     <div className="space-y-6">
       {/* Results Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">
-          {sortedGroups.length} unique flight{sortedGroups.length !== 1 ? 's' : ''} found
-          {flatFlights.length > sortedGroups.length && (
+          {groupedByCabin.length} unique flight{groupedByCabin.length !== 1 ? 's' : ''} found
+          {flatFlights.length > groupedByCabin.length && (
             <span className="text-sm text-gray-400 ml-2">
               ({flatFlights.length} total options)
             </span>
@@ -207,51 +245,151 @@ const FlightResults: React.FC<FlightResultsProps> = ({
         </h2>
       </div>
 
-      {/* Best / Cheap Tabs */}
+      {/* Cabin Tabs */}
       <div className="border-b border-gray-700/50">
-        <div className="grid grid-cols-2 gap-0">
+        <div className="grid grid-cols-4 gap-0">
           <button
-            onClick={() => setSortMode('best')}
+            onClick={() => setCabinFilter('COACH')}
             className={`
-              relative px-5 py-4 text-base font-bold transition-all duration-200
+              relative px-3 py-4 text-sm font-bold transition-all duration-200
               border-b-3 -mb-px
-              ${sortMode === 'best'
-                ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+              ${cabinFilter === 'COACH'
+                ? 'text-teal-400 border-teal-500 bg-teal-500/10'
                 : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
               }
             `}
           >
             <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">Best</span>
-              <span className={`
-                text-sm font-semibold
-                ${sortMode === 'best' ? 'text-blue-300' : 'text-gray-500'}
-              `}>
-                {formatPrice(tabPrices.bestPrice, currency)}
-              </span>
-              <span className="text-xs text-gray-500">(Fastest)</span>
+              <span className="text-base">Economy</span>
+              {cabinPriceRanges['COACH'].count > 0 && (
+                <span className={`
+                  text-xs font-semibold
+                  ${cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(cabinPriceRanges['COACH'].min, currency)} — {formatPrice(cabinPriceRanges['COACH'].max, currency)}
+                </span>
+              )}
+              <span className="text-[10px] text-gray-500">({cabinPriceRanges['COACH'].count})</span>
             </div>
           </button>
           <button
-            onClick={() => setSortMode('cheap')}
+            onClick={() => setCabinFilter('PREMIUM-COACH')}
             className={`
-              relative px-5 py-4 text-base font-bold transition-all duration-200
+              relative px-3 py-4 text-sm font-bold transition-all duration-200
               border-b-3 -mb-px
-              ${sortMode === 'cheap'
-                ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+              ${cabinFilter === 'PREMIUM-COACH'
+                ? 'text-teal-400 border-teal-500 bg-teal-500/10'
                 : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
               }
             `}
           >
             <div className="flex flex-col items-center gap-1">
-              <span className="text-lg">Cheap</span>
+              <span className="text-base">Premium</span>
+              {cabinPriceRanges['PREMIUM-COACH'].count > 0 && (
+                <span className={`
+                  text-xs font-semibold
+                  ${cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(cabinPriceRanges['PREMIUM-COACH'].min, currency)} — {formatPrice(cabinPriceRanges['PREMIUM-COACH'].max, currency)}
+                </span>
+              )}
+              <span className="text-[10px] text-gray-500">({cabinPriceRanges['PREMIUM-COACH'].count})</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setCabinFilter('BUSINESS')}
+            className={`
+              relative px-3 py-4 text-sm font-bold transition-all duration-200
+              border-b-3 -mb-px
+              ${cabinFilter === 'BUSINESS'
+                ? 'text-teal-400 border-teal-500 bg-teal-500/10'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-base">Business</span>
+              {cabinPriceRanges['BUSINESS'].count > 0 && (
+                <span className={`
+                  text-xs font-semibold
+                  ${cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(cabinPriceRanges['BUSINESS'].min, currency)} — {formatPrice(cabinPriceRanges['BUSINESS'].max, currency)}
+                </span>
+              )}
+              <span className="text-[10px] text-gray-500">({cabinPriceRanges['BUSINESS'].count})</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setCabinFilter('FIRST')}
+            className={`
+              relative px-3 py-4 text-sm font-bold transition-all duration-200
+              border-b-3 -mb-px
+              ${cabinFilter === 'FIRST'
+                ? 'text-teal-400 border-teal-500 bg-teal-500/10'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/30'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-base">First</span>
+              {cabinPriceRanges['FIRST'].count > 0 && (
+                <span className={`
+                  text-xs font-semibold
+                  ${cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500'}
+                `}>
+                  {formatPrice(cabinPriceRanges['FIRST'].min, currency)} — {formatPrice(cabinPriceRanges['FIRST'].max, currency)}
+                </span>
+              )}
+              <span className="text-[10px] text-gray-500">({cabinPriceRanges['FIRST'].count})</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Best / Cheap Sort Tabs */}
+      <div className="border-b border-gray-700/30">
+        <div className="grid grid-cols-2 gap-0">
+          <button
+            onClick={() => setSortMode('cheap')}
+            className={`
+              relative px-4 py-3 text-sm font-semibold transition-all duration-200
+              border-b-2 -mb-px
+              ${sortMode === 'cheap'
+                ? 'text-blue-400 border-blue-500 bg-blue-500/5'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-base">Cheapest</span>
               <span className={`
-                text-sm font-semibold
+                text-xs font-semibold
                 ${sortMode === 'cheap' ? 'text-blue-300' : 'text-gray-500'}
               `}>
-                {formatPrice(tabPrices.cheapPrice, currency)}
+                {formatPrice(sortTabPrices.cheapPrice, currency)}
               </span>
-              <span className="text-xs text-gray-500">(Cheapest)</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setSortMode('best')}
+            className={`
+              relative px-4 py-3 text-sm font-semibold transition-all duration-200
+              border-b-2 -mb-px
+              ${sortMode === 'best'
+                ? 'text-blue-400 border-blue-500 bg-blue-500/5'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:bg-gray-800/20'
+              }
+            `}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-base">Best</span>
+              <span className={`
+                text-xs font-semibold
+                ${sortMode === 'best' ? 'text-blue-300' : 'text-gray-500'}
+              `}>
+                {formatPrice(sortTabPrices.bestPrice, currency)}
+              </span>
             </div>
           </button>
         </div>
@@ -259,34 +397,42 @@ const FlightResults: React.FC<FlightResultsProps> = ({
 
       {/* Grouped Flight Cards */}
       <div className="mt-4 space-y-4">
-        {sortedGroups.map((group, index) => {
-          const flightId = group.primaryFlight.id;
-          const shouldAutoTriggerFrt = top5FlightIds.has(flightId);
+        {sortedGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Plane className="h-10 w-10 text-gray-500 mb-3" />
+            <p className="text-gray-300 mb-1">No flights in this cabin</p>
+            <p className="text-gray-400 text-sm">Try selecting a different cabin above</p>
+          </div>
+        ) : (
+          sortedGroups.map((group, index) => {
+            const flightId = group.primaryFlight.id;
+            const shouldAutoTriggerFrt = top5FlightIds.has(flightId);
 
-          // Convert cabin options to similar flights array for FlightCard
-          const similarFlights = group.allFlights.filter(f => f.id !== group.primaryFlight.id);
+            // Convert cabin options to similar flights array for FlightCard
+            const similarFlights = group.allFlights.filter(f => f.id !== group.primaryFlight.id);
 
-          return (
-            <FlightCard
-              key={`flight-group-${index}-${flightId}`}
-              flight={group.primaryFlight}
-              similarFlights={similarFlights}
-              originTimezone={originTimezone}
-              displayTimezone={displayTimezone}
-              perCentValue={perCentValue}
-              session={results.session}
-              solutionSet={results.solutionSet}
-              v2EnrichmentData={v2EnrichmentData}
-              onEnrichFlight={onEnrichFlight}
-              enrichingAirlines={enrichingAirlines}
-              shouldAutoTriggerFrt={shouldAutoTriggerFrt}
-              isSearchComplete={isSearchComplete}
-              searchKey={searchKey}
-              expanded={expandedFlightCardId === flightId}
-              onToggle={() => setExpandedFlightCardId(expandedFlightCardId === flightId ? null : flightId)}
-            />
-          );
-        })}
+            return (
+              <FlightCard
+                key={`flight-group-${index}-${flightId}`}
+                flight={group.primaryFlight}
+                similarFlights={similarFlights}
+                originTimezone={originTimezone}
+                displayTimezone={displayTimezone}
+                perCentValue={perCentValue}
+                session={results.session}
+                solutionSet={results.solutionSet}
+                v2EnrichmentData={v2EnrichmentData}
+                onEnrichFlight={onEnrichFlight}
+                enrichingAirlines={enrichingAirlines}
+                shouldAutoTriggerFrt={shouldAutoTriggerFrt}
+                isSearchComplete={isSearchComplete}
+                searchKey={searchKey}
+                expanded={expandedFlightCardId === flightId}
+                onToggle={() => setExpandedFlightCardId(expandedFlightCardId === flightId ? null : flightId)}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* Pagination */}

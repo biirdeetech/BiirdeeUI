@@ -84,23 +84,30 @@
   - **SearchPage.tsx**: Updated to use `flatFlightsToResponse` instead of `mergedFlightsToResponse`
   - **FlightResults.tsx**: Completely rewritten to remove all grouping
   - **Result**: Caused redundant flights - same flight showing multiple times from different cabin searches
-- ✅ Implemented SMART CABIN GROUPING (Current implementation)
+- ✅ Implemented SMART CABIN GROUPING with Cabin Tabs (Current implementation)
   - **utils/cabinGrouping.ts**: New utility for intelligent cabin-based grouping
     - Groups by: airline + route + departure time + flight numbers + segments
     - Creates unique fingerprint for each physical flight
     - Max 4 cabin entries per flight (Economy, Premium, Business, First)
     - Additional same-cabin flights become "price options"
-  - **FlightResults.tsx**: Updated to use smart cabin grouping
-    - Uses `groupFlightsByCabin()` to group flights by identity
-    - One card per unique flight
-    - Different cabins shown as options within same card via `similarFlights` prop
-    - Displays "X unique flights found (Y total options)" in header
-  - **Grouping Rules**:
+  - **FlightResults.tsx**: Complete UI redesign with cabin-first navigation
+    - **4 Cabin Tabs** (Primary navigation): Economy, Premium, Business, First
+      - Each shows price range: "$min — $max" and flight count
+      - Filters flights to only show those with selected cabin available
+      - If flight has Economy, appears in Economy tab; if no Economy, only in other tabs
+    - **2 Sort Tabs** (Secondary navigation): Cheapest, Best
+      - Positioned UNDER cabin tabs
+      - Sort within selected cabin by price (cheapest) or duration (best)
+      - Shows corresponding price for fastest/cheapest in that cabin
+    - Uses `groupFlightsByCabin()` to eliminate duplicates
+    - One card per unique flight with cabin options
+    - Empty state when no flights in selected cabin
+  - **Grouping & Filtering Rules**:
     - Same flight number + same time + same route = ONE card
-    - Different cabin classes = options within that card
-    - Multiple prices for same cabin = "price options"
-    - Eliminates 100% duplicate flights across cabin searches
-  - **Result**: Clean display with no redundancy, cabin options properly grouped
+    - Cabin filtering: Flight shown in tab only if it has that cabin available
+    - Sorting: "Cheapest" sorts by price, "Best" sorts by duration (fastest)
+    - Price ranges calculated per cabin from all available flights
+  - **Result**: Clean tabbed interface, no redundancy, easy cabin comparison
 
 ---
 
