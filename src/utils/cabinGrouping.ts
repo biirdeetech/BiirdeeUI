@@ -38,6 +38,11 @@ export interface GroupedFlightByCabin {
   // Metadata
   primaryFlight: FlightSolution; // Cheapest or first available
   allFlights: FlightSolution[]; // All flights in this group
+
+  // Code-share metadata
+  isParentCodeShare?: boolean; // True if this is a parent code-share
+  isChildCodeShare?: boolean; // True if this is a child code-share partner
+  codeSharePartners?: GroupedFlightByCabin[]; // Other code-share partners
 }
 
 /**
@@ -241,4 +246,104 @@ export function groupFlightsByCabin(flights: FlightSolution[]): GroupedFlightByC
  */
 export function getStandardCabins(): string[] {
   return ['COACH', 'PREMIUM-COACH', 'BUSINESS', 'FIRST'];
+}
+
+/**
+ * Extract flight number digits from a flight string
+ * Examples: "AA123" -> 123, "AA1234" -> 1234
+ */
+function extractFlightNumberDigits(flightStr: string): number {
+  const match = flightStr.match(/(\d+)$/);
+  return match ? match[1].length : 0;
+}
+
+/**
+ * Create code-share fingerprint (route + time, ignoring airline)
+ * Used to detect flights that are code-shares of each other
+ */
+function createCodeShareFingerprint(flight: FlightSolution): string {
+  const route = getRouteSignature(flight);
+  const departure = normalizeDepartureToMinute(flight.slices[0]?.departure || '');
+  const arrival = normalizeDepartureToMinute(flight.slices[flight.slices.length - 1]?.arrival || '');
+
+  // Include segment details to ensure same physical flight
+  const segmentDetails = flight.slices.flatMap(slice =>
+    slice.segments?.map(seg => `${seg.origin?.code}-${seg.destination?.code}`) || []
+  ).join('|');
+
+  return `${route}|${departure}|${arrival}|${segmentDetails}`;
+}
+
+/**
+ * Detect code-share relationships and mark parent/child
+ */
+export function detectCodeShares(groupedFlights: GroupedFlightByCabin[]): GroupedFlightByCabin[] {
+  console.log(`🔗 CodeShare: Detecting code-shares among ${groupedFlights.length} flights`);
+
+  // Group by code-share fingerprint
+  const codeShareMap = new Map<string, GroupedFlightByCabin[]>();
+
+  groupedFlights.forEach(flight => {
+    const fingerprint = createCodeShareFingerprint(flight.primaryFlight);
+
+    if (!codeShareMap.has(fingerprint)) {
+      codeShareMap.set(fingerprint, []);
+    }
+
+    codeShareMap.get(fingerprint)!.push(flight);
+  });
+
+  // Process code-share groups
+  const result: GroupedFlightByCabin[] = [];
+  let codeShareCount = 0;
+
+  codeShareMap.forEach((flights, fingerprint) => {
+    if (flights.length <= 1) {
+      // No code-shares, add as-is
+      result.push(flights[0]);
+      return;
+    }
+
+    // Multiple flights = code-share relationship
+    codeShareCount += flights.length;
+    console.log(`✈️  Code-share group: ${flights.map(f => f.airlineCode).join(', ')}`);
+
+    // Determine parent vs children
+    // Parent = flight with fewer digits in flight number (3-digit vs 4-digit)
+    // If same digits, use alphabetically first airline code
+    flights.sort((a, b) => {
+      const aDigits = extractFlightNumberDigits(a.flightNumbers[0] || '');
+      const bDigits = extractFlightNumberDigits(b.flightNumbers[0] || '');
+
+      if (aDigits !== bDigits) {
+        return aDigits - bDigits; // Fewer digits first (parent)
+      }
+
+      // Same digits, sort by airline code
+      return a.airlineCode.localeCompare(b.airlineCode);
+    });
+
+    const parent = flights[0];
+    const children = flights.slice(1);
+
+    // Mark parent
+    parent.isParentCodeShare = true;
+    parent.codeSharePartners = children;
+
+    // Mark children
+    children.forEach(child => {
+      child.isChildCodeShare = true;
+      child.codeSharePartners = [parent, ...children.filter(c => c !== child)];
+    });
+
+    console.log(`   Parent: ${parent.airlineCode} ${parent.flightNumbers.join(',')}`);
+    console.log(`   Partners: ${children.map(c => `${c.airlineCode} ${c.flightNumbers.join(',')}`).join(', ')}`);
+
+    // Add all to result (parent and children)
+    result.push(parent, ...children);
+  });
+
+  console.log(`✅ CodeShare: Found ${codeShareCount} code-share flights`);
+
+  return result;
 }

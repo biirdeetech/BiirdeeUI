@@ -37,6 +37,8 @@ interface FlightCardProps {
   showCodeShareOptions?: boolean; // Whether to show code-share options indicator
   onToggleCodeShareOptions?: () => void; // Callback to toggle code-share options
   isCodeShareOptionsExpanded?: boolean; // Whether code-share options are expanded
+  isParentCodeShare?: boolean; // True if this is a parent code-share
+  isChildCodeShare?: boolean; // True if this is a child code-share partner
   shouldAutoTriggerFrt?: boolean; // Whether this flight should auto-trigger FRT (top 5 only)
   isSearchComplete?: boolean;
   searchKey?: string;
@@ -225,7 +227,7 @@ const groupMileageByCabin = (slices: any[], perCentValue: number) => {
   }));
 };
 
-const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, displayTimezone, perCentValue = 0.015, session, solutionSet, v2EnrichmentData = new Map(), onEnrichFlight, enrichingAirlines = new Set(), similarFlights = [], similarFlightsCount, showSimilarOptions = false, onToggleSimilarOptions, isSimilarOptionsExpanded = false, codeShareFlights = [], codeShareFlightsCount, showCodeShareOptions = false, onToggleCodeShareOptions, isCodeShareOptionsExpanded = false, isParentCodeShare = false, isChildCodeShare = false, shouldAutoTriggerFrt = false, isSearchComplete = false, searchKey = '', expandedFlightCardId = null, onFlightCardToggle }) => {
   // Get flight ID for FRT context
   const flightId = 'id' in flight ? flight.id : `grouped-${flight.outboundSlice.flights?.[0]}-${flight.outboundSlice.departure}`;
 
@@ -324,6 +326,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
   const [selectedPriceOption, setSelectedPriceOption] = useState<Record<string, number>>({}); // cabin -> selected price
   const [selectedTimeOption, setSelectedTimeOption] = useState<Record<string, string>>({}); // cabin -> selected time option key (departure-arrival)
   const [displayedFlight, setDisplayedFlight] = useState<FlightSolution | GroupedFlight | null>(null); // Currently displayed flight variant
+  const [isCodeShareExpanded, setIsCodeShareExpanded] = useState(false); // Track code-share partner expansion
 
   // Get current cabin for FRT (use selectedCabin or first available cabin)
   const currentFrtCabin = useMemo(() => {
@@ -1923,18 +1926,30 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         <div className="flex items-center justify-between gap-4">
           {/* Left: Airline + Route + Times */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Airline Logo */}
+            {/* Airline Logo with Code-Share Badge */}
             {carrier.code && (
-              <img
-                src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
-                alt={carrier.code}
-                className="h-6 w-6 object-contain flex-shrink-0"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+              <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                <img
+                  src={`https://www.gstatic.com/flights/airline_logos/35px/${carrier.code}.png`}
+                  alt={carrier.code}
+                  className="h-6 w-6 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                {isParentCodeShare && (
+                  <span className="text-[8px] font-semibold text-yellow-400 uppercase tracking-wide">
+                    Parent
+                  </span>
+                )}
+                {isChildCodeShare && (
+                  <span className="text-[8px] font-semibold text-yellow-500/80 uppercase tracking-wide">
+                    Partner
+                  </span>
+                )}
+              </div>
             )}
-            
+
             {/* Route: Departure → Duration → Arrival */}
             <div 
               className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
@@ -2656,23 +2671,20 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
             </button>
 
             {/* Code-Share Icon - Right of Chevron */}
-            {showCodeShareOptions && codeShareFlightsCount !== undefined && (
+            {showCodeShareOptions && codeShareFlightsCount !== undefined && codeShareFlightsCount > 0 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (codeShareFlightsCount > 0) {
-                    onToggleCodeShareOptions?.();
-                  }
+                  setIsCodeShareExpanded(!isCodeShareExpanded);
                 }}
                 className={`relative p-1.5 hover:bg-gray-800/50 rounded transition-colors ml-1 ${
-                  isCodeShareOptionsExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
+                  isCodeShareExpanded ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
                 }`}
-                title="Code-share"
-                disabled={codeShareFlightsCount === 0}
+                title="Code-share partners"
               >
                 <Link className="h-4 w-4" />
                 <span className={`absolute -top-1 -right-1 text-[9px] font-bold px-1 rounded ${
-                  isCodeShareOptionsExpanded ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300'
+                  isCodeShareExpanded ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700 text-gray-300'
                 }`}>
                   {codeShareFlightsCount}
                 </span>
@@ -5338,17 +5350,17 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
         </div>
       )}
 
-      {/* Code-Share Flights Section - Shows when code-share button is clicked */}
-      {isCodeShareOptionsExpanded && codeShareFlights && codeShareFlights.length > 0 && (
+      {/* Code-Share Partners Section - Minimized cards showing when link icon is clicked */}
+      {isCodeShareExpanded && codeShareFlights && codeShareFlights.length > 0 && (
         <div className="mt-2 border border-yellow-500/30 rounded-lg bg-yellow-500/5 overflow-hidden">
           <div className="px-4 py-2.5 bg-yellow-500/5 border-b border-yellow-500/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Link className="h-4 w-4 text-yellow-400" />
-                <span className="text-sm font-semibold text-yellow-400">Code-Share Flights</span>
-                <span className="text-xs text-gray-400">({codeShareFlights.length} options)</span>
+                <span className="text-sm font-semibold text-yellow-400">Code-Share Partners</span>
+                <span className="text-xs text-gray-400">({codeShareFlights.length} partner{codeShareFlights.length !== 1 ? 's' : ''})</span>
               </div>
-              <span className="text-xs text-gray-400">Same route, different airlines</span>
+              <span className="text-xs text-gray-400">Same flight, different airlines</span>
             </div>
           </div>
           <div className="p-3 space-y-2">
@@ -5358,71 +5370,72 @@ const FlightCard: React.FC<FlightCardProps> = ({ flight, originTimezone, display
               if (!csSlice) return null;
 
               const csCarrier = csSlice.segments?.[0]?.carrier;
-              const csPrice = csFlightData.displayTotal || csFlightData.price || 0;
+              const csPrice = csFlightData.displayTotal || csFlightData.totalAmount || 0;
               const csCurrency = csFlightData.currency || 'USD';
               const csPricePerMile = csFlightData.ext?.pricePerMile || 0;
+              const isNonstop = !csSlice.stops || csSlice.stops.length === 0;
 
               return (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-gray-800/40 hover:bg-gray-800/60 rounded border border-gray-700/50 hover:border-yellow-500/30 transition-all cursor-pointer"
-                  onClick={() => {
-                    // Navigate to this flight or add it to proposal
-                  }}
+                  className="flex items-center justify-between p-2.5 bg-gray-800/40 hover:bg-gray-800/60 rounded border border-gray-700/50 hover:border-yellow-500/30 transition-all"
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Airline Logo & Code */}
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4 flex-1">
+                    {/* Airline Logo & Info */}
+                    <div className="flex items-center gap-2 min-w-[140px]">
                       {csCarrier?.code && (
                         <img
                           src={`https://www.gstatic.com/flights/airline_logos/35px/${csCarrier.code}.png`}
                           alt={csCarrier.name || csCarrier.code}
-                          className="h-6 w-6 object-contain"
+                          className="h-5 w-5 object-contain flex-shrink-0"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
                         />
                       )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">
+                          {csCarrier?.shortName || csCarrier?.code || 'Unknown'}
+                        </div>
+                        <div className="text-[10px] text-gray-400 truncate">
+                          {csSlice.flights?.[0] || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Flight Times - Compact */}
+                    <div className="flex items-center gap-2 text-xs">
                       <div>
-                        <div className="text-sm font-semibold text-white">
-                          {csCarrier?.name || csCarrier?.code || 'Unknown'}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {csSlice.flights?.join(', ') || 'N/A'}
-                        </div>
+                        <span className="font-semibold text-white">{formatTime(csSlice.departure)}</span>
+                        <span className="text-gray-500 ml-1">{csSlice.origin?.code}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <div className="w-4 h-px bg-gray-700"></div>
+                        {isNonstop ? (
+                          <Plane className="h-2.5 w-2.5 text-green-400" />
+                        ) : (
+                          <span className="text-[9px]">{csSlice.stops?.length || 0}</span>
+                        )}
+                        <div className="w-4 h-px bg-gray-700"></div>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white">{formatTime(csSlice.arrival)}</span>
+                        <span className="text-gray-500 ml-1">{csSlice.destination?.code}</span>
                       </div>
                     </div>
 
-                    {/* Flight Times */}
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="text-center">
-                        <div className="font-semibold text-white">{formatTime(csSlice.departure)}</div>
-                        <div className="text-xs text-gray-400">{csSlice.origin?.code}</div>
-                      </div>
-                      <div className="text-gray-500">→</div>
-                      <div className="text-center">
-                        <div className="font-semibold text-white">{formatTime(csSlice.arrival)}</div>
-                        <div className="text-xs text-gray-400">{csSlice.destination?.code}</div>
-                      </div>
-                    </div>
-
-                    {/* Duration & Stops */}
-                    <div className="text-xs text-gray-400">
+                    {/* Duration */}
+                    <div className="text-[10px] text-gray-400 min-w-[50px]">
                       {formatDuration(csSlice.duration)}
-                      {csSlice.stops && csSlice.stops.length > 0 && (
-                        <span className="ml-2">
-                          • {csSlice.stops.length} {csSlice.stops.length === 1 ? 'stop' : 'stops'}
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* Price */}
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-white">
+                  {/* Price - Compact */}
+                  <div className="text-right min-w-[80px]">
+                    <div className="text-sm font-bold text-white">
                       {formatPrice(csPrice, csCurrency)}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-[9px] text-gray-400">
                       ${formatPricePerMile(csPricePerMile)}/mi
                     </div>
                   </div>

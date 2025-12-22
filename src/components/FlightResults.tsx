@@ -5,7 +5,7 @@ import MultiLegFlightCard from './MultiLegFlightCard';
 import Pagination from './Pagination';
 import { SearchResponse, FlightSolution, GroupedFlight } from '../types/flight';
 import { formatPrice } from '../utils/priceFormatter';
-import { groupFlightsByCabin, GroupedFlightByCabin } from '../utils/cabinGrouping';
+import { groupFlightsByCabin, GroupedFlightByCabin, detectCodeShares } from '../utils/cabinGrouping';
 
 interface FlightResultsProps {
   results: SearchResponse | null;
@@ -97,12 +97,17 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return results.solutionList.solutions.filter(f => 'id' in f) as FlightSolution[];
   }, [results]);
 
-  // Group flights by cabin
+  // Group flights by cabin and detect code-shares
   const groupedByCabin = useMemo(() => {
     console.log('🔄 FlightResults: Grouping flights by cabin');
     const grouped = groupFlightsByCabin(flatFlights);
     console.log(`✅ FlightResults: Grouped into ${grouped.length} flight groups`);
-    return grouped;
+
+    // Detect code-share relationships
+    const withCodeShares = detectCodeShares(grouped);
+    console.log(`✅ FlightResults: Code-share detection complete`);
+
+    return withCodeShares;
   }, [flatFlights]);
 
   // Calculate cheapest and best prices for each cabin tab
@@ -486,11 +491,19 @@ const FlightResults: React.FC<FlightResultsProps> = ({
             // Convert cabin options to similar flights array for FlightCard
             const similarFlights = group.allFlights.filter(f => f.id !== group.primaryFlight.id);
 
+            // Get code-share partners (convert to primary flights)
+            const codeSharePartnerFlights = group.codeSharePartners?.map(partner => partner.primaryFlight) || [];
+
             return (
               <FlightCard
                 key={`flight-group-${index}-${flightId}`}
                 flight={group.primaryFlight}
                 similarFlights={similarFlights}
+                codeShareFlights={codeSharePartnerFlights}
+                codeShareFlightsCount={codeSharePartnerFlights.length}
+                showCodeShareOptions={codeSharePartnerFlights.length > 0}
+                isParentCodeShare={group.isParentCodeShare}
+                isChildCodeShare={group.isChildCodeShare}
                 originTimezone={originTimezone}
                 displayTimezone={displayTimezone}
                 perCentValue={perCentValue}

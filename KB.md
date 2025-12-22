@@ -1,10 +1,18 @@
 # Biirdee Pro - Knowledge Base
 
 **Version:** 2.0 (In Progress - Major UI Refactor)
-**Last Updated:** December 19, 2025
+**Last Updated:** December 22, 2025
 **Type:** Vite/React Frontend Application
 
-**Current Sprint:** UI Refactor (Item 7/10 Complete - View-First Award Enrichment ✅)
+**Current Sprint:** UI Refactor (Item 8/10 Complete - Code-Share Detection ✅)
+
+**Recent Updates (Dec 22, 2025):**
+- ✅ Implemented code-share detection and display
+  - Automatically detects flights with same route/time but different airlines
+  - Parent/child identification based on flight number digits (3-digit vs 4-digit)
+  - Visual badges: "Parent" (yellow) and "Partner" (amber) under airline logos
+  - Link icon with partner count, expands to show minimized partner cards
+  - Compact partner display with airline, flight number, times, price
 
 **Recent Bug Fixes & Updates (Dec 19, 2025):**
 - ✅ Fixed `slice.duration.match is not a function` error (FlightResults.tsx:246-247)
@@ -118,6 +126,17 @@
   - **Grouping & Filtering Rules**:
     - Same flight number + same time + same route = ONE card
     - Cabin filtering: Flight shown in tab only if it has that cabin available
+  - **Code-Share Detection** (utils/cabinGrouping.ts, FlightCard.tsx, FlightResults.tsx):
+    - Automatically detects code-share relationships (same route, time, different airlines)
+    - **Parent identification**: Flight with fewer digits in flight number (3-digit > 4-digit)
+    - **Visual indicators**:
+      - "Parent" badge in yellow under airline logo for parent code-share
+      - "Partner" badge in yellow/amber under airline logo for partner airlines
+    - **Link icon**: Shows count of code-share partners, clickable to expand
+    - **Minimized partner cards**: When expanded, shows all code-share partners as compact, non-expandable cards
+    - Partners display: airline logo, flight number, times, duration, stops, price
+    - Detection fingerprint: route + departure time + arrival time + segment details
+    - Sorting: Parent determined by flight number digits, then alphabetically by airline code
     - Stop counting: Sum of (segments - 1) across all slices
   - **Result**: Clean tabbed interface, intelligent sorting, easy comparison
 
