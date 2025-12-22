@@ -122,6 +122,7 @@ export interface FlightSolution {
   baseFlightId?: string; // Signature for merging across cabins
   cabinPrices?: Record<string, CabinPrice>; // Per-cabin pricing
   selectedCabin?: string; // Currently displayed cabin
+  isAwardFlight?: boolean; // Flag to indicate this is an award flight (for special pricing display)
 }
 
 export interface GroupedFlight {

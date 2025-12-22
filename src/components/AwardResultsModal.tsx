@@ -102,7 +102,8 @@ const convertAwardToFlightSolution = (award: AwardOption): FlightSolution | null
         pricePerMile: totalMiles > 0 ? totalTax / totalMiles : 0
       },
       totalMileage: totalMiles,
-      totalMileagePrice: totalTax
+      totalMileagePrice: totalTax,
+      isAwardFlight: true
     };
   } catch (error) {
     console.error('Error converting award to flight solution:', error);
