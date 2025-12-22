@@ -57,3 +57,5 @@ next, we can see in temp.ndjson in responses folder. the data we have is quite r
 2 changes 
 1. the partner vs parent needs to have differnt color scheme for easier navigation
 2. i can see same route, same airline, same time, different price is added twice when it should've become "price option" 
+3. clicking on the partner or parent inside the code-share dropdown takes me to the tab or page scroll position 
+4. the stops in the flight card are colored gray while the nonstop has a green color plane icon. we need to make stop color as green too, so the ui is consistent. 
