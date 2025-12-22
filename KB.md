@@ -92,22 +92,30 @@
     - Additional same-cabin flights become "price options"
   - **FlightResults.tsx**: Complete UI redesign with cabin-first navigation
     - **4 Cabin Tabs** (Primary navigation): Economy, Premium, Business, First
-      - Each shows price range: "$min — $max" and flight count
+      - Each shows: "$cheapest — $best" and flight count
+      - "$cheapest" = absolute lowest price in that cabin
+      - "$best" = price of best-quality flight (fewest stops, fastest, then cheapest)
       - Filters flights to only show those with selected cabin available
       - If flight has Economy, appears in Economy tab; if no Economy, only in other tabs
     - **2 Sort Tabs** (Secondary navigation): Cheapest, Best
       - Positioned UNDER cabin tabs
-      - Sort within selected cabin by price (cheapest) or duration (best)
-      - Shows corresponding price for fastest/cheapest in that cabin
+      - **Cheapest**: Sorts ONLY by price (lowest first) - no regard to stops/duration
+      - **Best**: Multi-criteria sort - fewest stops → fastest duration → lowest price
+      - Shows corresponding price for the cheapest/best flight in selected cabin
     - Uses `groupFlightsByCabin()` to eliminate duplicates
     - One card per unique flight with cabin options
     - Empty state when no flights in selected cabin
+  - **Sorting Algorithm Details**:
+    - **Cheapest**: Simple price ascending sort
+    - **Best**: Three-tier sort priority:
+      1. Number of stops (nonstop > 1 stop > 2 stops)
+      2. Duration in minutes (faster first)
+      3. Price (cheaper as tiebreaker)
   - **Grouping & Filtering Rules**:
     - Same flight number + same time + same route = ONE card
     - Cabin filtering: Flight shown in tab only if it has that cabin available
-    - Sorting: "Cheapest" sorts by price, "Best" sorts by duration (fastest)
-    - Price ranges calculated per cabin from all available flights
-  - **Result**: Clean tabbed interface, no redundancy, easy cabin comparison
+    - Stop counting: Sum of (segments - 1) across all slices
+  - **Result**: Clean tabbed interface, intelligent sorting, easy comparison
 
 ---
 

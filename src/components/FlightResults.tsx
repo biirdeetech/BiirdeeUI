@@ -77,6 +77,17 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     }
   };
 
+  // Helper to count total stops in a flight
+  const getFlightStops = (flight: FlightSolution | GroupedFlight): number => {
+    if ('id' in flight) {
+      return flight.slices.reduce((total, slice) => {
+        const segmentCount = slice.segment?.length || 0;
+        return total + Math.max(0, segmentCount - 1);
+      }, 0);
+    }
+    return 0;
+  };
+
   // Get flat list of flights (only FlightSolution, not GroupedFlight)
   const flatFlights = useMemo(() => {
     if (!results || !results.solutionList || !results.solutionList.solutions) {
@@ -94,31 +105,62 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return grouped;
   }, [flatFlights]);
 
-  // Calculate price ranges for each cabin tab
+  // Calculate cheapest and best prices for each cabin tab
   const cabinPriceRanges = useMemo(() => {
-    const ranges: Record<string, { min: number; max: number; count: number }> = {
-      'COACH': { min: Infinity, max: 0, count: 0 },
-      'PREMIUM-COACH': { min: Infinity, max: 0, count: 0 },
-      'BUSINESS': { min: Infinity, max: 0, count: 0 },
-      'FIRST': { min: Infinity, max: 0, count: 0 }
+    const ranges: Record<string, { cheapestPrice: number; bestPrice: number; count: number }> = {
+      'COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
+      'PREMIUM-COACH': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
+      'BUSINESS': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 },
+      'FIRST': { cheapestPrice: Infinity, bestPrice: Infinity, count: 0 }
     };
 
-    groupedByCabin.forEach(group => {
-      group.cabinOptions.forEach((option, cabinCode) => {
-        if (ranges[cabinCode]) {
-          const price = option.price;
-          ranges[cabinCode].min = Math.min(ranges[cabinCode].min, price);
-          ranges[cabinCode].max = Math.max(ranges[cabinCode].max, price);
-          ranges[cabinCode].count++;
-        }
-      });
-    });
+    const cabinCodes = ['COACH', 'PREMIUM-COACH', 'BUSINESS', 'FIRST'] as const;
 
-    // Clean up Infinity values
-    Object.keys(ranges).forEach(cabin => {
-      if (ranges[cabin].min === Infinity) {
-        ranges[cabin].min = 0;
+    cabinCodes.forEach(cabinCode => {
+      const flightsInCabin = groupedByCabin.filter(group => group.cabinOptions.has(cabinCode));
+
+      if (flightsInCabin.length === 0) {
+        ranges[cabinCode].cheapestPrice = 0;
+        ranges[cabinCode].bestPrice = 0;
+        return;
       }
+
+      ranges[cabinCode].count = flightsInCabin.length;
+
+      // Find cheapest price
+      let minPrice = Infinity;
+      for (const group of flightsInCabin) {
+        const price = group.cabinOptions.get(cabinCode)?.price || Infinity;
+        minPrice = Math.min(minPrice, price);
+      }
+      ranges[cabinCode].cheapestPrice = minPrice;
+
+      // Find best flight (fewest stops, fastest, then cheapest)
+      let bestFlight = flightsInCabin[0];
+      let bestStops = getFlightStops(bestFlight.primaryFlight);
+      let bestDuration = getFlightDuration(bestFlight.primaryFlight);
+      let bestPrice = bestFlight.cabinOptions.get(cabinCode)?.price || Infinity;
+
+      for (const group of flightsInCabin) {
+        const stops = getFlightStops(group.primaryFlight);
+        const duration = getFlightDuration(group.primaryFlight);
+        const price = group.cabinOptions.get(cabinCode)?.price || Infinity;
+
+        // Compare: stops first, then duration, then price
+        const isBetter =
+          stops < bestStops ||
+          (stops === bestStops && duration < bestDuration) ||
+          (stops === bestStops && duration === bestDuration && price < bestPrice);
+
+        if (isBetter) {
+          bestFlight = group;
+          bestStops = stops;
+          bestDuration = duration;
+          bestPrice = price;
+        }
+      }
+
+      ranges[cabinCode].bestPrice = bestPrice;
     });
 
     return ranges;
@@ -129,24 +171,36 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return groupedByCabin.filter(group => group.cabinOptions.has(cabinFilter));
   }, [groupedByCabin, cabinFilter]);
 
-  // Sort filtered flights by best (fastest) or cheap (lowest price)
+  // Sort filtered flights by best or cheap
   const sortedGroups = useMemo(() => {
     const groups = [...filteredByCabin];
 
     if (sortMode === 'best') {
-      // Sort by duration (fastest first)
+      // Best = fewest stops, fastest duration, then cheapest price
       groups.sort((a, b) => {
+        const aStops = getFlightStops(a.primaryFlight);
+        const bStops = getFlightStops(b.primaryFlight);
+
+        if (aStops !== bStops) {
+          return aStops - bStops;
+        }
+
         const aDuration = getFlightDuration(a.primaryFlight);
         const bDuration = getFlightDuration(b.primaryFlight);
-        return aDuration - bDuration;
+
+        if (aDuration !== bDuration) {
+          return aDuration - bDuration;
+        }
+
+        const aPrice = a.cabinOptions.get(cabinFilter)?.price || 0;
+        const bPrice = b.cabinOptions.get(cabinFilter)?.price || 0;
+        return aPrice - bPrice;
       });
     } else {
-      // Sort by price (cheapest first)
+      // Cheapest = lowest price only
       groups.sort((a, b) => {
-        const aCabinOption = a.cabinOptions.get(cabinFilter);
-        const bCabinOption = b.cabinOptions.get(cabinFilter);
-        const aPrice = aCabinOption?.price || 0;
-        const bPrice = bCabinOption?.price || 0;
+        const aPrice = a.cabinOptions.get(cabinFilter)?.price || 0;
+        const bPrice = b.cabinOptions.get(cabinFilter)?.price || 0;
         return aPrice - bPrice;
       });
     }
@@ -154,40 +208,47 @@ const FlightResults: React.FC<FlightResultsProps> = ({
     return groups;
   }, [filteredByCabin, sortMode, cabinFilter]);
 
-  // Calculate prices for Best and Cheap tabs (within selected cabin)
+  // Calculate prices for Best and Cheap sort tabs (within selected cabin)
   const sortTabPrices = useMemo(() => {
     if (filteredByCabin.length === 0) {
       return { bestPrice: 0, cheapPrice: 0 };
     }
 
-    // Find fastest flight (best) in this cabin
-    let fastestGroup = filteredByCabin[0];
-    let minDuration = getFlightDuration(fastestGroup.primaryFlight);
+    // Find cheapest price
+    let cheapestPrice = Infinity;
+    for (const group of filteredByCabin) {
+      const price = group.cabinOptions.get(cabinFilter)?.price || Infinity;
+      cheapestPrice = Math.min(cheapestPrice, price);
+    }
+
+    // Find best flight (fewest stops, fastest, then cheapest)
+    let bestGroup = filteredByCabin[0];
+    let bestStops = getFlightStops(bestGroup.primaryFlight);
+    let bestDuration = getFlightDuration(bestGroup.primaryFlight);
+    let bestPrice = bestGroup.cabinOptions.get(cabinFilter)?.price || Infinity;
 
     for (const group of filteredByCabin) {
+      const stops = getFlightStops(group.primaryFlight);
       const duration = getFlightDuration(group.primaryFlight);
-      if (duration < minDuration) {
-        minDuration = duration;
-        fastestGroup = group;
+      const price = group.cabinOptions.get(cabinFilter)?.price || Infinity;
+
+      const isBetter =
+        stops < bestStops ||
+        (stops === bestStops && duration < bestDuration) ||
+        (stops === bestStops && duration === bestDuration && price < bestPrice);
+
+      if (isBetter) {
+        bestGroup = group;
+        bestStops = stops;
+        bestDuration = duration;
+        bestPrice = price;
       }
     }
 
-    // Find cheapest flight in this cabin
-    let cheapestGroup = filteredByCabin[0];
-    let minPrice = cheapestGroup.cabinOptions.get(cabinFilter)?.price || 0;
-
-    for (const group of filteredByCabin) {
-      const price = group.cabinOptions.get(cabinFilter)?.price || 0;
-      if (price < minPrice) {
-        minPrice = price;
-        cheapestGroup = group;
-      }
-    }
-
-    const bestPrice = fastestGroup.cabinOptions.get(cabinFilter)?.price || 0;
-    const cheapPrice = cheapestGroup.cabinOptions.get(cabinFilter)?.price || 0;
-
-    return { bestPrice, cheapPrice };
+    return {
+      bestPrice: bestPrice === Infinity ? 0 : bestPrice,
+      cheapPrice: cheapestPrice === Infinity ? 0 : cheapestPrice
+    };
   }, [filteredByCabin, cabinFilter]);
 
   // Determine top 5 for FRT auto-trigger
@@ -266,7 +327,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   text-xs font-semibold
                   ${cabinFilter === 'COACH' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['COACH'].min, currency)} — {formatPrice(cabinPriceRanges['COACH'].max, currency)}
+                  {formatPrice(cabinPriceRanges['COACH'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['COACH'].bestPrice, currency)}
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['COACH'].count})</span>
@@ -290,7 +351,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   text-xs font-semibold
                   ${cabinFilter === 'PREMIUM-COACH' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['PREMIUM-COACH'].min, currency)} — {formatPrice(cabinPriceRanges['PREMIUM-COACH'].max, currency)}
+                  {formatPrice(cabinPriceRanges['PREMIUM-COACH'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['PREMIUM-COACH'].bestPrice, currency)}
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['PREMIUM-COACH'].count})</span>
@@ -314,7 +375,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   text-xs font-semibold
                   ${cabinFilter === 'BUSINESS' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['BUSINESS'].min, currency)} — {formatPrice(cabinPriceRanges['BUSINESS'].max, currency)}
+                  {formatPrice(cabinPriceRanges['BUSINESS'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['BUSINESS'].bestPrice, currency)}
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['BUSINESS'].count})</span>
@@ -338,7 +399,7 @@ const FlightResults: React.FC<FlightResultsProps> = ({
                   text-xs font-semibold
                   ${cabinFilter === 'FIRST' ? 'text-teal-300' : 'text-gray-500'}
                 `}>
-                  {formatPrice(cabinPriceRanges['FIRST'].min, currency)} — {formatPrice(cabinPriceRanges['FIRST'].max, currency)}
+                  {formatPrice(cabinPriceRanges['FIRST'].cheapestPrice, currency)} — {formatPrice(cabinPriceRanges['FIRST'].bestPrice, currency)}
                 </span>
               )}
               <span className="text-[10px] text-gray-500">({cabinPriceRanges['FIRST'].count})</span>
