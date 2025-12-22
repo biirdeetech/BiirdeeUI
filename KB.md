@@ -74,6 +74,11 @@
   - Added flight numbers and departure time to fingerprint
   - Now each unique flight shows as separate card
   - Only cabin variations of SAME flight (same number, time) are grouped together
+- ✅ Changed cabin search from sequential to parallel execution (SearchPage.tsx)
+  - Changed from `searchAllCabinsSequentially` to `searchAllCabins` (parallelCabinSearch.ts)
+  - All 4 cabins (Economy, Premium, Business, First) now search simultaneously
+  - Progress tracking updated to show parallel status
+  - Significantly faster multi-cabin searches
 
 ---
 
