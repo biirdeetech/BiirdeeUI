@@ -64,3 +64,5 @@ next, we can see in temp.ndjson in responses folder. the data we have is quite r
 --- 
 
 1. some of the flight have same price, time, airline, carrier, cabins, date, stops, yet they are added as separate entry. these kind of 100% match should be redundant and skipped in rendering. 
+3. the main cabin tabs will show cheapest mileage price available and write it under to the cabin that's it found. 
+
